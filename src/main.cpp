@@ -64,6 +64,10 @@ REXCVAR_DEFINE_STRING(rewor_game_folder, "", "re-wor",
 
 // src/dlc.cpp: installs the content packages of the dlc folder.
 void ReWorInstallDlc();
+// src/online.cpp: online play over a LAN or a virtual LAN.
+void ReWorStartOnline();
+void ReWorDumpEarly();
+void ReWorApplyDebugMenu();
 
 // src/sampler.cpp: where each thread spends its time, when rewor_sample_file is set.
 void rewor_start_sampler();
@@ -491,7 +495,12 @@ class ReWorApp : public rex::ReXApp {
 
   // Content packages from the dlc folder (src/dlc.cpp), before the game looks
   // for them: the SDK knows the title by now, and the game has not started.
-  void OnPreLaunchModule() override { ReWorInstallDlc(); }
+  void OnPreLaunchModule() override {
+    ReWorDumpEarly();
+    ReWorApplyDebugMenu();
+    ReWorInstallDlc();
+    ReWorStartOnline();
+  }
 
   void OnPostSetup() override {
     TRACE("[OnPostSetup] entered - XEX loaded, runtime ready");

@@ -62,3 +62,25 @@ name = "ReWorGuestFrameHook"
 address = 0x824FFCD8   # blr of sub_824FFCC8 (NotCD), r3 = its result
 name = "ReWorNotCDHook"
 registers = ["r3"]
+
+# The debug menu, as the game's debug executable does it (src/notcd.cpp): the
+# retail executable stores 1 in the "running from a disc" byte at 0x829A78FA in
+# three places at boot; the debug one stores 0 there (and always reaches the
+# first store), so the whole game believes it runs from a development PC.
+# 0x824030FC beq -> nop, 0x82403100 / 0x824AD6A4 / 0x824FFB9C li r11,1 -> li r11,0.
+[[midasm_hook]]
+address = 0x824030F8   # cmplwi cr6,r10,0 (sub_82403098): nonzero = do not skip the store
+name = "ReWorDiscFlagBranchHook"
+registers = ["r10"]
+[[midasm_hook]]
+address = 0x82403104   # stb r11,30970(r29)
+name = "ReWorDiscFlagStoreHook"
+registers = ["r11"]
+[[midasm_hook]]
+address = 0x824AD6B4   # stb r11,30970(r10) (sub_824AD5E0)
+name = "ReWorDiscFlagStoreHook"
+registers = ["r11"]
+[[midasm_hook]]
+address = 0x824FFBA0   # stb r11,30970(r31) (sub_824FFAB0)
+name = "ReWorDiscFlagStoreHook"
+registers = ["r11"]

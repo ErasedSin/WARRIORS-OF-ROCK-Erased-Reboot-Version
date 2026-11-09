@@ -42,6 +42,8 @@ set(REWOR_SOURCES
     src/options_menu.cpp
     src/notcd.cpp
     src/dlc.cpp
+    src/mic.cpp
+    src/online.cpp
 )
 
 if(WIN32)

@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
@@ -252,23 +253,91 @@ namespace ReWor
             { "tab_game", new[] { "JOGO", "GAME" } },
             { "tab_video", new[] { "VÍDEO", "VIDEO" } },
             { "tab_gfx", new[] { "GRÁFICOS", "GRAPHICS" } },
-            { "tab_controls", new[] { "CONTROLES", "CONTROLS" } },
             { "dlc_button", new[] { "PASTA DE DLC", "DLC FOLDER" } },
             { "dlc_note", new[] {
                 "DLC e músicas customizadas: coloque os pacotes do Xbox 360 (arquivos CON ou LIVE) na pasta dlc; eles são instalados ao abrir o jogo. Para músicas do Onyx, inclua também o cache que o Onyx gera (Other tools > GH:WoR cache).",
                 "DLC and custom songs: put the Xbox 360 packages (CON or LIVE files) in the dlc folder; they are installed when the game starts. For Onyx songs, add the cache Onyx makes too (Other tools > GH:WoR cache)." } },
             { "tab_keyboard", new[] { "TECLADO", "KEYBOARD" } },
+            { "tab_players", new[] { "JOGADORES", "PLAYERS" } },
+            { "tab_online", new[] { "ONLINE", "ONLINE" } },
+            { "online_enabled", new[] { "Jogar online com amigos (rede local ou VPN, como Radmin VPN)", "Play online with friends (local network or a VPN such as Radmin VPN)" } },
+            { "online_my_ip", new[] { "Meu endereço na rede", "My network address" } },
+            { "online_auto", new[] { "Automático (Radmin 26.x, Hamachi 25.x, depois a rede local)", "Automatic (Radmin 26.x, Hamachi 25.x, then the local network)" } },
+            { "online_share", new[] { "Passe este endereço ao amigo: {0}", "Give this address to your friend: {0}" } },
+            { "online_share_none", new[] { "Nenhum endereço de rede encontrado.", "No network address found." } },
+            { "online_copy", new[] { "COPIAR", "COPY" } },
+            { "online_host", new[] { "Endereço do anfitrião (deixe vazio se você for o anfitrião)", "Host address (leave empty if you are the host)" } },
+            { "online_bad_ip", new[] { "O endereço do anfitrião precisa ser um IPv4, como 26.12.34.56.", "The host address must be an IPv4 address, such as 26.12.34.56." } },
+            { "online_note", new[] {
+                "Os dois PCs precisam estar na mesma rede ou na mesma VPN (Radmin VPN, ZeroTier, Hamachi). O anfitrião deixa o endereço vazio e entra primeiro em Online > procurar jogadores; o amigo põe o endereço do anfitrião e procura depois. O nome é o do perfil (aba JOGADORES). Experimental; o Windows pode pedir para liberar o firewall.",
+                "Both PCs must be on the same network or the same VPN (Radmin VPN, ZeroTier, Hamachi). The host leaves the address empty and goes into Online > find players first; the friend puts in the host's address and searches next. The name is the profile's (PLAYERS page). Experimental; Windows may ask to allow it through the firewall." } },
+            { "profile_name", new[] { "Nome do perfil (aparece no jogo, até 15 letras)", "Profile name (shown in the game, up to 15 letters)" } },
+            { "dev_auto", new[] { "Automático (o próximo livre)", "Automatic (the next free one)" } },
+            { "dev_none", new[] { "Ninguém", "Nobody" } },
+            { "dev_missing", new[] { "Desconectado: {0}", "Disconnected: {0}" } },
+            { "dev_x360_guitar", new[] { "Guitarra Xbox 360", "Xbox 360 guitar" } },
+            { "dev_x360_drums", new[] { "Bateria Xbox 360", "Xbox 360 drums" } },
+            { "dev_xbox_pad", new[] { "Controle Xbox", "Xbox controller" } },
+            { "dev_ps_pad", new[] { "Controle PlayStation", "PlayStation controller" } },
+            { "dev_pad", new[] { "Controle", "Controller" } },
+            { "dev_guitar", new[] { "Guitarra", "Guitar" } },
+            { "dev_drums", new[] { "Bateria", "Drums" } },
+            { "dev_keyboard", new[] { "Teclado", "Keyboard" } },
+            { "dev_keyboard_detail", new[] { "Teclas da aba TECLADO", "Keys from the KEYBOARD page" } },
+            { "dev_slot", new[] { "XInput {0}  ·  luz {0} no anel do Xbox 360", "XInput {0}  ·  light {0} on the Xbox 360 ring" } },
+            { "devices_title", new[] { "DISPOSITIVOS CONECTADOS", "CONNECTED DEVICES" } },
+            { "devices_hint", new[] { "Aperte um botão em qualquer controle: o cartão dele acende.", "Press a button on any controller: its card lights up." } },
+            { "players_title", new[] { "JOGADORES", "PLAYERS" } },
+            { "player_badge", new[] { "JOGADOR {0}", "PLAYER {0}" } },
+            { "reading_xinput", new[] { "XInput", "XInput" } },
+            { "reading_sdl", new[] { "SDL", "SDL" } },
+            { "reading_tip", new[] {
+                "Leitura do controle Xbox: XInput lê do jeito do Xbox (guitarra 360 com tilt); SDL é o outro jeito, para quando os botões vierem trocados.",
+                "How the Xbox controller is read: XInput reads it the Xbox way (360 guitar with tilt); SDL is the other way, for when the buttons come out swapped." } },
+            { "mic_none", new[] { "Ninguém canta no microfone do PC", "Nobody sings on the PC microphone" } },
+            { "mic_player", new[] { "Jogador {0} canta no microfone do PC", "Player {0} sings on the PC microphone" } },
+            { "players_note", new[] {
+                "Um dispositivo nunca vai para dois jogadores. Quem canta no microfone do PC se escolhe na aba MICROFONE. Vale ao abrir o jogo.",
+                "A device never goes to two players. Who sings on the PC microphone is picked on the MICROPHONE page. Applies when the game starts." } },
+            { "tab_mic", new[] { "MICROFONE", "MICROPHONE" } },
+            { "tab_update", new[] { "ATUALIZAR", "UPDATE" } },
+            { "mic_who", new[] { "Quem canta", "Who sings" } },
+            { "mic_device", new[] { "Microfone", "Microphone" } },
+            { "mic_default", new[] { "Padrão do Windows", "Windows default" } },
+            { "mic_level", new[] { "TESTE: FALE OU CANTE", "TEST: SPEAK OR SING" } },
+            { "mic_listening", new[] { "Ouvindo...", "Listening..." } },
+            { "mic_hearing", new[] { "Ouvindo: {0}%", "Hearing: {0}%" } },
+            { "mic_silenced", new[] { "Silêncio: abaixo da sensibilidade, o jogo não ouve", "Silence: below the sensitivity, the game hears nothing" } },
+            { "mic_missing", new[] { "Microfone não encontrado. Confira em Configurações > Som > Entrada do Windows.", "Microphone not found. Check Settings > Sound > Input in Windows." } },
+            { "mic_volume", new[] { "Volume: {0}%", "Volume: {0}%" } },
+            { "mic_gate", new[] { "Sensibilidade: corta abaixo de {0}%", "Sensitivity: cuts below {0}%" } },
+            { "mic_gate_off", new[] { "Sensibilidade: desligada (ouve tudo)", "Sensitivity: off (hears everything)" } },
+            { "mic_note", new[] {
+                "A barra mostra o que o jogo vai receber. Ajuste o volume para a voz chegar perto do fim sem ficar branca no canto (estourado). Se o jogo pegar ruído ou o som da música, suba a sensibilidade até a linha branca ficar acima do ruído: abaixo dela vira silêncio.",
+                "The bar shows what the game will receive. Set the volume so your voice gets near the end without the corner turning white (clipping). If the game picks up noise or the music, raise the sensitivity until the white line is above the noise: below it is silence." } },
+            { "update_installed", new[] { "Versão instalada: v{0}", "Installed version: v{0}" } },
+            { "update_idle", new[] { "Clique em VERIFICAR para procurar uma versão nova no GitHub.", "Click CHECK to look for a new version on GitHub." } },
+            { "update_check", new[] { "VERIFICAR", "CHECK" } },
+            { "update_install", new[] { "BAIXAR E INSTALAR", "DOWNLOAD AND INSTALL" } },
+            { "update_page", new[] { "Abrir no GitHub", "Open on GitHub" } },
+            { "update_checking", new[] { "Procurando...", "Checking..." } },
+            { "update_failed", new[] { "Não deu para falar com o GitHub. Confira a internet.", "Could not reach GitHub. Check the internet connection." } },
+            { "update_available", new[] { "Versão nova disponível: {0}", "New version available: {0}" } },
+            { "update_current", new[] { "Você já está na versão mais nova.", "You already have the latest version." } },
+            { "update_no_zip", new[] { "Há uma versão nova, mas sem o zip para baixar. Abra no GitHub.", "There is a new version, but without a zip to download. Open it on GitHub." } },
+            { "update_downloading", new[] { "Baixando...", "Downloading..." } },
+            { "update_restarting", new[] { "Instalando: o launcher fecha e abre de novo sozinho.", "Installing: the launcher closes and opens again by itself." } },
+            { "update_note", new[] {
+                "A atualização troca o launcher e os arquivos do port. Suas configurações, a pasta do jogo, mods e DLC ficam como estão. Os arquivos do jogo nunca vêm junto.",
+                "The update replaces the launcher and the port's files. Your settings, game folder, mods and DLC stay as they are. The game's files never come with it." } },
             { "kb_enabled", new[] { "Jogar no teclado (como guitarra)", "Play on the keyboard (as a guitar)" } },
             { "kb_asjkl", new[] { "A S J K L + setas (estilo Clone Hero)", "A S J K L + arrows (Clone Hero style)" } },
             { "kb_numbers", new[] { "1 2 3 4 5 + setas", "1 2 3 4 5 + arrows" } },
             { "kb_start", new[] { "Start", "Start" } },
-            { "autostrum", new[] { "Palhetada automática: cada traste palheta sozinho, só durante a música", "Auto-strum: each fret strums by itself, only during a song" } },
             { "kb_note", new[] {
                 "Nomes de teclas: A-Z, 0-9, F1-F12, Up Down Left Right, Space, Return, Backspace, Tab, Semicolon, Comma, Numpad0-9. Várias teclas: A,Left. F1-F5, F7 e F11 já são atalhos do jogo.",
                 "Key names: A-Z, 0-9, F1-F12, Up Down Left Right, Space, Return, Backspace, Tab, Semicolon, Comma, Numpad0-9. Several keys: A,Left. F1-F5, F7 and F11 are already game shortcuts." } },
             { "pad_preset", new[] { "Predefinição", "Preset" } },
-            { "preset_classic", new[] { "Clássico (A B Y X LB, palheta no direcional)", "Classic (A B Y X LB, strum on the d-pad)" } },
-            { "preset_triggers", new[] { "Com gatilhos (LT LB RB RT A, alavanca no analógico)", "Triggers (LT LB RB RT A, whammy on the stick)" } },
             { "preset_custom", new[] { "Personalizado", "Custom" } },
             { "fret_green", new[] { "Verde", "Green" } },
             { "fret_red", new[] { "Vermelho", "Red" } },
@@ -279,14 +348,11 @@ namespace ReWor
             { "strum_down", new[] { "Palheta baixo", "Strum down" } },
             { "star_power", new[] { "Star Power", "Star Power" } },
             { "whammy", new[] { "Alavanca", "Whammy" } },
-            { "controls_note", new[] {
-                "Vale para controles comuns (Xbox ou PlayStation); guitarras de verdade não mudam. Vários botões juntos: A|LB. Gatilhos e direções do analógico também: LT, RT, LS_UP, RS_DOWN...",
-                "Applies to regular controllers (Xbox or PlayStation); real guitars are unchanged. Several buttons: A|LB. Triggers and stick directions too: LT, RT, LS_UP, RS_DOWN..." } },
             { "folder_label", new[] { "Pasta com os arquivos do jogo (onde fica o default.xex)", "Game files folder (where default.xex is)" } },
             { "choose", new[] { "ESCOLHER", "BROWSE" } },
             { "no_folder", new[] { "Nenhuma pasta escolhida ainda.", "No folder selected yet." } },
             { "game_lang", new[] { "Idioma do jogo", "Game language" } },
-            { "pad_guitar", new[] { "Controle comum toca como guitarra (A B Y X LB, palheta no direcional)", "Regular controller plays as a guitar (A B Y X LB, strum on the d-pad)" } },
+            { "debug_menu", new[] { "Menu debug do jogo (item DEBUG MENU no menu principal, abaixo de OPTIONS)", "Game debug menu (a DEBUG MENU item in the main menu, below OPTIONS)" } },
             { "game_note", new[] {
                 "Use os arquivos extraídos da sua cópia do jogo: o default.xex e a pasta data. Eles ficam onde estão; o launcher só guarda o caminho.",
                 "Use the files extracted from your copy of the game: default.xex and the data folder. They stay where they are; the launcher only stores the path." } },
@@ -343,6 +409,314 @@ namespace ReWor
         }
     }
 
+    // A controller the PC has, named the way the game's player1_device...
+    // settings take it: xinput1 (an XInput slot), hid:054C:09CC:1 (the first
+    // device with that USB vendor and product) or keyboard.
+    class InputDevice
+    {
+        public string Spec, Kind, Title, Detail;
+        public int XInputSlot = -1;
+        public uint JoyId;
+        public bool IsJoy;
+        public DateTime LastActive = DateTime.MinValue;
+
+        // 1 right after a button press, fading to 0.
+        public float Glow
+        {
+            get
+            {
+                double ms = (DateTime.Now - LastActive).TotalMilliseconds;
+                return ms >= 700 ? 0f : (float)(1.0 - ms / 700.0);
+            }
+        }
+    }
+
+    // Finds the controllers: the XInput slots (Xbox controllers, Xbox 360 guitars
+    // and drums), the other game controllers Windows knows (winmm: PlayStation
+    // and other HID pads, the XInput ones left out) and the keyboard; and tells
+    // which one has a button pressed.
+    static class InputScan
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        struct XGamepad { public ushort Buttons; public byte LT, RT; public short LX, LY, RX, RY; }
+        [StructLayout(LayoutKind.Sequential)]
+        struct XState { public uint Packet; public XGamepad Pad; }
+        [StructLayout(LayoutKind.Sequential)]
+        struct XCapsEx
+        {
+            public byte Type, SubType;
+            public ushort Flags;
+            public XGamepad Pad;
+            public ushort LeftMotor, RightMotor, Vendor, Product, Version, Unknown1;
+            public uint Unknown2;
+        }
+        [DllImport("xinput1_4.dll")] static extern uint XInputGetState(uint user, out XState state);
+        [DllImport("xinput1_4.dll", EntryPoint = "#108")] static extern uint XInputGetCapabilitiesEx(uint one, uint user, uint flags, out XCapsEx caps);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct JoyCaps
+        {
+            public ushort Mid, Pid;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string Name;
+            public uint XMin, XMax, YMin, YMax, ZMin, ZMax, NumButtons, PeriodMin, PeriodMax;
+            public uint RMin, RMax, UMin, UMax, VMin, VMax, Caps, MaxAxes, NumAxes, MaxButtons;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string RegKey;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string OemVxd;
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        struct JoyInfoEx { public uint Size, Flags, X, Y, Z, R, U, V, Buttons, ButtonNumber, Pov, Reserved1, Reserved2; }
+        [DllImport("winmm.dll")] static extern uint joyGetNumDevs();
+        [DllImport("winmm.dll", CharSet = CharSet.Unicode)] static extern uint joyGetDevCapsW(UIntPtr id, ref JoyCaps caps, uint size);
+        [DllImport("winmm.dll")] static extern uint joyGetPosEx(uint id, ref JoyInfoEx info);
+        [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+
+        static bool xinputMissing;
+
+        // The brand of the common controller makers, from the USB vendor.
+        static string VendorName(ushort vendor)
+        {
+            switch (vendor)
+            {
+                case 0x045E: return " Microsoft";
+                case 0x057E: return " Nintendo";
+                case 0x2DC8: return " 8BitDo";
+                case 0x0F0D: return " Hori";
+                case 0x0E6F: return " PDP";
+                case 0x24C6: return " PowerA";
+                case 0x1430: return " RedOctane";
+                case 0x12BA: return " PlayStation 3";
+                case 0x046D: return " Logitech";
+                case 0x2563: return " ShanWan";
+                case 0x0079: return " DragonRise";
+                default: return "";
+            }
+        }
+
+        static string UsbId(ushort vendor, ushort product)
+        {
+            return vendor.ToString("X4") + ":" + product.ToString("X4");
+        }
+
+        public static List<InputDevice> Scan()
+        {
+            var list = new List<InputDevice>();
+            var xinputIds = new List<string>();
+            for (uint slot = 0; slot < 4 && !xinputMissing; slot++)
+            {
+                XCapsEx caps;
+                try { if (XInputGetCapabilitiesEx(1, slot, 0, out caps) != 0) continue; }
+                catch (Exception) { xinputMissing = true; break; }
+                ushort vendor = caps.Vendor, product = caps.Product;
+                // The wireless receiver reports no product; SDL and the game call it a wired pad.
+                if (product == 0 && (caps.Flags & 2) != 0) { vendor = 0x045E; product = 0x028E; }
+                xinputIds.Add(UsbId(vendor, product));
+                bool guitar = caps.SubType == 6 || caps.SubType == 7 || caps.SubType == 0x0B;
+                bool drums = caps.SubType == 8;
+                list.Add(new InputDevice
+                {
+                    Spec = "xinput" + (slot + 1),
+                    Kind = guitar ? "guitar" : drums ? "drums" : "gamepad",
+                    Title = Strings.T(guitar ? "dev_x360_guitar" : drums ? "dev_x360_drums" : "dev_xbox_pad"),
+                    Detail = string.Format(Strings.T("dev_slot"), slot + 1),
+                    XInputSlot = (int)slot
+                });
+            }
+
+            var seen = new Dictionary<string, int>();
+            uint count = 0;
+            try { count = Math.Min(joyGetNumDevs(), 16u); } catch (Exception) { }
+            for (uint id = 0; id < count; id++)
+            {
+                var info = new JoyInfoEx { Size = (uint)Marshal.SizeOf(typeof(JoyInfoEx)), Flags = 0xFF };
+                if (joyGetPosEx(id, ref info) != 0) continue;
+                var caps = new JoyCaps();
+                if (joyGetDevCapsW((UIntPtr)id, ref caps, (uint)Marshal.SizeOf(typeof(JoyCaps))) != 0) continue;
+                string usb = UsbId(caps.Mid, caps.Pid);
+                string name = (caps.Name ?? "").Trim();
+                // XInput devices are listed above, by slot.
+                int index = xinputIds.IndexOf(usb);
+                if (index >= 0) { xinputIds.RemoveAt(index); continue; }
+                string lower = name.ToLowerInvariant();
+                if (lower.Contains("xbox") || lower.Contains("xinput")) continue;
+                int nth;
+                seen.TryGetValue(usb, out nth);
+                seen[usb] = ++nth;
+                bool guitar = lower.Contains("guitar");
+                bool drums = lower.Contains("drum");
+                list.Add(new InputDevice
+                {
+                    Spec = "hid:" + usb + ":" + nth,
+                    Kind = guitar ? "guitar" : drums ? "drums" : "gamepad",
+                    Title = caps.Mid == 0x054C ? Strings.T("dev_ps_pad") : Strings.T(guitar ? "dev_guitar" : drums ? "dev_drums" : "dev_pad") + VendorName(caps.Mid),
+                    Detail = "USB " + usb + (nth > 1 ? "  ·  #" + nth : ""),
+                    JoyId = id,
+                    IsJoy = true
+                });
+            }
+
+            list.Add(new InputDevice { Spec = "keyboard", Kind = "keyboard", Title = Strings.T("dev_keyboard"), Detail = Strings.T("dev_keyboard_detail") });
+            return list;
+        }
+
+        // Marks the devices with a button pressed. keyboardToo: the launcher has
+        // the focus, so a key pressed is meant for it.
+        public static void Poll(List<InputDevice> devices, bool keyboardToo)
+        {
+            DateTime now = DateTime.Now;
+            foreach (var d in devices)
+            {
+                bool active = false;
+                if (d.XInputSlot >= 0 && !xinputMissing)
+                {
+                    XState st;
+                    try
+                    {
+                        if (XInputGetState((uint)d.XInputSlot, out st) == 0)
+                        {
+                            var p = st.Pad;
+                            active = p.Buttons != 0 || p.LT > 60 || p.RT > 60 || Math.Abs((int)p.LX) > 16000 || Math.Abs((int)p.LY) > 16000
+                                || (d.Kind == "guitar" && p.RY > 16000);
+                        }
+                    }
+                    catch (Exception) { xinputMissing = true; }
+                }
+                else if (d.IsJoy)
+                {
+                    var info = new JoyInfoEx { Size = (uint)Marshal.SizeOf(typeof(JoyInfoEx)), Flags = 0xFF };
+                    if (joyGetPosEx(d.JoyId, ref info) == 0)
+                        active = info.Buttons != 0 || (info.Pov != 0xFFFF && info.Pov != 0xFFFFFFFF);
+                }
+                else if (d.Kind == "keyboard" && keyboardToo)
+                {
+                    // 0xC3-0xDA are the gamepad's own keys (Windows 10 turns a
+                    // controller's stick into them), not the keyboard's.
+                    for (int key = 0x08; key <= 0xDF && !active; key++)
+                        if ((key < 0xC3 || key > 0xDA) && (GetAsyncKeyState(key) & 0x8000) != 0) active = true;
+                }
+                if (active) d.LastActive = now;
+            }
+        }
+    }
+
+    // Listens to a Windows microphone (winmm) for the MICROPHONE page's level
+    // meter: the loudest sample of the last few milliseconds.
+    sealed class MicMeter : IDisposable
+    {
+        [StructLayout(LayoutKind.Sequential)]
+        struct WaveFormat { public ushort Tag, Channels; public uint Rate, BytesPerSec; public ushort BlockAlign, Bits, Extra; }
+        [StructLayout(LayoutKind.Sequential)]
+        struct WaveHeader { public IntPtr Data; public uint BufferLength, BytesRecorded; public IntPtr User; public uint Flags, Loops; public IntPtr Next, Reserved; }
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct WaveInCaps
+        {
+            public ushort Mid, Pid;
+            public uint DriverVersion;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string Name;
+            public uint Formats;
+            public ushort Channels, Reserved;
+        }
+        [DllImport("winmm.dll")] static extern uint waveInGetNumDevs();
+        [DllImport("winmm.dll", CharSet = CharSet.Unicode)] static extern uint waveInGetDevCapsW(UIntPtr id, ref WaveInCaps caps, uint size);
+        [DllImport("winmm.dll")] static extern uint waveInOpen(out IntPtr handle, uint device, ref WaveFormat format, IntPtr callback, IntPtr instance, uint flags);
+        [DllImport("winmm.dll")] static extern uint waveInPrepareHeader(IntPtr handle, IntPtr header, uint size);
+        [DllImport("winmm.dll")] static extern uint waveInUnprepareHeader(IntPtr handle, IntPtr header, uint size);
+        [DllImport("winmm.dll")] static extern uint waveInAddBuffer(IntPtr handle, IntPtr header, uint size);
+        [DllImport("winmm.dll")] static extern uint waveInStart(IntPtr handle);
+        [DllImport("winmm.dll")] static extern uint waveInReset(IntPtr handle);
+        [DllImport("winmm.dll")] static extern uint waveInClose(IntPtr handle);
+
+        const uint WaveMapper = 0xFFFFFFFF;
+        const int Buffers = 4;
+        const int BufferBytes = 48000 * 2 / 25;  // 40 ms
+        static readonly uint HeaderSize = (uint)Marshal.SizeOf(typeof(WaveHeader));
+        static readonly int FlagsOffset = (int)Marshal.OffsetOf(typeof(WaveHeader), "Flags");
+        static readonly int RecordedOffset = (int)Marshal.OffsetOf(typeof(WaveHeader), "BytesRecorded");
+
+        IntPtr handle;
+        readonly IntPtr[] headers = new IntPtr[Buffers];
+        readonly byte[] samples = new byte[BufferBytes];
+
+        // The recording devices, in winmm order; names are cut at 31 characters.
+        public static List<string> Devices()
+        {
+            var list = new List<string>();
+            uint count = 0;
+            try { count = waveInGetNumDevs(); } catch (Exception) { return list; }
+            for (uint i = 0; i < count; i++)
+            {
+                var caps = new WaveInCaps();
+                list.Add(waveInGetDevCapsW((UIntPtr)i, ref caps, (uint)Marshal.SizeOf(typeof(WaveInCaps))) == 0 ? caps.Name : "?");
+            }
+            return list;
+        }
+
+        // name: one from Devices(), or empty for the Windows default.
+        public bool Open(string name)
+        {
+            uint device = WaveMapper;
+            if (!string.IsNullOrEmpty(name))
+            {
+                int index = Devices().IndexOf(name);
+                if (index >= 0) device = (uint)index;
+            }
+            var format = new WaveFormat { Tag = 1, Channels = 1, Rate = 48000, BytesPerSec = 96000, BlockAlign = 2, Bits = 16 };
+            try { if (waveInOpen(out handle, device, ref format, IntPtr.Zero, IntPtr.Zero, 0) != 0) { handle = IntPtr.Zero; return false; } }
+            catch (Exception) { handle = IntPtr.Zero; return false; }
+            for (int i = 0; i < Buffers; i++)
+            {
+                var header = new WaveHeader { Data = Marshal.AllocHGlobal(BufferBytes), BufferLength = BufferBytes };
+                headers[i] = Marshal.AllocHGlobal((int)HeaderSize);
+                Marshal.StructureToPtr(header, headers[i], false);
+                waveInPrepareHeader(handle, headers[i], HeaderSize);
+                waveInAddBuffer(handle, headers[i], HeaderSize);
+            }
+            waveInStart(handle);
+            return true;
+        }
+
+        public bool IsOpen { get { return handle != IntPtr.Zero; } }
+
+        // The loudest sample recorded since the last call, 0 to 1; -1 when nothing new came.
+        public float Peak()
+        {
+            if (handle == IntPtr.Zero) return -1f;
+            float peak = -1f;
+            foreach (var header in headers)
+            {
+                if ((Marshal.ReadInt32(header, FlagsOffset) & 1) == 0) continue;  // WHDR_DONE
+                int recorded = Marshal.ReadInt32(header, RecordedOffset);
+                Marshal.Copy(Marshal.ReadIntPtr(header), samples, 0, Math.Min(recorded, BufferBytes));
+                int loudest = 0;
+                for (int i = 0; i + 1 < recorded; i += 2)
+                    loudest = Math.Max(loudest, Math.Abs((int)BitConverter.ToInt16(samples, i)));
+                peak = Math.Max(peak, loudest / 32768f);
+                waveInAddBuffer(handle, header, HeaderSize);
+            }
+            return peak;
+        }
+
+        public void Dispose()
+        {
+            if (handle == IntPtr.Zero) return;
+            waveInReset(handle);
+            foreach (var header in headers)
+            {
+                if (header == IntPtr.Zero) continue;
+                waveInUnprepareHeader(handle, header, HeaderSize);
+                Marshal.FreeHGlobal(Marshal.ReadIntPtr(header));
+                Marshal.FreeHGlobal(header);
+            }
+            waveInClose(handle);
+            handle = IntPtr.Zero;
+        }
+    }
+
+    // A panel that paints without flicker.
+    class Canvas : Panel
+    {
+        public Canvas() { DoubleBuffered = true; ResizeRedraw = true; }
+    }
+
     class LauncherForm : Form
     {
         const string GameExe = "Guitar Hero Warriors of Rock.exe";
@@ -374,24 +748,8 @@ namespace ReWor
         readonly FontFamily titleFamily = TitleFont.Load();
 
         ComboBox resolution, drawScale, presentEffect, anisotropy, language;
-        CheckBox fullscreen, vsync, gamma16, motionBlur, screenNoise, depthOfField, bloom, showFps, padGuitar;
-        ComboBox padPreset;
-        readonly Dictionary<string, ComboBox> padFields = new Dictionary<string, ComboBox>();
-        bool applyingPreset;
+        CheckBox fullscreen, vsync, gamma16, motionBlur, screenNoise, depthOfField, bloom, showFps, debugMenu;
 
-        // cvar suffix (guitar_pad_*), label key, then the classic and the trigger presets.
-        static readonly string[][] PadParts =
-        {
-            new[] { "green", "fret_green", "A", "LT" },
-            new[] { "red", "fret_red", "B", "LB" },
-            new[] { "yellow", "fret_yellow", "Y", "RB" },
-            new[] { "blue", "fret_blue", "X", "RT" },
-            new[] { "orange", "fret_orange", "LB", "A" },
-            new[] { "strum_up", "strum_up", "UP|LS_UP", "UP|LS_UP" },
-            new[] { "strum_down", "strum_down", "DOWN|LS_DOWN", "DOWN|LS_DOWN" },
-            new[] { "star_power", "star_power", "BACK|RB", "BACK|Y" },
-            new[] { "whammy", "whammy", "RT", "RS" },
-        };
         // keybind cvar (the keyboard's pad button it presses), label key, then the A S J K L and 1 2 3 4 5 presets.
         static readonly string[][] KeyParts =
         {
@@ -414,16 +772,49 @@ namespace ReWor
             new[] { "keybind_lstick_left", "" }, new[] { "keybind_lstick_right", "" },
             new[] { "keybind_dpad_left", "Left" }, new[] { "keybind_dpad_right", "Right" },
         };
-        CheckBox kbEnabled, autoStrum;
+        CheckBox kbEnabled;
+        TextBox profileName;
+        CheckBox onlineEnabled;
+        ComboBox onlineIp;
+        TextBox onlineHost;
+        Label onlineShare;
+        ComboBox micPlayer;
+        readonly ComboBox[] playerReading = new ComboBox[4];
+        readonly bool[] readSdl = new bool[4];
+        readonly ComboBox[] playerDevices = new ComboBox[4];
+        readonly Canvas[] playerBadges = new Canvas[4];
+        readonly string[] savedDevices = { "auto", "auto", "auto", "auto" };
+        List<InputDevice> devices = new List<InputDevice>();
+        Canvas deviceCards;
+        Timer inputTimer;
+        int scanCountdown;
+        bool fillingDevices;
+        const int PlayersPage = 3;
+        const int MicPage = 5;
+        const string AppVersion = "1.1";
+        // The ONLINE page is built but not shown until online play is tested
+        // between two PCs; until then the game always starts offline.
+        const bool OnlineTab = false;
+        const string ReleasesPage = "https://github.com/ErasedSin/WARRIORS-OF-ROCK-Erased-Reboot-Version/releases";
+        const string LatestReleaseApi = "https://api.github.com/repos/ErasedSin/WARRIORS-OF-ROCK-Erased-Reboot-Version/releases/latest";
+        ComboBox micDevice;
+        TrackBar micVolume, micGate;
+        Label micVolumeLabel, micGateLabel, micStatus;
+        Canvas micBar;
+        Timer micTimer;
+        MicMeter meter;
+        float micLevel;
+        DateTime micHeld = DateTime.MinValue;
+        Label updateInstalled, updateStatus;
+        Button updateButton;
+        ProgressBar updateProgress;
+        TextBox updateNotes;
+        string updateUrl;
+        readonly ToolTip readingTips = new ToolTip();
         ComboBox kbPreset;
         readonly Dictionary<string, TextBox> kbFields = new Dictionary<string, TextBox>();
         bool applyingKbPreset;
 
-        static readonly string[] PadSources =
-        {
-            "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "BACK", "START", "UP", "DOWN", "LEFT", "RIGHT", "LS", "RS",
-            "UP|LS_UP", "DOWN|LS_DOWN", "BACK|RB", "A|LB"
-        };
         Label status, gameFolderLabel;
         string gameFolder;
         int currentPage = -1;
@@ -463,6 +854,7 @@ namespace ReWor
             LoadSettings();
             ShowPage(IsGameFolder(gameFolder) ? 1 : 0);
             Shown += delegate { if (!IsGameFolder(gameFolder)) ChooseGameFolder(); };
+            FormClosed += delegate { if (meter != null) { meter.Dispose(); meter = null; } };
         }
 
         bool LoadLanguage()
@@ -483,6 +875,7 @@ namespace ReWor
         {
             if (english == Strings.English) return;
             CollectSettings();
+            if (meter != null) { meter.Dispose(); meter = null; }
             Strings.English = english;
             try { File.WriteAllText(Path.Combine(gameDir, LanguageFile), english ? "en" : "pt"); } catch (Exception) { }
             int page = currentPage;
@@ -517,8 +910,12 @@ namespace ReWor
             Controls.Add(MakeLanguageButton("EN", W - 30 - 40, true));
             Controls.Add(BuildSeal());
 
-            pageNames = new[] { Strings.T("tab_game"), Strings.T("tab_video"), Strings.T("tab_gfx"), Strings.T("tab_controls"), Strings.T("tab_keyboard") };
-            Control[] built = { BuildGameTab(), BuildVideoTab(), BuildGraphicsTab(), BuildControlsTab(), BuildKeyboardTab() };
+            pageNames = PageNames();
+            var onlinePage = BuildOnlineTab();
+            var builtList = new List<Control> { BuildGameTab(), BuildVideoTab(), BuildGraphicsTab(), BuildPlayersTab(), BuildKeyboardTab(), BuildMicTab() };
+            if (OnlineTab) builtList.Add(onlinePage);
+            builtList.Add(BuildUpdateTab());
+            Control[] built = builtList.ToArray();
             for (int i = 0; i < built.Length; i++)
             {
                 built[i].Location = new Point(ContentX, 142);
@@ -541,6 +938,14 @@ namespace ReWor
             play.Click += delegate { if (Apply()) Launch(); };
             Controls.Add(play);
             AcceptButton = play;
+        }
+
+        static string[] PageNames()
+        {
+            var names = new List<string> { Strings.T("tab_game"), Strings.T("tab_video"), Strings.T("tab_gfx"), Strings.T("tab_players"), Strings.T("tab_keyboard"), Strings.T("tab_mic") };
+            if (OnlineTab) names.Add(Strings.T("tab_online"));
+            names.Add(Strings.T("tab_update"));
+            return names.ToArray();
         }
 
         // The sidebar: the logo in the title font, the pages, and the footer.
@@ -586,7 +991,7 @@ namespace ReWor
                 ForeColor = Text2, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8f)
             });
 
-            string[] names = { Strings.T("tab_game"), Strings.T("tab_video"), Strings.T("tab_gfx"), Strings.T("tab_controls"), Strings.T("tab_keyboard") };
+            string[] names = PageNames();
             for (int i = 0; i < names.Length; i++)
             {
                 int index = i;
@@ -702,6 +1107,7 @@ namespace ReWor
                 navButtons[i].Invalidate();
             }
             if (pageTitle != null && pageNames != null) pageTitle.Text = WithoutAccents(pageNames[index]);
+            if (micDevice != null && (index == MicPage) != (meter != null)) RestartMicMeter();
         }
 
         // The title font has no accented letters (VÍDEO came out as "V DEO").
@@ -745,8 +1151,9 @@ namespace ReWor
                 new Choice("Français", "4"),
                 new Choice("Deutsch", "3"),
                 new Choice("Italiano", "6"));
-            AddNote(page, Strings.T("game_note"), 206);
-            AddNote(page, Strings.T("dlc_note"), 262);
+            debugMenu = AddCheck(page, Strings.T("debug_menu"), 204);
+            AddNote(page, Strings.T("game_note"), 238);
+            AddNote(page, Strings.T("dlc_note"), 294);
             ShowGameFolder();
             return page;
         }
@@ -848,38 +1255,654 @@ namespace ReWor
             return page;
         }
 
-        Control BuildControlsTab()
+        // The PLAYERS page: the devices the PC has, as cards that light up when a
+        // button is pressed on them, and the device each of the four players uses.
+        Control BuildPlayersTab()
         {
             var page = NewPage();
-            padGuitar = AddCheck(page, Strings.T("pad_guitar"), 10);
-            autoStrum = AddCheck(page, Strings.T("autostrum"), 34);
-            AddLabel(page, Strings.T("pad_preset"), 60);
-            padPreset = AddCombo(page, 78,
-                new Choice(Strings.T("preset_classic"), "classic"),
-                new Choice(Strings.T("preset_triggers"), "triggers"),
-                new Choice(Strings.T("preset_custom"), "custom"));
-            padPreset.SelectedIndexChanged += delegate { ApplyPadPreset(); };
+            const int ColumnW = 316;
+            const int RightX = 356;
 
-            padFields.Clear();
-            for (int i = 0; i < PadParts.Length; i++)
+            page.Controls.Add(new Label
             {
-                int column = i < 5 ? 0 : 1;
-                int row = i < 5 ? i : i - 5;
-                int x = 18 + column * 330;
-                int y = 114 + row * 32;
-                page.Controls.Add(new Label { Text = Strings.T(PadParts[i][1]), Location = new Point(x, y + 4), Size = new Size(96, 20), ForeColor = Text1 });
-                var field = new ComboBox
+                Text = Strings.T("devices_title"), Location = new Point(18, 12), AutoSize = true,
+                ForeColor = RedBright, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
+            });
+            deviceCards = new Canvas { Location = new Point(18, 34), Size = new Size(ColumnW, 286), BackColor = Panel };
+            deviceCards.Paint += PaintDeviceCards;
+            page.Controls.Add(deviceCards);
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("devices_hint"), Location = new Point(18, 326), Size = new Size(ColumnW, 40),
+                ForeColor = Text2, Font = new Font("Segoe UI", 8.5f)
+            });
+
+            page.Controls.Add(new Label { Text = Strings.T("profile_name"), Location = new Point(RightX, 12), Size = new Size(ColumnW, 18), ForeColor = Text1, Font = new Font("Segoe UI", 8.5f) });
+            profileName = new TextBox
+            {
+                Location = new Point(RightX, 32), Size = new Size(ColumnW, 24), BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Field, ForeColor = Text1, MaxLength = 15
+            };
+            page.Controls.Add(profileName);
+
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("players_title"), Location = new Point(RightX, 70), AutoSize = true,
+                ForeColor = RedBright, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
+            });
+            for (int i = 0; i < 4; i++)
+            {
+                int player = i;
+                int y = 92 + i * 38;
+                var badge = new Canvas { Location = new Point(RightX, y), Size = new Size(40, 28), BackColor = Panel };
+                badge.Paint += delegate(object s, PaintEventArgs e) { PaintBadge(e.Graphics, player, badge.ClientSize); };
+                page.Controls.Add(badge);
+                playerBadges[i] = badge;
+                var combo = new ComboBox
                 {
-                    Location = new Point(x + 98, y), Size = new Size(134, 26), DropDownStyle = ComboBoxStyle.DropDown,
+                    Location = new Point(RightX + 48, y + 2), Size = new Size(ColumnW - 48 - 74, 26), DropDownStyle = ComboBoxStyle.DropDownList,
                     FlatStyle = FlatStyle.Flat, BackColor = Field, ForeColor = Text1
                 };
-                field.Items.AddRange(PadParts[i][0] == "whammy" ? new object[] { "RT", "LT", "RS" } : PadSources);
-                field.TextChanged += delegate { if (!applyingPreset) SelectChoice(padPreset, MatchPadPreset()); };
-                page.Controls.Add(field);
-                padFields[PadParts[i][0]] = field;
+                combo.SelectedIndexChanged += delegate { OnPlayerDeviceChanged(player); };
+                page.Controls.Add(combo);
+                playerDevices[i] = combo;
+                var reading = new ComboBox
+                {
+                    Location = new Point(RightX + ColumnW - 68, y + 2), Size = new Size(68, 26), DropDownStyle = ComboBoxStyle.DropDownList,
+                    FlatStyle = FlatStyle.Flat, BackColor = Field, ForeColor = Text1
+                };
+                reading.Items.AddRange(new object[] { Strings.T("reading_xinput"), Strings.T("reading_sdl") });
+                reading.SelectedIndexChanged += delegate
+                {
+                    if (!fillingDevices && reading.Enabled) readSdl[player] = reading.SelectedIndex == 1;
+                };
+                readingTips.SetToolTip(reading, Strings.T("reading_tip"));
+                page.Controls.Add(reading);
+                playerReading[i] = reading;
             }
-            AddNote(page, Strings.T("controls_note"), 280);
+
+
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("players_note"), Location = new Point(RightX, 252), Size = new Size(ColumnW, 62),
+                ForeColor = Text2, Font = new Font("Segoe UI", 8f)
+            });
+
+            devices = InputScan.Scan();
+            FillPlayerDevices();
+
+            if (inputTimer != null) { inputTimer.Stop(); inputTimer.Dispose(); }
+            inputTimer = new Timer { Interval = 50 };
+            inputTimer.Tick += delegate { PollDevices(); };
+            inputTimer.Start();
             return page;
+        }
+
+        void PollDevices()
+        {
+            if (currentPage != PlayersPage || deviceCards == null || deviceCards.IsDisposed) return;
+            if (--scanCountdown <= 0)
+            {
+                scanCountdown = 40;
+                var found = InputScan.Scan();
+                if (DeviceListChanged(found))
+                {
+                    devices = found;
+                    FillPlayerDevices();
+                }
+            }
+            InputScan.Poll(devices, Form.ActiveForm == this && !profileName.Focused);
+            deviceCards.Invalidate();
+            foreach (var badge in playerBadges) badge.Invalidate();
+        }
+
+        bool DeviceListChanged(List<InputDevice> found)
+        {
+            if (found.Count != devices.Count) return true;
+            for (int i = 0; i < found.Count; i++)
+                if (found[i].Spec != devices[i].Spec || found[i].Title != devices[i].Title) return true;
+            return false;
+        }
+
+        InputDevice DeviceFor(string spec)
+        {
+            foreach (var d in devices) if (d.Spec == spec) return d;
+            return null;
+        }
+
+        string PlayerSpec(int player)
+        {
+            var combo = playerDevices[player];
+            return combo.SelectedItem == null ? savedDevices[player] : Value(combo);
+        }
+
+        // Lists Automatic, the connected devices and Nobody in each player's box,
+        // keeping each choice (one whose device is not connected stays, marked).
+        void FillPlayerDevices()
+        {
+            fillingDevices = true;
+            for (int i = 0; i < 4; i++)
+            {
+                var combo = playerDevices[i];
+                string current = PlayerSpec(i);
+                combo.Items.Clear();
+                combo.Items.Add(new Choice(Strings.T("dev_auto"), "auto"));
+                foreach (var d in devices) combo.Items.Add(new Choice(d.Title + "  —  " + ShortDetail(d), d.Spec));
+                combo.Items.Add(new Choice(Strings.T("dev_none"), "none"));
+                if (current != "auto" && current != "none" && DeviceFor(current) == null)
+                    combo.Items.Add(new Choice(string.Format(Strings.T("dev_missing"), current), current));
+                SelectChoice(combo, current);
+                UpdateReading(i);
+            }
+            fillingDevices = false;
+            if (deviceCards != null) deviceCards.Invalidate();
+        }
+
+        // The reading box: a choice only for an XInput controller; the other
+        // devices have one way to be read, shown greyed.
+        void UpdateReading(int player)
+        {
+            string spec = PlayerSpec(player);
+            var reading = playerReading[player];
+            bool choice = spec.StartsWith("xinput");
+            bool wasFilling = fillingDevices;
+            fillingDevices = true;
+            reading.Enabled = choice;
+            reading.SelectedIndex = choice ? (readSdl[player] ? 1 : 0) : spec.StartsWith("hid:") ? 1 : 0;
+            fillingDevices = wasFilling;
+        }
+
+        string SavedSpec(int player)
+        {
+            string spec = PlayerSpec(player);
+            return spec.StartsWith("xinput") && readSdl[player] ? spec + ":sdl" : spec;
+        }
+
+        static string ShortDetail(InputDevice d)
+        {
+            if (d.XInputSlot >= 0) return "XInput " + (d.XInputSlot + 1);
+            if (d.Kind == "keyboard") return "PC";
+            return d.Spec.Substring(4);
+        }
+
+        // One device per player: picking a device another player has gives that
+        // player Automatic.
+        void OnPlayerDeviceChanged(int player)
+        {
+            if (fillingDevices) return;
+            string spec = PlayerSpec(player);
+            savedDevices[player] = spec;
+            UpdateReading(player);
+            if (spec != "auto" && spec != "none")
+            {
+                fillingDevices = true;
+                for (int i = 0; i < 4; i++)
+                {
+                    if (i == player || PlayerSpec(i) != spec) continue;
+                    SelectChoice(playerDevices[i], "auto");
+                    savedDevices[i] = "auto";
+                    UpdateReading(i);
+                }
+                fillingDevices = false;
+            }
+            deviceCards.Invalidate();
+        }
+
+        int PlayerOf(string spec)
+        {
+            for (int i = 0; i < 4; i++) if (PlayerSpec(i) == spec) return i;
+            return -1;
+        }
+
+        static Color Mix(Color a, Color b, float t)
+        {
+            t = Math.Max(0f, Math.Min(1f, t));
+            return Color.FromArgb((int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
+        }
+
+        void PaintDeviceCards(object sender, PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            int w = deviceCards.ClientSize.Width;
+            const int gap = 6;
+            int h = Math.Max(34, Math.Min(52, (deviceCards.ClientSize.Height + gap) / Math.Max(1, devices.Count) - gap));
+            using (var titleFont = new Font("Segoe UI", 9.5f, FontStyle.Bold))
+            using (var detailFont = new Font("Segoe UI", 7.75f))
+            using (var tagFont = new Font("Segoe UI", 7.5f, FontStyle.Bold))
+            {
+                for (int i = 0; i < devices.Count; i++)
+                {
+                    var d = devices[i];
+                    int y = i * (h + gap);
+                    if (y + h > deviceCards.ClientSize.Height) break;
+                    float glow = d.Glow;
+                    int player = PlayerOf(d.Spec);
+                    var card = new Rectangle(0, y, w - 1, h - 1);
+                    using (var fill = new SolidBrush(Mix(Field, Color.FromArgb(92, 12, 26), glow))) g.FillRectangle(fill, card);
+                    using (var border = new Pen(Mix(Color.FromArgb(48, 48, 48), RedBright, glow))) g.DrawRectangle(border, card);
+                    using (var accent = new SolidBrush(player >= 0 ? Red : Color.FromArgb(58, 58, 58))) g.FillRectangle(accent, 0, y, 4, h);
+
+                    var icon = new Rectangle(14, y + (h - 28) / 2, 34, 28);
+                    DrawDeviceIcon(g, d.Kind, icon, Mix(Text2, Color.White, Math.Max(glow, player >= 0 ? 0.6f : 0f)));
+
+                    bool twoLines = h >= 44;
+                    using (var white = new SolidBrush(Text1))
+                        g.DrawString(d.Title, titleFont, white, new RectangleF(58, y + (twoLines ? 7 : (h - 18) / 2), w - 150, 18));
+                    if (twoLines)
+                        using (var grey = new SolidBrush(Text2))
+                            g.DrawString(d.Detail, detailFont, grey, new RectangleF(58, y + 27, w - 96, 16));
+
+                    if (player >= 0)
+                    {
+                        string tag = string.Format(Strings.T("player_badge"), player + 1);
+                        SizeF size = g.MeasureString(tag, tagFont);
+                        using (var red = new SolidBrush(RedBright))
+                            g.DrawString(tag, tagFont, red, w - 36 - size.Width, y + (twoLines ? 8 : (h - size.Height) / 2));
+                    }
+
+                    // The light: grey at rest, a red glow while a button is pressed.
+                    var led = new Rectangle(w - 26, y + h / 2 - 6, 12, 12);
+                    if (glow > 0)
+                    {
+                        using (var halo = new SolidBrush(Color.FromArgb((int)(110 * glow), 232, 36, 64)))
+                            g.FillEllipse(halo, led.X - 5, led.Y - 5, led.Width + 10, led.Height + 10);
+                    }
+                    using (var dot = new SolidBrush(Mix(Color.FromArgb(70, 70, 70), Color.FromArgb(255, 70, 90), glow))) g.FillEllipse(dot, led);
+                }
+            }
+        }
+
+        void PaintBadge(Graphics g, int player, Size size)
+        {
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            var d = DeviceFor(PlayerSpec(player));
+            float glow = d != null ? d.Glow : 0f;
+            using (var fill = new SolidBrush(Mix(Color.FromArgb(44, 44, 44), RedBright, Math.Max(glow, d != null ? 0.55f : 0f))))
+                g.FillRectangle(fill, 0, 0, size.Width, size.Height);
+            using (var font = new Font("Segoe UI", 10f, FontStyle.Bold))
+            using (var white = new SolidBrush(Color.White))
+            using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                g.DrawString("P" + (player + 1), font, white, new RectangleF(0, 0, size.Width, size.Height), format);
+        }
+
+        // Simple line drawings of each kind of device.
+        static void DrawDeviceIcon(Graphics g, string kind, Rectangle r, Color color)
+        {
+            using (var pen = new Pen(color, 2f))
+            using (var thick = new Pen(color, 3f))
+            using (var brush = new SolidBrush(color))
+            {
+                pen.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
+                pen.StartCap = pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+                if (kind == "guitar")
+                {
+                    g.DrawLine(thick, r.X + 15, r.Bottom - 12, r.Right - 4, r.Y + 3);
+                    g.FillRectangle(brush, r.Right - 7, r.Y, 6, 5);
+                    g.DrawEllipse(pen, r.X + 3, r.Bottom - 17, 13, 13);
+                    g.DrawEllipse(pen, r.X + 9, r.Bottom - 22, 10, 10);
+                    g.FillEllipse(brush, r.X + 8, r.Bottom - 12, 4, 4);
+                }
+                else if (kind == "drums")
+                {
+                    g.DrawEllipse(pen, r.X + 3, r.Y + 4, r.Width - 6, 9);
+                    g.DrawLine(pen, r.X + 3, r.Y + 8, r.X + 3, r.Bottom - 6);
+                    g.DrawLine(pen, r.Right - 3, r.Y + 8, r.Right - 3, r.Bottom - 6);
+                    g.DrawArc(pen, r.X + 3, r.Bottom - 11, r.Width - 6, 9, 0, 180);
+                }
+                else if (kind == "keyboard")
+                {
+                    g.DrawRectangle(pen, r.X + 1, r.Y + 6, r.Width - 2, r.Height - 12);
+                    for (int row = 0; row < 2; row++)
+                        for (int col = 0; col < 5; col++)
+                            g.FillRectangle(brush, r.X + 5 + col * 5, r.Y + 10 + row * 5, 3, 3);
+                    g.FillRectangle(brush, r.X + 9, r.Y + 20, 14, 2);
+                }
+                else
+                {
+                    using (var body = new System.Drawing.Drawing2D.GraphicsPath())
+                    {
+                        body.AddArc(r.X + 1, r.Y + 6, 14, 18, 90, 180);
+                        body.AddArc(r.Right - 15, r.Y + 6, 14, 18, 270, 180);
+                        body.CloseFigure();
+                        g.DrawPath(pen, body);
+                    }
+                    g.DrawLine(pen, r.X + 7, r.Y + 15, r.X + 13, r.Y + 15);
+                    g.DrawLine(pen, r.X + 10, r.Y + 12, r.X + 10, r.Y + 18);
+                    g.FillEllipse(brush, r.Right - 12, r.Y + 11, 4, 4);
+                    g.FillEllipse(brush, r.Right - 8, r.Y + 15, 4, 4);
+                }
+            }
+        }
+
+        // The MICROPHONE page: who sings, which microphone, and a live meter of
+        // what the game will hear, with its volume and sensitivity.
+        Control BuildMicTab()
+        {
+            var page = NewPage();
+            int half = (PageW - 48) / 2;
+            int rightX = 18 + half + 12;
+
+            page.Controls.Add(new Label { Text = Strings.T("mic_who"), Location = new Point(18, 16), AutoSize = true, ForeColor = Text1 });
+            micPlayer = new ComboBox
+            {
+                Location = new Point(18, 38), Size = new Size(half, 26), DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat, BackColor = Field, ForeColor = Text1
+            };
+            micPlayer.Items.Add(new Choice(Strings.T("mic_none"), "0"));
+            for (int i = 1; i <= 4; i++) micPlayer.Items.Add(new Choice(string.Format(Strings.T("mic_player"), i), i.ToString()));
+            page.Controls.Add(micPlayer);
+
+            page.Controls.Add(new Label { Text = Strings.T("mic_device"), Location = new Point(rightX, 16), AutoSize = true, ForeColor = Text1 });
+            micDevice = new ComboBox
+            {
+                Location = new Point(rightX, 38), Size = new Size(half, 26), DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat, BackColor = Field, ForeColor = Text1
+            };
+            micDevice.Items.Add(new Choice(Strings.T("mic_default"), ""));
+            foreach (string name in MicMeter.Devices()) micDevice.Items.Add(new Choice(name, name));
+            micDevice.SelectedIndexChanged += delegate { if (currentPage == MicPage) RestartMicMeter(); };
+            page.Controls.Add(micDevice);
+
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("mic_level"), Location = new Point(18, 84), AutoSize = true,
+                ForeColor = RedBright, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
+            });
+            micBar = new Canvas { Location = new Point(18, 106), Size = new Size(PageW - 36, 34), BackColor = Field };
+            micBar.Paint += PaintMicBar;
+            page.Controls.Add(micBar);
+            micStatus = new Label { Location = new Point(18, 146), Size = new Size(PageW - 36, 20), ForeColor = Text2 };
+            page.Controls.Add(micStatus);
+
+            micVolumeLabel = new Label { Location = new Point(18, 182), Size = new Size(half, 20), ForeColor = Text1 };
+            page.Controls.Add(micVolumeLabel);
+            micVolume = new TrackBar
+            {
+                Location = new Point(14, 204), Size = new Size(half + 8, 36), Minimum = 0, Maximum = 400,
+                SmallChange = 5, LargeChange = 25, TickStyle = TickStyle.None, BackColor = Panel, Value = 100
+            };
+            micVolume.ValueChanged += delegate { UpdateMicLabels(); };
+            page.Controls.Add(micVolume);
+
+            micGateLabel = new Label { Location = new Point(rightX, 182), Size = new Size(half, 20), ForeColor = Text1 };
+            page.Controls.Add(micGateLabel);
+            micGate = new TrackBar
+            {
+                Location = new Point(rightX - 4, 204), Size = new Size(half + 8, 36), Minimum = 0, Maximum = 50,
+                SmallChange = 1, LargeChange = 5, TickStyle = TickStyle.None, BackColor = Panel
+            };
+            micGate.ValueChanged += delegate { UpdateMicLabels(); };
+            page.Controls.Add(micGate);
+
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("mic_note"), Location = new Point(18, 252), Size = new Size(PageW - 36, 80),
+                ForeColor = Text2, Font = new Font("Segoe UI", 8.5f)
+            });
+            UpdateMicLabels();
+
+            if (micTimer != null) { micTimer.Stop(); micTimer.Dispose(); }
+            micTimer = new Timer { Interval = 40 };
+            micTimer.Tick += delegate { PollMic(); };
+            micTimer.Start();
+            return page;
+        }
+
+        void UpdateMicLabels()
+        {
+            micVolumeLabel.Text = string.Format(Strings.T("mic_volume"), micVolume.Value);
+            micGateLabel.Text = micGate.Value == 0 ? Strings.T("mic_gate_off") : string.Format(Strings.T("mic_gate"), micGate.Value);
+            if (micBar != null) micBar.Invalidate();
+        }
+
+        void RestartMicMeter()
+        {
+            if (meter != null) { meter.Dispose(); meter = null; }
+            micLevel = 0f;
+            if (currentPage != MicPage) return;
+            meter = new MicMeter();
+            if (!meter.Open(Value(micDevice)))
+            {
+                meter = null;
+                micStatus.Text = Strings.T("mic_missing");
+            }
+            else micStatus.Text = Strings.T("mic_listening");
+        }
+
+        void PollMic()
+        {
+            if (meter == null || micBar == null || micBar.IsDisposed) return;
+            float peak = meter.Peak();
+            if (peak >= 0f)
+            {
+                float level = Math.Min(1f, peak * micVolume.Value / 100f);
+                // Rises at once, falls slowly, like a VU meter.
+                micLevel = Math.Max(level, micLevel * 0.82f);
+                micHeld = level >= micGate.Value / 100f && micGate.Value > 0 ? DateTime.Now : micHeld;
+                bool open = micGate.Value == 0 || (DateTime.Now - micHeld).TotalMilliseconds < 250;
+                micStatus.Text = open
+                    ? string.Format(Strings.T("mic_hearing"), (int)Math.Round(micLevel * 100))
+                    : Strings.T("mic_silenced");
+                micStatus.ForeColor = open && micLevel > 0.02f ? Text1 : Text2;
+            }
+            micBar.Invalidate();
+        }
+
+        void PaintMicBar(object sender, PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            int w = micBar.ClientSize.Width, h = micBar.ClientSize.Height;
+            float gate = micGate.Value / 100f;
+            bool open = micGate.Value == 0 || (DateTime.Now - micHeld).TotalMilliseconds < 250;
+            int filled = (int)(w * Math.Min(1f, micLevel));
+            if (filled > 0)
+            {
+                using (var fill = new System.Drawing.Drawing2D.LinearGradientBrush(
+                    new Rectangle(0, 0, w, h), open ? Color.FromArgb(150, 20, 40) : Color.FromArgb(70, 70, 70),
+                    open ? RedBright : Color.FromArgb(110, 110, 110), 0f))
+                    g.FillRectangle(fill, 0, 0, filled, h);
+            }
+            if (micLevel >= 0.98f)
+                using (var clip = new SolidBrush(Color.White)) g.FillRectangle(clip, w - 6, 0, 6, h);
+            if (micGate.Value > 0)
+            {
+                int x = (int)(w * gate);
+                using (var shade = new SolidBrush(Color.FromArgb(90, 0, 0, 0))) g.FillRectangle(shade, 0, 0, x, h);
+                using (var line = new Pen(Color.White, 2f)) g.DrawLine(line, x, 0, x, h);
+            }
+            using (var border = new Pen(Color.FromArgb(70, 70, 70))) g.DrawRectangle(border, 0, 0, w - 1, h - 1);
+        }
+
+        // The UPDATE page: the version installed, the latest release on GitHub,
+        // its notes, and a button that downloads and installs it.
+        Control BuildUpdateTab()
+        {
+            var page = NewPage();
+            updateInstalled = new Label
+            {
+                Text = string.Format(Strings.T("update_installed"), AppVersion), Location = new Point(18, 18), AutoSize = true,
+                ForeColor = Text1, Font = new Font("Segoe UI", 10f, FontStyle.Bold)
+            };
+            page.Controls.Add(updateInstalled);
+            updateStatus = new Label { Text = Strings.T("update_idle"), Location = new Point(18, 44), Size = new Size(PageW - 36, 20), ForeColor = Text2 };
+            page.Controls.Add(updateStatus);
+
+            var check = MakeButton(Strings.T("update_check"), new Point(18, 72), false);
+            check.Size = new Size(150, 34);
+            check.Click += delegate { CheckForUpdate(); };
+            page.Controls.Add(check);
+            updateButton = MakeButton(Strings.T("update_install"), new Point(178, 72), true);
+            updateButton.Size = new Size(190, 34);
+            updateButton.Enabled = false;
+            updateButton.Click += delegate { InstallUpdate(); };
+            page.Controls.Add(updateButton);
+            var site = new LinkLabel
+            {
+                Text = Strings.T("update_page"), Location = new Point(384, 82), AutoSize = true,
+                LinkColor = RedBright, ActiveLinkColor = Color.White, VisitedLinkColor = RedBright
+            };
+            site.LinkClicked += delegate { try { Process.Start(ReleasesPage); } catch (Exception) { } };
+            page.Controls.Add(site);
+
+            updateProgress = new ProgressBar { Location = new Point(18, 116), Size = new Size(PageW - 36, 8), Visible = false };
+            page.Controls.Add(updateProgress);
+            updateNotes = new TextBox
+            {
+                Location = new Point(18, 132), Size = new Size(PageW - 36, 196), Multiline = true, ReadOnly = true,
+                ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.FixedSingle, BackColor = Field, ForeColor = Text1,
+                Font = new Font("Segoe UI", 9f)
+            };
+            page.Controls.Add(updateNotes);
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("update_note"), Location = new Point(18, 336), Size = new Size(PageW - 36, 40),
+                ForeColor = Text2, Font = new Font("Segoe UI", 8.5f)
+            });
+            return page;
+        }
+
+        static Version ParseVersion(string text)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(text ?? "", @"\d+(\.\d+){0,3}");
+            if (!m.Success) return new Version(0, 0);
+            string v = m.Value;
+            if (!v.Contains(".")) v += ".0";
+            try { return new Version(v); } catch (Exception) { return new Version(0, 0); }
+        }
+
+        static string JsonString(string json, string key)
+        {
+            var m = System.Text.RegularExpressions.Regex.Match(json, "\"" + key + "\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+            if (!m.Success) return "";
+            try { return System.Text.RegularExpressions.Regex.Unescape(m.Groups[1].Value); } catch (Exception) { return m.Groups[1].Value; }
+        }
+
+        static System.Net.WebClient NewWebClient()
+        {
+            System.Net.ServicePointManager.SecurityProtocol |= (System.Net.SecurityProtocolType)3072;  // TLS 1.2
+            var web = new System.Net.WebClient();
+            web.Headers.Add("User-Agent", "ErasedRebootVersion-Launcher");
+            web.Encoding = Encoding.UTF8;
+            return web;
+        }
+
+        void CheckForUpdate()
+        {
+            updateStatus.Text = Strings.T("update_checking");
+            updateStatus.ForeColor = Text2;
+            updateButton.Enabled = false;
+            var web = NewWebClient();
+            web.DownloadStringCompleted += delegate(object s, System.Net.DownloadStringCompletedEventArgs e)
+            {
+                web.Dispose();
+                if (IsDisposed) return;
+                if (e.Error != null)
+                {
+                    updateStatus.Text = Strings.T("update_failed");
+                    return;
+                }
+                string json = e.Result;
+                string tag = JsonString(json, "tag_name");
+                string notes = JsonString(json, "body");
+                var asset = System.Text.RegularExpressions.Regex.Match(json, "\"browser_download_url\"\\s*:\\s*\"([^\"]+\\.zip)\"");
+                updateUrl = asset.Success ? asset.Groups[1].Value : null;
+                updateNotes.Text = (tag + "\r\n\r\n" + notes.Replace("\r\n", "\n").Replace("\n", "\r\n")).Trim();
+                bool newer = ParseVersion(tag) > ParseVersion(AppVersion);
+                if (newer && updateUrl != null)
+                {
+                    updateStatus.Text = string.Format(Strings.T("update_available"), tag);
+                    updateStatus.ForeColor = RedBright;
+                    updateButton.Enabled = true;
+                }
+                else updateStatus.Text = newer ? Strings.T("update_no_zip") : Strings.T("update_current");
+            };
+            try { web.DownloadStringAsync(new Uri(LatestReleaseApi)); }
+            catch (Exception) { updateStatus.Text = Strings.T("update_failed"); }
+        }
+
+        // Downloads the release zip, unpacks it in the temp folder, and leaves a
+        // script that waits for the launcher to close, copies the new files over
+        // (never the player's settings) and opens the new launcher.
+        void InstallUpdate()
+        {
+            if (updateUrl == null) return;
+            string work = Path.Combine(Path.GetTempPath(), "erased-reboot-update");
+            try { if (Directory.Exists(work)) Directory.Delete(work, true); } catch (Exception) { }
+            Directory.CreateDirectory(work);
+            string zip = Path.Combine(work, "update.zip");
+            updateButton.Enabled = false;
+            updateProgress.Visible = true;
+            updateProgress.Value = 0;
+            updateStatus.Text = Strings.T("update_downloading");
+            var web = NewWebClient();
+            web.DownloadProgressChanged += delegate(object s, System.Net.DownloadProgressChangedEventArgs e)
+            {
+                if (!IsDisposed) updateProgress.Value = Math.Max(0, Math.Min(100, e.ProgressPercentage));
+            };
+            web.DownloadFileCompleted += delegate(object s, System.ComponentModel.AsyncCompletedEventArgs e)
+            {
+                web.Dispose();
+                if (IsDisposed) return;
+                if (e.Error != null)
+                {
+                    updateStatus.Text = Strings.T("update_failed");
+                    updateButton.Enabled = true;
+                    return;
+                }
+                try
+                {
+                    string files = Path.Combine(work, "files");
+                    ZipFile.ExtractToDirectory(zip, files);
+                    // A zip with everything inside one folder.
+                    if (Directory.GetFiles(files, "*.exe").Length == 0 && Directory.GetDirectories(files).Length == 1
+                        && !Directory.Exists(Path.Combine(files, "game")))
+                        files = Directory.GetDirectories(files)[0];
+                    string script = Path.Combine(work, "update.ps1");
+                    File.WriteAllText(script, UpdateScript(files), new UTF8Encoding(true));
+                    Process.Start(new ProcessStartInfo("powershell.exe",
+                        "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"" + script + "\"")
+                    {
+                        UseShellExecute = false, CreateNoWindow = true
+                    });
+                    updateStatus.Text = Strings.T("update_restarting");
+                    Close();
+                }
+                catch (Exception ex)
+                {
+                    updateStatus.Text = Strings.T("update_failed") + " " + ex.Message;
+                    updateButton.Enabled = true;
+                }
+            };
+            web.DownloadFileAsync(new Uri(updateUrl), zip);
+        }
+
+        string UpdateScript(string files)
+        {
+            Func<string, string> q = delegate(string text) { return "'" + text.Replace("'", "''") + "'"; };
+            var sb = new StringBuilder();
+            sb.AppendLine("$src = " + q(files));
+            sb.AppendLine("$root = " + q(root.TrimEnd('\\')));
+            sb.AppendLine("$gameDir = " + q(gameDir.TrimEnd('\\')));
+            sb.AppendLine("$exe = " + q(Application.ExecutablePath));
+            sb.AppendLine("Wait-Process -Id " + Process.GetCurrentProcess().Id + " -ErrorAction SilentlyContinue");
+            sb.AppendLine("Start-Sleep -Seconds 1");
+            sb.AppendLine("$keep = 're_wor.toml', 'game_folder.txt', 'launcher_language.txt'");
+            sb.AppendLine("$gameSrc = Join-Path $src 'game'");
+            sb.AppendLine("if (Test-Path -LiteralPath $gameSrc) {");
+            sb.AppendLine("  Get-ChildItem -LiteralPath $gameSrc -Recurse -File | Where-Object { $keep -notcontains $_.Name } | ForEach-Object {");
+            sb.AppendLine("    $dst = Join-Path $gameDir $_.FullName.Substring($gameSrc.Length + 1)");
+            sb.AppendLine("    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dst) | Out-Null");
+            sb.AppendLine("    Copy-Item -LiteralPath $_.FullName -Destination $dst -Force");
+            sb.AppendLine("  }");
+            sb.AppendLine("}");
+            sb.AppendLine("Get-ChildItem -LiteralPath $src -File | Where-Object { $keep -notcontains $_.Name } | ForEach-Object {");
+            sb.AppendLine("  if ($_.Extension -eq '.exe') { Copy-Item -LiteralPath $_.FullName -Destination $exe -Force }");
+            sb.AppendLine("  else { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $root $_.Name) -Force }");
+            sb.AppendLine("}");
+            sb.AppendLine("Start-Process -FilePath $exe");
+            return sb.ToString();
         }
 
         Control BuildKeyboardTab()
@@ -936,28 +1959,6 @@ namespace ReWor
             return "custom";
         }
 
-        void ApplyPadPreset()
-        {
-            if (applyingPreset || padPreset.SelectedItem == null) return;
-            int column = Value(padPreset) == "classic" ? 2 : Value(padPreset) == "triggers" ? 3 : -1;
-            if (column < 0) return;
-            applyingPreset = true;
-            foreach (var part in PadParts) padFields[part[0]].Text = part[column];
-            applyingPreset = false;
-        }
-
-        string MatchPadPreset()
-        {
-            foreach (int column in new[] { 2, 3 })
-            {
-                bool all = true;
-                foreach (var part in PadParts)
-                    if (!string.Equals(padFields[part[0]].Text.Trim(), part[column], StringComparison.OrdinalIgnoreCase)) all = false;
-                if (all) return column == 2 ? "classic" : "triggers";
-            }
-            return "custom";
-        }
-
         Control BuildGraphicsTab()
         {
             var page = NewPage();
@@ -982,6 +1983,100 @@ namespace ReWor
 
             AddNote(page, Strings.T("gfx_note"), y);
             return page;
+        }
+
+        // Online play over a LAN or a VPN (src/online.cpp in the game).
+        Control BuildOnlineTab()
+        {
+            var page = NewPage();
+            int y = 16;
+            onlineEnabled = AddCheck(page, Strings.T("online_enabled"), y); y += 40;
+
+            AddLabel(page, Strings.T("online_my_ip"), y);
+            var choices = new List<Choice> { new Choice(Strings.T("online_auto"), "") };
+            foreach (var address in LocalAddresses())
+                choices.Add(new Choice(address[0] + "  (" + address[1] + ")", address[0]));
+            onlineIp = AddCombo(page, y + 20, choices.ToArray());
+            onlineIp.SelectedIndexChanged += delegate { ShowOnlineShare(); };
+            y += 56;
+
+            onlineShare = new Label { Location = new Point(18, y + 6), Size = new Size(PageW - 36 - 110, 22), ForeColor = Text1 };
+            page.Controls.Add(onlineShare);
+            var copy = MakeButton(Strings.T("online_copy"), new Point(PageW - 18 - 100, y), false);
+            copy.Size = new Size(100, 32);
+            copy.Click += delegate
+            {
+                string address = OnlineAddress();
+                if (address != "") Clipboard.SetText(address);
+            };
+            page.Controls.Add(copy);
+            y += 48;
+
+            AddLabel(page, Strings.T("online_host"), y);
+            onlineHost = new TextBox
+            {
+                Location = new Point(18, y + 20), Size = new Size(PageW - 36, 24), BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Field, ForeColor = Text1, MaxLength = 15
+            };
+            page.Controls.Add(onlineHost);
+            y += 64;
+
+            var note = new Label { Text = Strings.T("online_note"), Location = new Point(18, y), Size = new Size(PageW - 36, 110), ForeColor = Text2 };
+            page.Controls.Add(note);
+            return page;
+        }
+
+        // The PC's IPv4 addresses, best first, as the game picks them: Radmin VPN
+        // (26.x), Hamachi (25.x), private networks, then the rest.
+        static List<string[]> LocalAddresses()
+        {
+            var found = new List<string[]>();
+            try
+            {
+                foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                    foreach (var unicast in nic.GetIPProperties().UnicastAddresses)
+                    {
+                        if (unicast.Address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) continue;
+                        byte[] b = unicast.Address.GetAddressBytes();
+                        if (b[0] == 127 || b[0] == 0 || (b[0] == 169 && b[1] == 254)) continue;
+                        found.Add(new[] { unicast.Address.ToString(), nic.Name, AddressRank(b).ToString() });
+                    }
+                }
+            }
+            catch (System.Net.NetworkInformation.NetworkInformationException) { }
+            found.Sort((a, b) => string.CompareOrdinal(a[2], b[2]));
+            return found;
+        }
+
+        static int AddressRank(byte[] b)
+        {
+            if (b[0] == 26) return 0;
+            if (b[0] == 25) return 1;
+            if (b[0] == 10 || (b[0] == 172 && b[1] >= 16 && b[1] <= 31) || (b[0] == 192 && b[1] == 168)) return 2;
+            return 3;
+        }
+
+        string OnlineAddress()
+        {
+            string chosen = onlineIp.SelectedItem == null ? "" : Value(onlineIp);
+            if (chosen != "") return chosen;
+            var all = LocalAddresses();
+            return all.Count > 0 ? all[0][0] : "";
+        }
+
+        void ShowOnlineShare()
+        {
+            string address = OnlineAddress();
+            onlineShare.Text = address == "" ? Strings.T("online_share_none") : string.Format(Strings.T("online_share"), address);
+        }
+
+        static bool IsIpv4(string text)
+        {
+            System.Net.IPAddress parsed;
+            return System.Net.IPAddress.TryParse(text, out parsed) &&
+                parsed.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && text.Split('.').Length == 4;
         }
 
         static void AddLabel(Control parent, string text, int y)
@@ -1044,12 +2139,33 @@ namespace ReWor
             depthOfField.Checked = settings.GetBool(CvarPrefix + "dof", true);
             bloom.Checked = settings.GetBool(CvarPrefix + "bloom", true);
             showFps.Checked = settings.GetBool(CvarPrefix + "show_fps", true);
-            padGuitar.Checked = settings.GetBool("gamepad_as_guitar", true);
-            applyingPreset = true;
-            foreach (var part in PadParts) padFields[part[0]].Text = settings.Get("guitar_pad_" + part[0], part[2]);
-            applyingPreset = false;
-            SelectChoice(padPreset, MatchPadPreset());
-            autoStrum.Checked = settings.GetBool("guitar_autostrum", true);
+            debugMenu.Checked = settings.GetBool(CvarPrefix + "debug_menu", false);
+            profileName.Text = settings.Get("online_name", "");
+            onlineEnabled.Checked = settings.GetBool(CvarPrefix + "online", false);
+            SelectChoice(onlineIp, settings.Get(CvarPrefix + "online_ip", ""));
+            if (onlineIp.SelectedItem == null) onlineIp.SelectedIndex = 0;
+            onlineHost.Text = settings.Get(CvarPrefix + "online_host", "");
+            ShowOnlineShare();
+            for (int i = 0; i < 4; i++)
+            {
+                string spec = settings.Get("player" + (i + 1) + "_device", "auto");
+                readSdl[i] = spec.EndsWith(":sdl");
+                savedDevices[i] = readSdl[i] ? spec.Substring(0, spec.Length - 4) : spec;
+            }
+            for (int i = 0; i < 4; i++) playerDevices[i].SelectedItem = null;
+            FillPlayerDevices();
+            SelectChoice(micPlayer, settings.Get(CvarPrefix + "mic_player", "0"));
+            if (micPlayer.SelectedItem == null) micPlayer.SelectedIndex = 0;
+            string micName = settings.Get(CvarPrefix + "mic_device", "");
+            SelectChoice(micDevice, micName);
+            if (micDevice.SelectedItem == null)
+            {
+                if (micName != "") micDevice.Items.Add(new Choice(micName, micName));
+                SelectChoice(micDevice, micName);
+                if (micDevice.SelectedItem == null) micDevice.SelectedIndex = 0;
+            }
+            micVolume.Value = Math.Max(0, Math.Min(400, settings.GetInt(CvarPrefix + "mic_volume", 100)));
+            micGate.Value = Math.Max(0, Math.Min(50, settings.GetInt(CvarPrefix + "mic_gate", 0)));
             kbEnabled.Checked = settings.GetBool("mnk_mode", true);
             applyingKbPreset = true;
             foreach (var part in KeyParts) kbFields[part[0]].Text = settings.Get(part[0], part[2]);
@@ -1092,14 +2208,31 @@ namespace ReWor
             settings.Set(CvarPrefix + "dof", depthOfField.Checked);
             settings.Set(CvarPrefix + "bloom", bloom.Checked);
             settings.Set(CvarPrefix + "show_fps", showFps.Checked);
-            settings.Set("gamepad_as_guitar", padGuitar.Checked);
-            foreach (var part in PadParts)
+            settings.Set(CvarPrefix + "debug_menu", debugMenu.Checked);
+            // A regular controller stays a controller: the game's own debug menu
+            // (Enable Controller) lets it play the guitar.
+            settings.Set("gamepad_as_guitar", false);
+            settings.Remove("guitar_autostrum");
+            string name = profileName.Text.Trim().Replace("\"", "").Replace("\\", "");
+            if (name == "") settings.Remove("online_name");
+            else settings.Set("online_name", name);
+            settings.Set(CvarPrefix + "online", OnlineTab && onlineEnabled.Checked);
+            settings.Set(CvarPrefix + "online_ip", Value(onlineIp));
+            settings.Set(CvarPrefix + "online_host", onlineHost.Text.Trim());
+            for (int i = 0; i < 4; i++)
             {
-                string v = padFields[part[0]].Text.Trim().ToUpperInvariant();
-                if (v == part[2] || v == "") settings.Remove("guitar_pad_" + part[0]);
-                else settings.Set("guitar_pad_" + part[0], v);
+                string key = "player" + (i + 1) + "_device";
+                if (Value(playerDevices[i]) == "auto") settings.Remove(key);
+                else settings.Set(key, SavedSpec(i));
             }
-            settings.Set("guitar_autostrum", autoStrum.Checked);
+            // Players on Automatic get XInput for Xbox controllers; the other
+            // controllers are read through SDL.
+            settings.Set("input_backend", "xinput");
+            settings.Set(CvarPrefix + "mic_player", int.Parse(Value(micPlayer)));
+            if (Value(micDevice) == "") settings.Remove(CvarPrefix + "mic_device");
+            else settings.Set(CvarPrefix + "mic_device", Value(micDevice));
+            settings.Set(CvarPrefix + "mic_volume", micVolume.Value);
+            settings.Set(CvarPrefix + "mic_gate", micGate.Value);
             settings.Set("mnk_mode", kbEnabled.Checked);
             foreach (var part in KeyParts) settings.Set(part[0], kbFields[part[0]].Text.Trim());
             foreach (var clear in KeyClears) settings.Set(clear[0], clear[1]);
@@ -1119,6 +2252,13 @@ namespace ReWor
             if (!IsGameFolder(gameFolder))
             {
                 MessageBox.Show(this, Strings.T("need_folder"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
+            }
+            string host = onlineHost.Text.Trim();
+            if (OnlineTab && host != "" && !IsIpv4(host))
+            {
+                ShowPage(Array.IndexOf(pageNames, Strings.T("tab_online")));
+                MessageBox.Show(this, Strings.T("online_bad_ip"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return false;
             }
             try

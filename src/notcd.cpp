@@ -1,21 +1,22 @@
 // The game's debug menu.
 //
-// The menu scripts add the debug menu's entry when the globals 2AF92804 and
-// enable_debug_menus are 1 (both are, in qb.pab), and several scripts run
-// developer-only parts inside "if NotCD": NotCD is a C function of the exe that
-// is true on a development machine (the game read from a PC, not a disc) and
-// false on a retail disc.
+// The main menu script adds DEBUG MENU in a debug build. The debug executable
+// that circulates differs from the retail one in its table of script C
+// functions (DebugBuild and RetailBuild swapped); rewor_debug_menu makes the
+// same swap in memory (ReWorApplyDebugMenu).
 //
-// rewor_debug_scan finds NotCD in the running game: the exe registers its C
-// functions in a table of { name, function } entries, so the name "NotCD" is a
-// string in the image and one entry points at it. The report lists each
-// entry, to turn into a hook that makes NotCD true.
-
+// Several scripts also run developer-only parts inside "if NotCD": NotCD is a C
+// function that is true when the game is read from a PC and false on a disc;
+// rewor_debug_notcd makes it true (the hooks at the end of this file).
+//
+// rewor_debug_scan lists the C function table; rewor_debug_dump and
+// rewor_debug_dump_early write the image, to compare with a modified executable.
 #include <rex/cvar.h>
 #include <rex/ppc/context.h>
 #include <rex/system/kernel_state.h>
 #include <rex/system/xmemory.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -30,9 +31,18 @@
 #endif
 
 REXCVAR_DEFINE_BOOL(rewor_debug_menu, false, "re-wor",
-                    "Experimental: the game's developer-only parts, its debug menu among them (NotCD answers "
-                    "true). Applies when the game starts.")
+                    "The game's debug menu: DEBUG MENU under OPTIONS in the main menu (the script functions "
+                    "DebugBuild and RetailBuild swap answers, as in the debug executable). Applies when the game "
+                    "starts.")
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+REXCVAR_DEFINE_BOOL(rewor_debug_notcd, false, "re-wor",
+                    "Experimental: the scripts' developer-only parts (NotCD true, the \"running from a disc\" "
+                    "byte 0). Not needed for the debug menu. Applies when the game starts.")
+    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+REXCVAR_DEFINE_STRING(rewor_debug_dump, "", "re-wor",
+                      "Diagnostic: file that receives the game's image as loaded (guest 0x82000000 on, the size "
+                      "of rewor_debug_dump_size), to compare with a modified executable (empty = off)");
+REXCVAR_DEFINE_INT32(rewor_debug_dump_size, 0x988000, "re-wor", "Diagnostic: bytes of the image rewor_debug_dump writes");
 REXCVAR_DEFINE_STRING(rewor_debug_scan, "", "re-wor",
                       "Diagnostic: file that receives where the C function NotCD is registered (empty = off)");
 
@@ -63,8 +73,51 @@ std::vector<std::pair<const uint8_t*, size_t>> ReadableRanges(const uint8_t* bas
 
 }  // namespace
 
+// Writes the game's image as loaded: the decrypted executable laid out as the
+// console maps it, from 0x82000000. Pages not mapped are written as zeros.
+static void DumpImage(const uint8_t* base) {
+  const std::string path = REXCVAR_GET(rewor_debug_dump);
+  if (path.empty()) return;
+  const uint32_t begin = 0x82000000u;
+  const uint32_t size = uint32_t(std::max(0, REXCVAR_GET(rewor_debug_dump_size)));
+  std::vector<uint8_t> image(size, 0);
+  for (const auto& [p, length] : ReadableRanges(base, begin, begin + size)) {
+    std::memcpy(image.data() + (p - base - begin), p, length);
+  }
+  if (FILE* out = std::fopen(path.c_str(), "wb")) {
+    std::fwrite(image.data(), 1, image.size(), out);
+    std::fclose(out);
+  }
+}
+
+REXCVAR_DEFINE_STRING(rewor_debug_dump_early, "", "re-wor",
+                      "Diagnostic: like rewor_debug_dump, but written before the game runs (empty = off)");
+
+// Called before the game starts (src/main.cpp): the image as the executable has it.
+void ReWorDumpEarly() {
+  const std::string path = REXCVAR_GET(rewor_debug_dump_early);
+  if (path.empty()) return;
+  auto* kernel = rex::system::kernel_state();
+  if (!kernel || !kernel->memory()) return;
+  const uint8_t* base = kernel->memory()->virtual_membase();
+  const uint32_t begin = 0x82000000u;
+  const uint32_t size = uint32_t(std::max(0, REXCVAR_GET(rewor_debug_dump_size)));
+  std::vector<uint8_t> image(size, 0);
+  for (const auto& [p, length] : ReadableRanges(base, begin, begin + size)) {
+    std::memcpy(image.data() + (p - base - begin), p, length);
+  }
+  if (FILE* out = std::fopen(path.c_str(), "wb")) {
+    std::fwrite(image.data(), 1, image.size(), out);
+    std::fclose(out);
+  }
+}
+
 // Called once, from the first frames of the game (src/main.cpp).
 void ReWorScanForNotCD() {
+  {
+    auto* kernel = rex::system::kernel_state();
+    if (kernel && kernel->memory()) DumpImage(kernel->memory()->virtual_membase());
+  }
   const std::string path = REXCVAR_GET(rewor_debug_scan);
   if (path.empty()) return;
   auto* kernel = rex::system::kernel_state();
@@ -146,10 +199,55 @@ void ReWorScanForNotCD() {
   std::fclose(out);
 }
 
+// The debug executable differs from the retail one in its table of script C
+// functions: DebugBuild points at the function that answers 1 and RetailBuild at
+// the one that answers 0, the other way round from retail. The main menu script
+// adds DEBUG MENU when the build is a debug one. The same swap, in memory, before
+// the game runs; only when the table is the expected one (this exact executable).
+void ReWorApplyDebugMenu() {
+  if (!REXCVAR_GET(rewor_debug_menu)) return;
+  auto* kernel = rex::system::kernel_state();
+  if (!kernel || !kernel->memory()) return;
+  uint8_t* base = kernel->memory()->virtual_membase();
+  const uint32_t debug_entry = 0x82810CCC, retail_entry = 0x82810CD8;
+  const uint32_t answers_false = 0x8259EBA8, answers_true = 0x8245CF10;
+  auto name_is = [&](uint32_t entry, const char* name) {
+    const uint32_t p = LoadBE(base + entry);
+    return p >= 0x82000000u && p < 0x82C00000u && std::strcmp(reinterpret_cast<const char*>(base + p), name) == 0;
+  };
+  if (!name_is(debug_entry, "DebugBuild") || !name_is(retail_entry, "RetailBuild")) return;
+  if (LoadBE(base + debug_entry + 4) != answers_false || LoadBE(base + retail_entry + 4) != answers_true) return;
+  auto store = [&](uint32_t address, uint32_t value) {
+    for (int i = 0; i < 4; ++i) base[address + i] = uint8_t(value >> (24 - 8 * i));
+  };
+  store(debug_entry + 4, answers_true);
+  store(retail_entry + 4, answers_false);
+}
+
 // [[midasm_hook]] 0x824FFCD8: the return of NotCD (sub_824FFCC8), r3 = its result:
 // lis r11,-32102; lbz r10,30970(r11); cntlzw r9,r10; rlwinm r3,r9,27,31,31.
 void ReWorNotCDHook(PPCRegister& r3) {
-  if (REXCVAR_GET(rewor_debug_menu)) {
+  if (REXCVAR_GET(rewor_debug_notcd)) {
     r3.u64 = 1;
+  }
+}
+
+// The debug executable's patch (the hooks next to these in rewor_functions.toml):
+// the "running from a disc" byte at 0x829A78FA stays 0, so CD is false and NotCD
+// true everywhere, the C code that reads the byte directly included.
+
+// [[midasm_hook]] 0x824030F8 (sub_82403098): before "cmplwi cr6,r10,0"; the
+// debug executable turns the "beq" after it into a nop.
+void ReWorDiscFlagBranchHook(PPCRegister& r10) {
+  if (REXCVAR_GET(rewor_debug_notcd)) {
+    r10.u64 = 1;
+  }
+}
+
+// [[midasm_hook]] at the three "stb r11,30970(rN)" (0x82403104, 0x824AD6B4,
+// 0x824FFBA0): the value stored in the byte.
+void ReWorDiscFlagStoreHook(PPCRegister& r11) {
+  if (REXCVAR_GET(rewor_debug_notcd)) {
+    r11.u64 = 0;
   }
 }
