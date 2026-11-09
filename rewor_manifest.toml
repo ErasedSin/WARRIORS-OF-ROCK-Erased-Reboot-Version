@@ -1,0 +1,8 @@
+[project]
+sdk_version = "0.10.0"
+name = "rewor"
+
+[entrypoint]
+file_path = "assets/default.xex"
+out_directory_path = "generated"
+includes = ["rewor_functions.toml"]

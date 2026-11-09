@@ -1,9 +1,6 @@
-// =============================================================================
-// stub_tracker.h — Lock-free frequency tracker for PPC stubs & unmapped funcs
-// =============================================================================
+// Lock-free frequency tracker for PPC stubs and unmapped functions.
 // Dumps a report every N seconds to re_wor_stub_freq.log.
-// Hot stubs (high call rate during loading screen) = likely blockers.
-// =============================================================================
+// Hot stubs (high call rate during loading screen) are likely blockers.
 #pragma once
 
 #include <rex/ppc.h>
@@ -132,11 +129,9 @@ private:
     std::thread reporter_;
 };
 
-// ============================================================================
-// Tracked stub macro — hot path = single atomic increment (relaxed ordering)
-// ============================================================================
-#define PPC_STUB_TRACKED(subroutine) \
-    extern "C" PPC_FUNC(subroutine) { \
+// Tracked stub: the hot path is a single relaxed atomic increment.
+#define REWOR_STUB_TRACKED(subroutine) \
+    extern "C" REX_FUNC(subroutine) { \
         (void)base; \
         static std::atomic<uint64_t>* s_ctr = \
             StubTracker::instance().register_stub(#subroutine); \

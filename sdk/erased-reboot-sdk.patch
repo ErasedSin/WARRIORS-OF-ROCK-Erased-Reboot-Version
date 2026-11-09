@@ -1,0 +1,1539 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index f6bf3ba..e0eb7f2 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -141,6 +141,10 @@ add_compile_options(
+     -fno-char8_t
+ )
+ 
++if(NOT MSVC AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
++    add_compile_options(-msse4.1)
++endif()
++
+ # Platform detection (supports AMD64 and ARM64)
+ set(REX_TARGET_PROCESSOR "${CMAKE_SYSTEM_PROCESSOR}")
+ if(APPLE AND CMAKE_OSX_ARCHITECTURES)
+@@ -190,7 +194,8 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/rex_pch.cmake)
+ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/rex_version.cmake)
+ rex_resolve_version(REXGLUE_FULL_VERSION
+     FLOOR_MAJOR ${PROJECT_VERSION_MAJOR}
+-    FLOOR_MINOR ${PROJECT_VERSION_MINOR})
++    FLOOR_MINOR ${PROJECT_VERSION_MINOR}
++    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+ 
+ # Strip the -id trailer (if any) for the numeric-only version.
+ string(REGEX REPLACE "-.*$" "" REXGLUE_NUMERIC_VERSION "${REXGLUE_FULL_VERSION}")
+@@ -289,6 +294,8 @@ message(STATUS "  Tracy: ${REXGLUE_ENABLE_TRACY}")
+ message(STATUS "  Perf Counters: ${REXGLUE_ENABLE_PERF_COUNTERS}")
+ message(STATUS "===========================================")
+ 
++include(cmake/rexglue_export_targets.cmake)
++
+ # SDK install/export rules (skipped when consumed as a subdirectory)
+ if(PROJECT_IS_TOP_LEVEL)
+     include(cmake/rexglue_devenv.cmake)
+@@ -299,4 +306,13 @@ else()
+     set(REXGLUE_SHARE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ui" PARENT_SCOPE)
+     set(REXGLUE_SHARE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/ui")
+     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/rexglue_helpers.cmake)
++    foreach(target IN LISTS REXGLUE_INSTALL_TARGETS REXGLUE_INSTALL_FIDELITYFX_TARGETS)
++        get_target_property(export_name ${target} EXPORT_NAME)
++        if(NOT export_name)
++            set(export_name ${target})
++        endif()
++        if(NOT TARGET rex::${export_name})
++            add_library(rex::${export_name} ALIAS ${target})
++        endif()
++    endforeach()
+ endif()
+diff --git a/cmake/rex_version.cmake b/cmake/rex_version.cmake
+index 2c14df1..03d6663 100644
+--- a/cmake/rex_version.cmake
++++ b/cmake/rex_version.cmake
+@@ -101,7 +101,7 @@ endfunction()
+ # rex_resolve_version(<out_var>
+ #     FLOOR_MAJOR <int>
+ #     FLOOR_MINOR <int>
+-#     [SOURCE_DIR <path>])    # defaults to CMAKE_SOURCE_DIR
++#     [SOURCE_DIR <path>])    # defaults to CMAKE_CURRENT_SOURCE_DIR
+ #
+ # Runs git in the working tree, then delegates to rex_compute_version.
+ #==========================================================
+@@ -110,7 +110,7 @@ function(rex_resolve_version out_var)
+     cmake_parse_arguments(ARG "" "${one_value}" "" ${ARGN})
+ 
+     if(NOT ARG_SOURCE_DIR)
+-        set(ARG_SOURCE_DIR "${CMAKE_SOURCE_DIR}")
++        set(ARG_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+     endif()
+ 
+     find_program(GIT_EXECUTABLE git)
+@@ -170,3 +170,24 @@ function(rex_resolve_version out_var)
+         BRANCH_NAME "${branch_name}")
+     set(${out_var} "${result}" PARENT_SCOPE)
+ endfunction()
++
++function(rexglue_add_version_resource target_name)
++    if(NOT WIN32)
++        return()
++    endif()
++    cmake_parse_arguments(PARSE_ARGV 1 ARG "" "DESCRIPTION" "")
++    get_target_property(_type ${target_name} TYPE)
++    if(_type STREQUAL "EXECUTABLE")
++        set(REX_RC_FILETYPE 0x1)
++    else()
++        set(REX_RC_FILETYPE 0x2)
++    endif()
++    set(REX_RC_FILE_VERSION
++        "${REXGLUE_DERIVED_MAJOR},${REXGLUE_DERIVED_MINOR},${REXGLUE_DERIVED_PATCH},${REXGLUE_DERIVED_TWEAK}")
++    set(REX_RC_VERSION_STRING "${REXGLUE_FULL_VERSION}")
++    set(REX_RC_TARGET "${target_name}")
++    set(REX_RC_DESCRIPTION "${ARG_DESCRIPTION}")
++    set(_rc_file "${CMAKE_CURRENT_BINARY_DIR}/rexglue_rc/${target_name}.rc")
++    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/version.rc.in" "${_rc_file}" @ONLY)
++    target_sources(${target_name} PRIVATE "${_rc_file}")
++endfunction()
+diff --git a/cmake/rexglue_export_targets.cmake b/cmake/rexglue_export_targets.cmake
+new file mode 100644
+index 0000000..2d40e1f
+--- /dev/null
++++ b/cmake/rexglue_export_targets.cmake
+@@ -0,0 +1,39 @@
++set_target_properties(rexcore PROPERTIES EXPORT_NAME core)
++set_target_properties(rexfilesystem PROPERTIES EXPORT_NAME filesystem)
++set_target_properties(rexui PROPERTIES EXPORT_NAME ui)
++set_target_properties(rexinput PROPERTIES EXPORT_NAME input)
++set_target_properties(rexaudio PROPERTIES EXPORT_NAME audio)
++set_target_properties(rexruntime PROPERTIES EXPORT_NAME runtime)
++set_target_properties(rexcodegen PROPERTIES EXPORT_NAME codegen)
++
++set(REXGLUE_INSTALL_TARGETS
++    rexruntime
++    rexgpu-xenos
++    disruptorplus renderdoc simde tomlplusplus
++    aes128 mspack o1heap disasm xxhash
++    libavcodec libavutil
++)
++
++if(REXGLUE_USE_VULKAN)
++    list(APPEND REXGLUE_INSTALL_TARGETS
++        SPIRV glslang MachineIndependent GenericCodeGen OSDependent OGLCompiler  # glslang
++        spirv-tools-headers
++    )
++endif()
++
++if(REXGLUE_USE_D3D12)
++    list(APPEND REXGLUE_INSTALL_TARGETS dxc-headers)
++endif()
++
++if(REXGLUE_ENABLE_TRACY)
++    list(APPEND REXGLUE_INSTALL_TARGETS TracyClient)
++endif()
++
++set(REXGLUE_INSTALL_FIDELITYFX_TARGETS)
++if(TARGET amd_fidelityfx_vk)
++    list(APPEND REXGLUE_INSTALL_FIDELITYFX_TARGETS amd_fidelityfx_vk)
++endif()
++
++if(TARGET amd_fidelityfx_dx12)
++    list(APPEND REXGLUE_INSTALL_FIDELITYFX_TARGETS amd_fidelityfx_dx12)
++endif()
+diff --git a/cmake/rexglue_install.cmake b/cmake/rexglue_install.cmake
+index d9a64eb..a003313 100644
+--- a/cmake/rexglue_install.cmake
++++ b/cmake/rexglue_install.cmake
+@@ -1,49 +1,8 @@
+ #==========================================================
+ # SDK Install/Export Rules
+ #==========================================================
+-set_target_properties(rexcore PROPERTIES EXPORT_NAME core)
+-set_target_properties(rexfilesystem PROPERTIES EXPORT_NAME filesystem)
+-set_target_properties(rexui PROPERTIES EXPORT_NAME ui)
+-set_target_properties(rexinput PROPERTIES EXPORT_NAME input)
+-set_target_properties(rexaudio PROPERTIES EXPORT_NAME audio)
+-set_target_properties(rexruntime PROPERTIES EXPORT_NAME runtime)
+-set_target_properties(rexcodegen PROPERTIES EXPORT_NAME codegen)
+-
+ include(${CMAKE_CURRENT_LIST_DIR}/rexglue_helpers.cmake)
+ 
+-# Build install target list dynamically based on backend options
+-set(REXGLUE_INSTALL_TARGETS
+-    rexruntime
+-    rexgpu-xenos
+-    disruptorplus renderdoc simde tomlplusplus
+-    aes128 mspack o1heap disasm xxhash
+-    libavcodec libavutil
+-)
+-
+-if(REXGLUE_USE_VULKAN)
+-    list(APPEND REXGLUE_INSTALL_TARGETS
+-        SPIRV glslang MachineIndependent GenericCodeGen OSDependent OGLCompiler  # glslang
+-        spirv-tools-headers
+-    )
+-endif()
+-
+-if(REXGLUE_USE_D3D12)
+-    list(APPEND REXGLUE_INSTALL_TARGETS dxc-headers)
+-endif()
+-
+-if(REXGLUE_ENABLE_TRACY)
+-    list(APPEND REXGLUE_INSTALL_TARGETS TracyClient)
+-endif()
+-
+-set(REXGLUE_INSTALL_FIDELITYFX_TARGETS)
+-if(TARGET amd_fidelityfx_vk)
+-    list(APPEND REXGLUE_INSTALL_FIDELITYFX_TARGETS amd_fidelityfx_vk)
+-endif()
+-
+-if(TARGET amd_fidelityfx_dx12)
+-    list(APPEND REXGLUE_INSTALL_FIDELITYFX_TARGETS amd_fidelityfx_dx12)
+-endif()
+-
+ install(TARGETS ${REXGLUE_INSTALL_TARGETS}
+     EXPORT rexglueTargets
+     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+@@ -174,7 +133,7 @@ install(FILES
+ )
+ 
+ install(FILES
+-    ${CMAKE_SOURCE_DIR}/cmake/rexglue_helpers.cmake
++    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/rexglue_helpers.cmake
+     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/rexglue
+ )
+ 
+diff --git a/cmake/version.rc.in b/cmake/version.rc.in
+new file mode 100644
+index 0000000..b7e14a0
+--- /dev/null
++++ b/cmake/version.rc.in
+@@ -0,0 +1,27 @@
++1 VERSIONINFO
++FILEVERSION @REX_RC_FILE_VERSION@
++PRODUCTVERSION @REX_RC_FILE_VERSION@
++FILEFLAGSMASK 0x3F
++FILEFLAGS 0x0
++FILEOS 0x40004
++FILETYPE @REX_RC_FILETYPE@
++FILESUBTYPE 0x0
++BEGIN
++    BLOCK "StringFileInfo"
++    BEGIN
++        BLOCK "040904B0"
++        BEGIN
++            VALUE "CompanyName", "ReXGlue"
++            VALUE "FileDescription", "@REX_RC_DESCRIPTION@"
++            VALUE "FileVersion", "@REX_RC_VERSION_STRING@"
++            VALUE "InternalName", "@REX_RC_TARGET@"
++            VALUE "LegalCopyright", "Copyright (c) 2026 ReXGlue"
++            VALUE "ProductName", "ReXGlue SDK"
++            VALUE "ProductVersion", "@REX_RC_VERSION_STRING@"
++        END
++    END
++    BLOCK "VarFileInfo"
++    BEGIN
++        VALUE "Translation", 0x409, 1200
++    END
++END
+diff --git a/include/rex/audio/xma/context.h b/include/rex/audio/xma/context.h
+index 8426798..8a4b828 100644
+--- a/include/rex/audio/xma/context.h
++++ b/include/rex/audio/xma/context.h
+@@ -14,6 +14,7 @@
+ #include <array>
+ #include <atomic>
+ #include <mutex>
++#include <utility>
+ 
+ #include <rex/kernel.h>
+ #include <rex/memory.h>
+@@ -160,16 +161,6 @@ struct Xma2ExtraData {
+ static_assert_size(Xma2ExtraData, 34);
+ #pragma pack(pop)
+ 
+-struct kPacketInfo {
+-  uint8_t frame_count_ = 0;
+-  uint8_t current_frame_ = 0;
+-  uint32_t current_frame_size_ = 0;
+-
+-  bool isLastFrameInPacket() const {
+-    return frame_count_ == 0 || current_frame_ == frame_count_ - 1;
+-  }
+-};
+-
+ static constexpr int kIdToSampleRate[4] = {24000, 32000, 44100, 48000};
+ 
+ class XmaContext {
+@@ -242,14 +233,22 @@ class XmaContext {
+   static int16_t GetPacketNumber(size_t size, size_t bit_offset);
+   static uint32_t GetCurrentInputBufferSize(XMA_CONTEXT_DATA* data);
+ 
+-  kPacketInfo GetPacketInfo(uint8_t* packet, uint32_t frame_offset);
+-  uint32_t GetAmountOfBitsToRead(uint32_t remaining_stream_bits, uint32_t frame_size);
+-  const uint8_t* GetNextPacket(XMA_CONTEXT_DATA* data, uint32_t next_packet_index,
+-                               uint32_t current_input_packet_count);
+-  uint32_t GetNextPacketReadOffset(uint8_t* buffer, uint32_t next_packet_index,
+-                                   uint32_t current_input_packet_count);
+   uint8_t* GetCurrentInputBuffer(XMA_CONTEXT_DATA* data);
+ 
++  // Packet/frame-boundary walking used by Decode() to advance past a frame
++  // once it's been assembled. Frames don't align to packet edges, so knowing
++  // "how many frames does this packet start" and "where's the frame after
++  // this one" needs its own bitstream walk distinct from locating the frame
++  // we're about to decode. Ported from Xenia's XmaContext (see
++  // src/xenia/apu/xma_context.cc upstream) -- these three plus the
++  // split-frame state in Decode() are what's needed to get streams whose
++  // frames routinely straddle packets (multi-context/6-channel beds observed
++  // in Guitar Hero: Warriors of Rock) decoding correctly.
++  static int GetFramePacketNumber(uint8_t* block, size_t size, size_t bit_offset);
++  static std::pair<int, int> GetFrameNumber(uint8_t* block, size_t size, size_t bit_offset);
++  static std::pair<int, bool> GetPacketFrameCount(uint8_t* packet);
++  static size_t GetNextFrame(uint8_t* block, size_t size, size_t bit_offset);
++
+   void Decode(XMA_CONTEXT_DATA* data);
+   void Consume(memory::RingBuffer* output_rb, const XMA_CONTEXT_DATA* data);
+   void UpdateLoopStatus(XMA_CONTEXT_DATA* data);
+@@ -281,8 +280,6 @@ class XmaContext {
+   AVCodecContext* av_context_ = nullptr;
+   AVFrame* av_frame_ = nullptr;
+ 
+-  // Packet data buffer (two packets worth for split frame handling)
+-  std::array<uint8_t, kBytesPerPacketData * 2> input_buffer_;
+   // First byte contains bit offset information
+   std::array<uint8_t, 1 + 4096> xma_frame_;
+   // Conversion buffer for up to 2-channel frame
+@@ -306,6 +303,27 @@ class XmaContext {
+   bool carry_valid_ = false;
+   uint8_t pending_output_limit_ = 0;
+   uint8_t pending_start_skip_ = 0;
++
++  // Cross-call state for frames that span a packet boundary (the frame body
++  // straddles the boundary, or -- rarer -- even its 15-bit length header
++  // does). A frame is the smallest unit XMA hardware can decode but packets
++  // are the smallest unit of I/O, and frames routinely don't align to packet
++  // edges, so assembly has to survive being paused and resumed across
++  // multiple Decode() calls (each Work() cycle only calls Decode() once, and
++  // a packet may need to be swapped/fetched in between). See Xenia's
++  // XmaContext::Decode for the reference implementation this ports.
++  //
++  // (A batch-decode-the-whole-buffer-at-once redesign was tried in place of
++  // this on 2026-07-30 to sidestep this cross-call state entirely, but it
++  // made ffmpeg's avcodec_send_packet start failing intermittently --
++  // apparently its send/receive contract doesn't like this many decode calls
++  // back-to-back in a tight loop -- without fixing the guitar-distortion bug
++  // it was meant to help with, and broke previously-working voices. Reverted;
++  // see project memory before trying this direction again.)
++  uint32_t packets_skip_ = 0;
++  uint32_t split_frame_len_ = 0;
++  uint32_t split_frame_len_partial_ = 0;
++  uint8_t split_frame_padding_start_ = 0;
+ };
+ 
+ }  // namespace rex::audio
+diff --git a/include/rex/input/guitar.h b/include/rex/input/guitar.h
+new file mode 100644
+index 0000000..73d0034
+--- /dev/null
++++ b/include/rex/input/guitar.h
+@@ -0,0 +1,22 @@
++#pragma once
++
++#include <cstdint>
++
++// Regular controllers and the keyboard playing as a guitar (gamepad_as_guitar).
++namespace rex::input {
++
++// Called by the game on every frame of a song (a hook on the game's own
++// per-player update in a song). Auto-strum only acts while these are recent:
++// the menus move their cursor with the d-pad, so a strum on every fret would
++// move it each time the green fret confirms.
++void MarkSongFrame();
++bool InSong();
++
++// Auto-strum (guitar_autostrum): each fret pressed also strums, GH2 / GH3
++// style, so a regular controller or the keyboard can play with the frets
++// alone. Frets pressed within a few milliseconds of each other make one chord.
++// `device` tells the players apart; `buttons` are the guitar's buttons for
++// this read, and the d-pad down of a strum is added to them.
++uint16_t AutoStrum(const void* device, uint16_t buttons);
++
++}  // namespace rex::input
+diff --git a/include/rex/memory/utils.h b/include/rex/memory/utils.h
+index 8ccb52c..0b4708c 100644
+--- a/include/rex/memory/utils.h
++++ b/include/rex/memory/utils.h
+@@ -87,11 +87,6 @@ enum class DeallocationType {
+ // memory-mapped file must be used to write to executable pages.
+ bool IsWritableExecutableMemorySupported();
+ 
+-// Whether PageAccess::kExecuteReadWrite is a supported and preferred way of
+-// writing executable memory, useful for simulating how Xenia would work without
+-// writable executable memory on a system with it.
+-bool IsWritableExecutableMemoryPreferred();
+-
+ // Allocates a block of memory at the given page-aligned base address.
+ // Fails if the memory is not available.
+ // Specify nullptr for base_address to leave it up to the system.
+diff --git a/include/rex/system/flags.h b/include/rex/system/flags.h
+index 902bffd..8013f8c 100644
+--- a/include/rex/system/flags.h
++++ b/include/rex/system/flags.h
+@@ -24,7 +24,7 @@ REXCVAR_DECLARE(bool, kernel_debug_monitor);
+ REXCVAR_DECLARE(bool, kernel_cert_monitor);
+ REXCVAR_DECLARE(bool, ignore_thread_priorities);
+ REXCVAR_DECLARE(bool, ignore_thread_affinities);
+-REXCVAR_DECLARE(bool, writable_executable_memory);
++REXCVAR_DECLARE(bool, writable_code_segments);
+ REXCVAR_DECLARE(bool, protect_zero);
+ REXCVAR_DECLARE(bool, protect_on_release);
+ REXCVAR_DECLARE(bool, scribble_heap);
+diff --git a/src/audio/xma_context.cpp b/src/audio/xma_context.cpp
+index 11b83be..1178b52 100644
+--- a/src/audio/xma_context.cpp
++++ b/src/audio/xma_context.cpp
+@@ -11,6 +11,8 @@
+ 
+ #include <algorithm>
+ #include <cstring>
++#include <mutex>
++#include <utility>
+ 
+ #include <rex/audio/xma/context.h>
+ #include <rex/audio/xma/decoder.h>
+@@ -274,52 +276,135 @@ int16_t XmaContext::GetPacketNumber(size_t size, size_t bit_offset) {
+   return static_cast<int16_t>(packet_number);
+ }
+ 
+-uint32_t XmaContext::GetCurrentInputBufferSize(XMA_CONTEXT_DATA* data) {
+-  return data->GetCurrentInputBufferPacketCount() * kBytesPerPacket;
++int XmaContext::GetFramePacketNumber(uint8_t* block, size_t size, size_t bit_offset) {
++  size *= 8;
++  if (bit_offset >= size) {
++    assert_always();
++    return -1;
++  }
++  size_t byte_offset = bit_offset >> 3;
++  size_t packet_number = byte_offset / kBytesPerPacket;
++  return static_cast<int>(packet_number);
+ }
+ 
+-uint8_t* XmaContext::GetCurrentInputBuffer(XMA_CONTEXT_DATA* data) {
+-  return memory()->TranslatePhysical(data->GetCurrentInputBufferAddress());
+-}
++// Number of frames that /begin/ in this packet, i.e. have their 15-bit length
++// header inside it (a frame that only *ends* here, having started in the
++// previous packet, doesn't count). Walks frame headers front to back, so a
++// wrong answer here means everything downstream reads the wrong frame.
++std::pair<int, bool> XmaContext::GetPacketFrameCount(uint8_t* packet) {
++  const uint32_t first_frame_offset = xma::GetPacketFrameOffset(packet);
++  if (first_frame_offset > kBitsPerPacket - kBitsPerPacketHeader) {
++    return {0, false};
++  }
+ 
+-uint32_t XmaContext::GetAmountOfBitsToRead(uint32_t remaining_stream_bits, uint32_t frame_size) {
+-  return std::min(remaining_stream_bits, frame_size);
+-}
++  rex::stream::BitStream stream(packet, kBitsPerPacket);
++  stream.SetOffset(first_frame_offset);
++  int frame_count = 0;
++
++  while (true) {
++    frame_count++;
++    if (stream.BitsRemaining() < kBitsPerFrameHeader) {
++      return {frame_count, true};
++    }
++
++    uint64_t frame_size = stream.Read(kBitsPerFrameHeader);
++    if ((frame_size - kBitsPerFrameHeader) > stream.BitsRemaining()) {
++      return {frame_count, true};
++    } else if (frame_size == xma::kMaxFrameLength) {
++      return {frame_count, true};
++    }
+ 
+-const uint8_t* XmaContext::GetNextPacket(XMA_CONTEXT_DATA* data, uint32_t next_packet_index,
+-                                         uint32_t current_input_packet_count) {
+-  if (next_packet_index < current_input_packet_count) {
+-    return memory()->TranslatePhysical(data->GetCurrentInputBufferAddress()) +
+-           next_packet_index * kBytesPerPacket;
++    stream.Advance(frame_size - (kBitsPerFrameHeader + 1));
++
++    // Trailing continuation bit: 0 means no further frame in this packet.
++    if (stream.Read(1) == 0) {
++      return {frame_count, false};
++    }
+   }
++}
+ 
+-  const uint8_t next_buffer_index = data->current_buffer ^ 1;
+-  if (!data->IsInputBufferValid(next_buffer_index)) {
+-    return nullptr;
++// Which frame (by index among those that begin in this packet) bit_offset
++// points at the start of, and which packet it's in.
++std::pair<int, int> XmaContext::GetFrameNumber(uint8_t* block, size_t size, size_t bit_offset) {
++  const int packet_idx = GetFramePacketNumber(block, size, bit_offset);
++  if (packet_idx < 0 || static_cast<size_t>(packet_idx + 1) * kBytesPerPacket > size) {
++    assert_always();
++    return {packet_idx, -2};
+   }
+ 
+-  const uint32_t next_buffer_address = data->GetInputBufferAddress(next_buffer_index);
+-  if (!next_buffer_address) {
+-    REXAPU_ERROR("XmaContext {}: Buffer marked valid but has null pointer!", id());
+-    return nullptr;
++  if (bit_offset == 0) {
++    return {packet_idx, -1};
+   }
+ 
+-  return memory()->TranslatePhysical(next_buffer_address);
+-}
++  uint8_t* packet = block + (packet_idx * kBytesPerPacket);
++  const uint32_t first_frame_offset = xma::GetPacketFrameOffset(packet);
++  rex::stream::BitStream stream(block, size * 8);
++  stream.SetOffset(packet_idx * kBitsPerPacket + first_frame_offset);
+ 
+-uint32_t XmaContext::GetNextPacketReadOffset(uint8_t* buffer, uint32_t next_packet_index,
+-                                             uint32_t current_input_packet_count) {
+-  while (next_packet_index < current_input_packet_count) {
+-    uint8_t* next_packet = buffer + (next_packet_index * kBytesPerPacket);
+-    const uint32_t packet_frame_offset = xma::GetPacketFrameOffset(next_packet);
++  int frame_idx = 0;
++  while (true) {
++    if (stream.BitsRemaining() < kBitsPerFrameHeader) {
++      break;
++    }
++    if (stream.offset_bits() == bit_offset) {
++      break;
++    }
+ 
+-    if (packet_frame_offset <= kMaxFrameSizeinBits) {
+-      return (next_packet_index * kBitsPerPacket) + packet_frame_offset;
++    uint64_t frame_size = stream.Read(kBitsPerFrameHeader);
++    if ((frame_size - kBitsPerFrameHeader) > stream.BitsRemaining()) {
++      break;  // Last frame.
++    } else if (frame_size == xma::kMaxFrameLength) {
++      break;  // Invalid frame, and last of this packet.
+     }
+-    next_packet_index++;
++
++    stream.Advance(frame_size - (kBitsPerFrameHeader + 1));
++    if (stream.Read(1) == 0) {
++      break;
++    }
++    frame_idx++;
+   }
++  return {packet_idx, frame_idx};
++}
++
++// Bit offset of the frame following the one at bit_offset, or 0 if that frame
++// is the last one that starts in its packet (caller then has to skip ahead
++// using the packet's own skip-count field to find the next packet belonging
++// to this stream).
++size_t XmaContext::GetNextFrame(uint8_t* block, size_t size, size_t bit_offset) {
++  const int packet_idx = GetFramePacketNumber(block, size, bit_offset);
+ 
+-  return kBitsPerPacketHeader;
++  rex::stream::BitStream stream(block, size * 8);
++  stream.SetOffset(bit_offset);
++
++  if (stream.BitsRemaining() < kBitsPerFrameHeader) {
++    return 0;
++  }
++
++  uint64_t frame_size = stream.Read(kBitsPerFrameHeader);
++  if ((frame_size - kBitsPerFrameHeader) > stream.BitsRemaining()) {
++    return 0;
++  } else if (frame_size >= xma::kMaxFrameLength) {
++    return 0;
++  }
++
++  stream.Advance(frame_size - (kBitsPerFrameHeader + 1));
++  if (stream.Read(1) == 0) {
++    return 0;
++  }
++
++  bit_offset += frame_size;
++  if (packet_idx < GetFramePacketNumber(block, size, bit_offset)) {
++    return 0;
++  }
++  return bit_offset;
++}
++
++uint32_t XmaContext::GetCurrentInputBufferSize(XMA_CONTEXT_DATA* data) {
++  return data->GetCurrentInputBufferPacketCount() * kBytesPerPacket;
++}
++
++uint8_t* XmaContext::GetCurrentInputBuffer(XMA_CONTEXT_DATA* data) {
++  return memory()->TranslatePhysical(data->GetCurrentInputBufferAddress());
+ }
+ 
+ memory::RingBuffer XmaContext::PrepareOutputRingBuffer(XMA_CONTEXT_DATA* data) {
+@@ -345,58 +430,6 @@ memory::RingBuffer XmaContext::PrepareOutputRingBuffer(XMA_CONTEXT_DATA* data) {
+   return output_rb;
+ }
+ 
+-kPacketInfo XmaContext::GetPacketInfo(uint8_t* packet, uint32_t frame_offset) {
+-  kPacketInfo packet_info = {};
+-
+-  const uint32_t first_frame_offset = xma::GetPacketFrameOffset(packet);
+-  BitStream stream(packet, kBitsPerPacket);
+-  stream.SetOffset(first_frame_offset);
+-
+-  if (frame_offset < first_frame_offset) {
+-    packet_info.current_frame_ = 0;
+-    packet_info.current_frame_size_ = first_frame_offset - frame_offset;
+-  }
+-
+-  while (true) {
+-    if (stream.BitsRemaining() < kBitsPerFrameHeader) {
+-      break;
+-    }
+-
+-    const uint64_t frame_size = stream.Peek(kBitsPerFrameHeader);
+-    if (frame_size == 0 || frame_size == xma::kMaxFrameLength) {
+-      break;
+-    }
+-
+-    if (stream.offset_bits() == frame_offset) {
+-      packet_info.current_frame_ = packet_info.frame_count_;
+-      packet_info.current_frame_size_ = static_cast<uint32_t>(frame_size);
+-    }
+-
+-    packet_info.frame_count_++;
+-
+-    if (frame_size > stream.BitsRemaining()) {
+-      break;
+-    }
+-
+-    stream.Advance(frame_size - 1);
+-
+-    if (stream.Read(1) == 0) {
+-      break;
+-    }
+-  }
+-
+-  if (xma::IsPacketXma2Type(packet)) {
+-    const uint8_t xma2_frame_count = xma::GetPacketFrameCount(packet);
+-    if (xma2_frame_count > packet_info.frame_count_) {
+-      if (packet_info.current_frame_size_ == 0) {
+-        packet_info.current_frame_ = packet_info.frame_count_;
+-      }
+-      packet_info.frame_count_ = xma2_frame_count;
+-    }
+-  }
+-  return packet_info;
+-}
+-
+ void XmaContext::StoreContextMerged(const XMA_CONTEXT_DATA& data,
+                                     const XMA_CONTEXT_DATA& initial_data, uint8_t* context_ptr) {
+   XMA_CONTEXT_DATA fresh(context_ptr);
+@@ -481,7 +514,14 @@ int XmaContext::PrepareDecoder(int sample_rate, bool is_two_channel) {
+ 
+     av_context_->sample_rate = sample_rate;
+     av_context_->channels = channels;
+-    av_context_->flags2 |= AV_CODEC_FLAG2_SKIP_MANUAL;
++    // AV_CODEC_FLAG2_SKIP_MANUAL tells ffmpeg to stop auto-trimming
++    // codec-delay/padding samples and instead report them as side data for
++    // the caller to handle -- which ConvertFrame() doesn't do, it always
++    // reads a fixed kSamplesPerFrame (512) window. Xenia's reference
++    // implementation doesn't set this flag, letting ffmpeg do the trim
++    // itself so every decoded frame is exactly 512 samples; matching that
++    // here instead of silently reading a misaligned window whenever a frame
++    // actually carries padding.
+ 
+     if (avcodec_open2(av_context_, av_codec_, NULL) < 0) {
+       REXAPU_ERROR("XmaContext: Failed to reopen FFmpeg context");
+@@ -545,7 +585,6 @@ void XmaContext::Decode(XMA_CONTEXT_DATA* data) {
+ 
+   uint8_t* current_input_buffer = GetCurrentInputBuffer(data);
+ 
+-  input_buffer_.fill(0);
+ 
+   // Loop-end frame: decode it here (output limited to loop_subframe_end),
+   // jump to loop_start afterwards in the next-offset step.
+@@ -560,103 +599,151 @@ void XmaContext::Decode(XMA_CONTEXT_DATA* data) {
+     return;
+   }
+ 
+-  if (data->input_buffer_read_offset < kBitsPerPacketHeader) {
+-    data->input_buffer_read_offset = kBitsPerPacketHeader;
+-  }
+-
+   const uint32_t current_input_size = GetCurrentInputBufferSize(data);
+   const uint32_t current_input_packet_count = current_input_size / kBytesPerPacket;
+ 
+-  const int16_t packet_index = GetPacketNumber(current_input_size, data->input_buffer_read_offset);
+-
+-  if (packet_index == -1) {
+-    REXAPU_ERROR("XmaContext {}: Invalid packet index. Input read offset: {}", id(),
+-                 static_cast<uint32_t>(data->input_buffer_read_offset));
+-    return;
+-  }
+-
+-  uint8_t* packet = current_input_buffer + (packet_index * kBytesPerPacket);
+-  const uint32_t packet_first_frame_offset = xma::GetPacketFrameOffset(packet);
+-  uint32_t relative_offset = data->input_buffer_read_offset % kBitsPerPacket;
+-
+-  if (relative_offset < packet_first_frame_offset) {
+-    data->input_buffer_read_offset = (packet_index * kBitsPerPacket) + packet_first_frame_offset;
+-    relative_offset = packet_first_frame_offset;
+-  }
+-
+-  const uint8_t skip_count = xma::GetPacketSkipCount(packet);
+-
+-  // Full packet skip (0xFF) -- no new frames begin in this packet.
+-  if (skip_count == 0xFF) {
+-    uint32_t next_input_offset =
+-        GetNextPacketReadOffset(current_input_buffer, packet_index + 1, current_input_packet_count);
+-    if (next_input_offset == kBitsPerPacketHeader) {
+-      SwapInputBuffer(data);
++  // A frame can span at most two packets (its max length, 0x7FFF bits, is
++  // just under two packets' worth of payload), so resuming a split frame
++  // never needs more than "the next packet" -- but resolving *which* packet
++  // that is can itself require skipping some that don't belong to this
++  // stream (packets_skip_, from this stream's own skip-count field), and the
++  // buffer that packet lives in might not have been available yet on the
++  // call that discovered the split. Both of those can only be resolved once
++  // per Decode() call (a buffer swap needs the guest to refill it), so this
++  // is spread across as many calls as it takes; Work()'s own loop keeps
++  // calling back in as long as there's output room and input left.
++  if (packets_skip_ > 0) {
++    int32_t packet_idx = static_cast<int32_t>(data->input_buffer_read_offset / kBitsPerPacket);
++    while (packets_skip_ > 0) {
++      packets_skip_--;
++      packet_idx++;
++      if (static_cast<uint32_t>(packet_idx) >= current_input_packet_count) {
++        SwapInputBuffer(data);
++        return;
++      }
+     }
+-    data->input_buffer_read_offset = next_input_offset;
+-    return;
+-  }
+-
+-  kPacketInfo packet_info = GetPacketInfo(packet, relative_offset);
+-  const uint32_t packet_to_skip = skip_count + 1;
+-  const uint32_t next_packet_index = packet_index + packet_to_skip;
+-
+-  // Frame header split across packet boundary.
+-  if (packet_info.current_frame_size_ == 0) {
+-    const uint8_t* next_packet = GetNextPacket(data, next_packet_index, current_input_packet_count);
+-    if (!next_packet) {
++    data->input_buffer_read_offset = static_cast<uint32_t>(packet_idx) * kBitsPerPacket;
++  }
++
++  int packet_idx;
++  int frame_idx;
++  int frame_count;
++  uint8_t* packet;
++  uint32_t frame_size;
++  uint32_t padding_start;
++
++  if (split_frame_len_) {
++    // --- Resume a frame whose body (or even its own 15-bit length header)
++    // straddled a packet boundary: packets_skip_, above, has already put us
++    // at the packet its remainder lives in. ---
++    packet_idx = GetFramePacketNumber(current_input_buffer, current_input_size,
++                                      data->input_buffer_read_offset);
++    if (packet_idx < 0 || static_cast<uint32_t>(packet_idx) >= current_input_packet_count) {
+       SwapInputBuffer(data);
+       return;
+     }
+-    std::memcpy(input_buffer_.data(), packet + kBytesPerPacketHeader, kBytesPerPacketData);
+-    std::memcpy(input_buffer_.data() + kBytesPerPacketData, next_packet + kBytesPerPacketHeader,
+-                kBytesPerPacketData);
++    packet = current_input_buffer + packet_idx * kBytesPerPacket;
++    frame_count = GetPacketFrameCount(packet).first;
++    frame_idx = -1;  // Signals "already positioned", see the tail below.
++
++    BitStream stream(current_input_buffer, (packet_idx + 1) * kBitsPerPacket);
++    stream.SetOffset(packet_idx * kBitsPerPacket + kBitsPerPacketHeader);
++
++    if (split_frame_len_ > xma::kMaxFrameLength) {
++      // Even the length header didn't fit in the previous packet; the few
++      // bits of it we grabbed then are sitting at the same spot the body
++      // goes, padded to a byte boundary -- finish reading it now that this
++      // packet is available, then reread it back out to get the real length.
++      auto offset = stream.offset_bits();
++      stream.Copy(xma_frame_.data() + 1 +
++                      ((split_frame_len_partial_ + split_frame_padding_start_) / 8),
++                  kBitsPerFrameHeader - split_frame_len_partial_);
++      stream.SetOffset(offset);
++      BitStream length_stream(xma_frame_.data() + 1, kBitsPerFrameHeader + split_frame_padding_start_);
++      length_stream.Advance(split_frame_padding_start_);
++      split_frame_len_ = static_cast<uint32_t>(length_stream.Read(kBitsPerFrameHeader));
++    }
++
++    stream.Copy(xma_frame_.data() + 1 +
++                    ((split_frame_len_partial_ + split_frame_padding_start_) / 8),
++                split_frame_len_ - split_frame_len_partial_);
+ 
+-    BitStream combined(input_buffer_.data(), (kBitsPerPacket - kBitsPerPacketHeader) * 2);
+-    combined.SetOffset(relative_offset - kBitsPerPacketHeader);
++    frame_size = split_frame_len_;
++    padding_start = split_frame_padding_start_;
++  } else {
++    // --- Normal path: locate the frame at input_buffer_read_offset fresh. ---
++    if (data->input_buffer_read_offset % kBitsPerPacket == 0) {
++      // Landed exactly on a packet boundary (buffer swap, most likely) --
++      // that's not a valid frame position, resolve this packet's own first
++      // frame instead.
++      const int idx = GetFramePacketNumber(current_input_buffer, current_input_size,
++                                           data->input_buffer_read_offset);
++      if (idx < 0) {
++        return;
++      }
++      const uint32_t first_frame_offset =
++          xma::GetPacketFrameOffset(current_input_buffer + idx * kBytesPerPacket);
++      data->input_buffer_read_offset = idx * kBitsPerPacket + first_frame_offset;
++    }
+ 
+-    uint64_t frame_size = combined.Peek(kBitsPerFrameHeader);
+-    if (frame_size == xma::kMaxFrameLength) {
+-      data->error_status = 4;
++    std::tie(packet_idx, frame_idx) =
++        GetFrameNumber(current_input_buffer, current_input_size, data->input_buffer_read_offset);
++    if (packet_idx < 0 || frame_idx < 0) {
++      REXAPU_ERROR("XmaContext {}: Invalid read offset {}!", id(),
++                   static_cast<uint32_t>(data->input_buffer_read_offset));
++      SwapInputBuffer(data);
+       return;
+     }
+-    packet_info.current_frame_size_ = static_cast<uint32_t>(frame_size);
+-  }
++    packet = current_input_buffer + packet_idx * kBytesPerPacket;
+ 
+-  BitStream stream(current_input_buffer, (packet_index + 1) * kBitsPerPacket);
+-  stream.SetOffset(data->input_buffer_read_offset);
++    bool frame_last_split;
++    std::tie(frame_count, frame_last_split) = GetPacketFrameCount(packet);
+ 
+-  const uint64_t bits_to_copy = GetAmountOfBitsToRead(static_cast<uint32_t>(stream.BitsRemaining()),
+-                                                      packet_info.current_frame_size_);
++    const bool frame_is_split = frame_last_split && (frame_idx >= frame_count - 1);
+ 
+-  if (bits_to_copy == 0) {
+-    REXAPU_ERROR("XmaContext {}: There are no bits to copy!", id());
+-    SwapInputBuffer(data);
+-    return;
+-  }
++    BitStream stream(current_input_buffer, (packet_idx + 1) * kBitsPerPacket);
++    stream.SetOffset(data->input_buffer_read_offset);
+ 
+-  if (packet_info.isLastFrameInPacket()) {
+-    if (stream.BitsRemaining() < packet_info.current_frame_size_) {
+-      const uint8_t* next_packet =
+-          GetNextPacket(data, next_packet_index, current_input_packet_count);
+-      if (!next_packet) {
+-        data->error_status = 4;
+-        return;
+-      }
+-      std::memcpy(input_buffer_.data() + kBytesPerPacketData, next_packet + kBytesPerPacketHeader,
+-                  kBytesPerPacketData);
++    split_frame_len_partial_ = static_cast<uint32_t>(stream.BitsRemaining());
++    if (split_frame_len_partial_ >= kBitsPerFrameHeader) {
++      split_frame_len_ = static_cast<uint32_t>(stream.Peek(kBitsPerFrameHeader));
++    } else {
++      // Not even the 15-bit length header fits in what's left of this
++      // packet.
++      split_frame_len_ = xma::kMaxFrameLength + 1;
+     }
+-  }
+ 
+-  std::memcpy(input_buffer_.data(), packet + kBytesPerPacketHeader, kBytesPerPacketData);
+-
+-  stream = BitStream(input_buffer_.data(), (kBitsPerPacket - kBitsPerPacketHeader) * 2);
+-  stream.SetOffset(relative_offset - kBitsPerPacketHeader);
++    xma_frame_.fill(0);
++    auto copy_offset = stream.Copy(
++        xma_frame_.data() + 1,
++        std::min<uint32_t>(split_frame_len_, split_frame_len_partial_));
++    split_frame_padding_start_ = static_cast<uint8_t>(copy_offset);
++
++    if (frame_is_split) {
++      // Grabbed what fits; the rest is in the next packet belonging to this
++      // stream. Skip ahead to it and let the next Decode() call (via
++      // packets_skip_/split_frame_len_ above) finish assembling this frame.
++      packets_skip_ = xma::GetPacketSkipCount(packet) + 1;
++      int32_t next_packet_idx = packet_idx;
++      while (packets_skip_ > 0) {
++        packets_skip_--;
++        next_packet_idx++;
++        if (static_cast<uint32_t>(next_packet_idx) >= current_input_packet_count) {
++          SwapInputBuffer(data);
++          return;
++        }
++      }
++      data->input_buffer_read_offset = static_cast<uint32_t>(next_packet_idx) * kBitsPerPacket;
++      return;
++    }
+ 
+-  xma_frame_.fill(0);
++    frame_size = split_frame_len_;
++    padding_start = split_frame_padding_start_;
++  }
+ 
+-  const uint32_t padding_start =
+-      static_cast<uint8_t>(stream.Copy(xma_frame_.data() + 1, packet_info.current_frame_size_));
++  split_frame_len_ = 0;
++  split_frame_len_partial_ = 0;
++  split_frame_padding_start_ = 0;
+ 
+   decoded_frame_.fill(0);
+ 
+@@ -665,7 +752,7 @@ void XmaContext::Decode(XMA_CONTEXT_DATA* data) {
+     // old stream.
+     carry_valid_ = false;
+   }
+-  PreparePacket(packet_info.current_frame_size_, padding_start);
++  PreparePacket(frame_size, padding_start);
+   const bool decoded = DecodePacket(av_context_, av_packet_, av_frame_);
+   if (decoded) {
+     ConvertFrame(reinterpret_cast<const uint8_t**>(&av_frame_->data), bool(data->is_stereo),
+@@ -715,29 +802,38 @@ void XmaContext::Decode(XMA_CONTEXT_DATA* data) {
+     return;
+   }
+ 
+-  if (!packet_info.isLastFrameInPacket()) {
+-    const uint32_t next_frame_offset =
+-        (data->input_buffer_read_offset + bits_to_copy) % kBitsPerPacket;
+-    data->input_buffer_read_offset = (packet_index * kBitsPerPacket) + next_frame_offset;
+-    return;
+-  }
+-
+-  uint32_t next_input_offset =
+-      GetNextPacketReadOffset(current_input_buffer, next_packet_index, current_input_packet_count);
++  uint32_t offset = static_cast<uint32_t>(
++      GetNextFrame(current_input_buffer, current_input_size, data->input_buffer_read_offset));
+ 
+-  if (next_input_offset == kBitsPerPacketHeader) {
+-    SwapInputBuffer(data);
+-    if (data->IsAnyInputBufferValid()) {
+-      next_input_offset = xma::GetPacketFrameOffset(
+-          memory()->TranslatePhysical(data->GetCurrentInputBufferAddress()));
+-
+-      if (next_input_offset > kMaxFrameSizeinBits) {
++  if (frame_idx + 1 >= frame_count) {
++    // That was the last frame that begins in this packet -- move to the next
++    // packet belonging to this stream.
++    packets_skip_ = xma::GetPacketSkipCount(packet) + 1;
++    while (packets_skip_ > 0) {
++      packets_skip_--;
++      packet_idx++;
++      if (static_cast<uint32_t>(packet_idx) >= current_input_packet_count) {
+         SwapInputBuffer(data);
+         return;
+       }
+     }
++    packet = current_input_buffer + packet_idx * kBytesPerPacket;
++    offset = xma::GetPacketFrameOffset(packet) + packet_idx * kBitsPerPacket;
++  }
++
++  if (offset == 0 || frame_idx == -1) {
++    // Either the walk above found nothing more in this packet, or we just
++    // finished resuming a split frame (frame_idx is set to -1 for that case
++    // specifically because there's nothing to walk from -- we already know
++    // where this packet's own next frame starts).
++    if (static_cast<uint32_t>(packet_idx) >= current_input_packet_count) {
++      SwapInputBuffer(data);
++      return;
++    }
++    offset = xma::GetPacketFrameOffset(packet) + packet_idx * kBitsPerPacket;
+   }
+-  data->input_buffer_read_offset = next_input_offset;
++
++  data->input_buffer_read_offset = offset;
+ }
+ 
+ void XmaContext::ConvertFrame(const uint8_t** samples, bool is_two_channel,
+diff --git a/src/codegen/builders/helpers.h b/src/codegen/builders/helpers.h
+index dbc8d51..ab6a8e0 100644
+--- a/src/codegen/builders/helpers.h
++++ b/src/codegen/builders/helpers.h
+@@ -294,7 +294,7 @@ inline void emitAtomicLoadReserve(BuilderContext& ctx, const char* ptr_type, con
+  * @param ctx The builder context
+  * @param ptr_type The pointer type (e.g., "uint32_t", "uint64_t")
+  * @param bswap_func The byte-swap builtin (e.g., "__builtin_bswap32")
+- * @param field The register field (e.g., "s32", "s64")
++ * @param field The register field (e.g., "u32", "u64")
+  */
+ inline void emitAtomicStoreConditional(BuilderContext& ctx, const char* ptr_type,
+                                        const char* bswap_func, const char* field) {
+@@ -305,11 +305,11 @@ inline void emitAtomicStoreConditional(BuilderContext& ctx, const char* ptr_type
+   ctx.println("\t{}.lt = 0;", ctx.cr(0));
+   ctx.println("\t{}.gt = 0;", ctx.cr(0));
+   ctx.println(
+-      "\t{}.eq = __sync_bool_compare_and_swap(reinterpret_cast<{}*>(REX_RAW_ADDR({})), "
+-      "{}.{}, {}({}.{}));",
++      "\t{}.eq = reinterpret_cast<std::atomic<{}>*>(REX_RAW_ADDR({}))"
++      "->compare_exchange_strong({}.{}, {}({}.{}), "
++      "std::memory_order_acq_rel, std::memory_order_acquire);",
+       ctx.cr(0), ptr_type, ctx.ea(), ctx.reserved(), field, bswap_func, ctx.r(ctx.insn.operands[0]),
+       field);
+-  ctx.println("\t{}.so = {}.so;", ctx.cr(0), ctx.xer());
+ }
+ 
+ //=============================================================================
+diff --git a/src/codegen/builders/memory.cpp b/src/codegen/builders/memory.cpp
+index 3dd7fa5..a20762c 100644
+--- a/src/codegen/builders/memory.cpp
++++ b/src/codegen/builders/memory.cpp
+@@ -409,12 +409,12 @@ bool build_stwbrx(BuilderContext& ctx) {
+ //=============================================================================
+ 
+ bool build_stwcx(BuilderContext& ctx) {
+-  emitAtomicStoreConditional(ctx, "uint32_t", "__builtin_bswap32", "s32");
++  emitAtomicStoreConditional(ctx, "uint32_t", "__builtin_bswap32", "u32");
+   return true;
+ }
+ 
+ bool build_stdcx(BuilderContext& ctx) {
+-  emitAtomicStoreConditional(ctx, "uint64_t", "__builtin_bswap64", "s64");
++  emitAtomicStoreConditional(ctx, "uint64_t", "__builtin_bswap64", "u64");
+   return true;
+ }
+ 
+diff --git a/src/codegen/builders/system.cpp b/src/codegen/builders/system.cpp
+index b2d70f5..f560429 100644
+--- a/src/codegen/builders/system.cpp
++++ b/src/codegen/builders/system.cpp
+@@ -31,20 +31,32 @@ bool build_attn(BuilderContext& ctx) {
+ }
+ 
+ bool build_sync(BuilderContext& ctx) {
+-  // Memory barrier, x86 has strong ordering so this is a no-op
+-  (void)ctx;
++  // sync: full barrier. Orders all combinations including StoreLoad,
++  // which x86_64 TSO does not. seq_cst is the exact C++ mapping.
++  //
++  // x86_64: emits mfence.
++  // ARM64:  emits dmb ish.
++  ctx.println("\tstd::atomic_thread_fence(std::memory_order_seq_cst);");
+   return true;
+ }
+ 
+ bool build_lwsync(BuilderContext& ctx) {
+-  // Lightweight memory barrier, x86 has strong ordering so this is a no-op
+-  (void)ctx;
++  // lwsync: acquire-release fence. Orders LoadLoad, LoadStore, StoreStore,
++  // but NOT StoreLoad. acq_rel matches exactly.
++  //
++  // x86_64: TSO already orders those three.
++  // ARM64:  emits dmb ish.
++  ctx.println("\tstd::atomic_thread_fence(std::memory_order_acq_rel);");
+   return true;
+ }
+ 
+ bool build_eieio(BuilderContext& ctx) {
+-  // Enforce in-order execution of I/O, x86 has strong ordering so this is a no-op
+-  (void)ctx;
++  // eieio: I/O ordering. No separate I/O space on the host, so seq_cst
++  // is the safe conservative mapping.
++  //
++  // x86_64: emits mfence.
++  // ARM64:  emits dmb ish.
++  ctx.println("\tstd::atomic_thread_fence(std::memory_order_seq_cst);");
+   return true;
+ }
+ 
+@@ -249,8 +261,6 @@ bool build_mflr(BuilderContext& ctx) {
+ 
+ bool build_mfmsr(BuilderContext& ctx) {
+   if (!ctx.config().skipMsr) {
+-    // Memory barrier for MSR read
+-    ctx.println("\tstd::atomic_thread_fence(std::memory_order_seq_cst);");
+     // Check global lock and return appropriate value
+     // Returns 0x8000 if unlocked (interrupts enabled), 0 if locked
+     ctx.println("\t{}.u64 = REX_CHECK_GLOBAL_LOCK();", ctx.r(ctx.insn.operands[0]));
+@@ -317,8 +327,6 @@ bool build_mtlr(BuilderContext& ctx) {
+ 
+ bool build_mtmsrd(BuilderContext& ctx) {
+   if (!ctx.config().skipMsr) {
+-    // Memory barrier for MSR write
+-    ctx.println("\tstd::atomic_thread_fence(std::memory_order_seq_cst);");
+     // Update MSR bits
+     ctx.println("\tctx.msr = ({}.u32 & 0x8020) | (ctx.msr & ~0x8020);",
+                 ctx.r(ctx.insn.operands[0]));
+diff --git a/src/core/memory.cpp b/src/core/memory.cpp
+index 316eb00..789f751 100644
+--- a/src/core/memory.cpp
++++ b/src/core/memory.cpp
+@@ -9,14 +9,9 @@
+  * @modified    Tom Clay, 2026 - Adapted for ReXGlue runtime
+  */
+ 
+-#include <rex/cvar.h>
+ #include <rex/memory/utils.h>
+ #include <rex/platform.h>
+ 
+-REXCVAR_DEFINE_BOOL(writable_executable_memory, true, "Memory",
+-                    "Allow executable memory to be writable")
+-    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+-
+ #if REX_ARCH_ARM64
+ #include <arm_neon.h>
+ #endif
+@@ -26,10 +21,6 @@ REXCVAR_DEFINE_BOOL(writable_executable_memory, true, "Memory",
+ namespace rex {
+ namespace memory {
+ 
+-bool IsWritableExecutableMemoryPreferred() {
+-  return REXCVAR_GET(writable_executable_memory);
+-}
+-
+ // TODO(benvanik): fancy AVX versions.
+ // https://github.com/gnuradio/volk/blob/master/kernels/volk/volk_16u_byteswap.h
+ // https://github.com/gnuradio/volk/blob/master/kernels/volk/volk_32u_byteswap.h
+diff --git a/src/graphics/CMakeLists.txt b/src/graphics/CMakeLists.txt
+index cbf7916..6011009 100644
+--- a/src/graphics/CMakeLists.txt
++++ b/src/graphics/CMakeLists.txt
+@@ -108,6 +108,7 @@ set_target_properties(rexgpu-xenos PROPERTIES
+     CXX_VISIBILITY_PRESET hidden
+     VISIBILITY_INLINES_HIDDEN ON
+ )
++rexglue_add_version_resource(rexgpu-xenos DESCRIPTION "ReXGlue Xenos GPU emulation")
+ 
+ target_include_directories(rexgpu-xenos PRIVATE
+     ${REXGLUE_ROOT}/thirdparty/renderdoc
+diff --git a/src/input/CMakeLists.txt b/src/input/CMakeLists.txt
+index 3ea3535..746203d 100644
+--- a/src/input/CMakeLists.txt
++++ b/src/input/CMakeLists.txt
+@@ -5,6 +5,7 @@ add_library(rexinput OBJECT
+     input_system.cpp
+     device_assignment.cpp
+     state_merge.cpp
++    guitar.cpp
+     mnk/mnk_input_driver.cpp
+     nop/nop_input_driver.cpp
+ )
+diff --git a/src/input/guitar.cpp b/src/input/guitar.cpp
+new file mode 100644
+index 0000000..87de763
+--- /dev/null
++++ b/src/input/guitar.cpp
+@@ -0,0 +1,99 @@
++// Auto-strum for regular controllers and the keyboard playing as a guitar.
++// The idea (a strum on each fret pressed, only while a song runs) follows
++// GHVanHRecomp's src/keyboard.cpp (MIT License, Copyright (c) 2026 Gustavo
++// Garcia).
++
++#include <rex/input/guitar.h>
++
++#include <rex/cvar.h>
++#include <rex/input/input.h>
++
++#include <algorithm>
++#include <atomic>
++#include <chrono>
++#include <mutex>
++#include <unordered_map>
++
++REXCVAR_DEFINE_BOOL(guitar_autostrum, true, "Input/Guitar",
++                    "Regular controller or keyboard as a guitar: each fret pressed also strums, only during a song "
++                    "(the menus keep the frets as buttons). The strum buttons still work.");
++REXCVAR_DEFINE_INT32(guitar_autostrum_chord_ms, 25, "Input/Guitar",
++                     "Auto-strum: frets pressed within this many milliseconds of each other make one chord");
++
++namespace rex::input {
++
++namespace {
++
++using Clock = std::chrono::steady_clock;
++
++std::atomic<int64_t> g_song_frame{0};
++
++constexpr uint16_t kFrets = X_INPUT_GAMEPAD_A | X_INPUT_GAMEPAD_B | X_INPUT_GAMEPAD_X | X_INPUT_GAMEPAD_Y |
++                            X_INPUT_GAMEPAD_LEFT_SHOULDER;
++
++// A strum holds the d-pad down this long, two frames at 60 FPS so the game sees
++// it, and then lets it go for at least as long before the next one, so the next
++// is a new press.
++constexpr auto kStrumHold = std::chrono::milliseconds(34);
++constexpr auto kStrumGap = std::chrono::milliseconds(20);
++
++struct State {
++  uint16_t frets = 0;
++  Clock::time_point strum_start;
++  Clock::time_point strum_end;
++  bool pending = false;  // a fret was pressed while the previous strum or its gap ran
++};
++
++std::mutex g_mutex;
++std::unordered_map<const void*, State> g_states;
++
++}  // namespace
++
++void MarkSongFrame() {
++  g_song_frame.store(Clock::now().time_since_epoch().count(), std::memory_order_relaxed);
++}
++
++bool InSong() {
++  const int64_t last = g_song_frame.load(std::memory_order_relaxed);
++  // A song's frames come at least 20 times a second; a quarter of a second
++  // without one is the menus or the pause menu.
++  return last != 0 && Clock::now().time_since_epoch().count() - last <
++                          std::chrono::duration_cast<Clock::duration>(std::chrono::milliseconds(250)).count();
++}
++
++uint16_t AutoStrum(const void* device, uint16_t buttons) {
++  if (!REXCVAR_GET(guitar_autostrum)) {
++    return buttons;
++  }
++  std::lock_guard lock(g_mutex);
++  State& s = g_states[device];
++  const uint16_t frets = buttons & kFrets;
++  const uint16_t pressed = frets & ~s.frets;
++  s.frets = frets;
++  if (!InSong()) {
++    s.pending = false;
++    s.strum_end = {};
++    return buttons;
++  }
++
++  const Clock::time_point now = Clock::now();
++  const auto chord = std::chrono::milliseconds(std::max(0, REXCVAR_GET(guitar_autostrum_chord_ms)));
++  if (pressed) {
++    if (now < s.strum_end && now - s.strum_start < chord) {
++      // Part of the chord being strummed.
++    } else {
++      s.pending = true;
++    }
++  }
++  if (s.pending && now >= s.strum_end + kStrumGap) {
++    s.pending = false;
++    s.strum_start = now;
++    s.strum_end = now + kStrumHold;
++  }
++  if (now < s.strum_end) {
++    buttons |= X_INPUT_GAMEPAD_DPAD_DOWN;
++  }
++  return buttons;
++}
++
++}  // namespace rex::input
+diff --git a/src/input/mnk/mnk_input_driver.cpp b/src/input/mnk/mnk_input_driver.cpp
+index 796042e..ac27889 100644
+--- a/src/input/mnk/mnk_input_driver.cpp
++++ b/src/input/mnk/mnk_input_driver.cpp
+@@ -11,6 +11,7 @@
+ #include <rex/input/mnk/mnk_input_driver.h>
+ 
+ #include <rex/cvar.h>
++#include <rex/input/guitar.h>
+ #include <rex/input/input.h>
+ #include <rex/logging.h>
+ #include <rex/ui/keybinds.h>
+@@ -26,6 +27,8 @@
+ // On by default: the keyboard plays as a controller next to the pads (both
+ // drive player 1, or the keyboard is player keyboard_player), so the game is
+ // playable without one.
++REXCVAR_DECLARE(bool, gamepad_as_guitar);
++
+ REXCVAR_DEFINE_BOOL(mnk_mode, true, "Input",
+                     "Keyboard play: the keyboard works as a controller (with or without a pad)");
+ REXCVAR_DEFINE_BOOL(mnk_mouse, false, "Input",
+@@ -422,8 +425,9 @@ void MnkInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+   DeviceInfo info;
+   info.id = kMnkDevice;
+   info.name = IsPassthroughEnabled() ? "Keyboard" : "Keyboard and Mouse";
+-  info.subtype =
+-      IsPassthroughEnabled() ? XINPUT_DEVSUBTYPE_USB_KEYBOARD : XINPUT_DEVSUBTYPE_GAMEPAD;
++  info.subtype = IsPassthroughEnabled()            ? XINPUT_DEVSUBTYPE_USB_KEYBOARD
++                 : REXCVAR_GET(gamepad_as_guitar) ? XINPUT_DEVSUBTYPE_GUITAR
++                                                  : XINPUT_DEVSUBTYPE_GAMEPAD;
+   info.synthetic = true;
+   info.keyboard = true;
+   const uint32_t player = REXCVAR_GET(keyboard_player);
+@@ -444,7 +448,9 @@ X_RESULT MnkInputDriver::GetDeviceCapabilities(DeviceId id, uint32_t flags,
+       return X_ERROR_SUCCESS;
+     }
+     out_caps->type = XINPUT_DEVTYPE_GAMEPAD;
+-    out_caps->sub_type = XINPUT_DEVSUBTYPE_GAMEPAD;
++    // Like a regular controller (gamepad_as_guitar, sdl_input_driver.cpp): the
++    // keyboard shares player 1 with the first controller, so both report the same.
++    out_caps->sub_type = REXCVAR_GET(gamepad_as_guitar) ? XINPUT_DEVSUBTYPE_GUITAR : XINPUT_DEVSUBTYPE_GAMEPAD;
+     out_caps->flags = 0;
+     out_caps->gamepad.buttons = 0xFFFF;
+     out_caps->gamepad.left_trigger = 0xFF;
+@@ -609,6 +615,14 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+     out_state->gamepad.thumb_ly = clamp16(ly);
+     out_state->gamepad.thumb_rx = clamp16(rx);
+     out_state->gamepad.thumb_ry = clamp16(ry);
++    if (REXCVAR_GET(gamepad_as_guitar)) {
++      // As an Xbox 360 guitar: the whammy bar is the right stick's X axis at
++      // -32768 when untouched (the right stick right key presses it all the
++      // way), and the tilt is its Y axis (right stick up).
++      out_state->gamepad.thumb_rx = static_cast<int16_t>(rx > 0 ? INT16_MAX : INT16_MIN);
++      out_state->gamepad.thumb_ry = static_cast<int16_t>(ry > 0 ? INT16_MAX : 0);
++      out_state->gamepad.buttons = rex::input::AutoStrum(this, buttons);
++    }
+   }
+   return X_ERROR_SUCCESS;
+ }
+diff --git a/src/input/sdl/sdl_input_driver.cpp b/src/input/sdl/sdl_input_driver.cpp
+index 0e4460c..a3084ef 100644
+--- a/src/input/sdl/sdl_input_driver.cpp
++++ b/src/input/sdl/sdl_input_driver.cpp
+@@ -14,6 +14,7 @@
+ #include <atomic>
+ #include <cctype>
+ #include <chrono>
++#include <cstdlib>
+ #include <filesystem>
+ #include <string>
+ #include <string_view>
+@@ -22,6 +23,7 @@
+ #include <rex/chrono/clock.h>
+ #include <rex/cvar.h>
+ #include <rex/input/flags.h>
++#include <rex/input/guitar.h>
+ #include <rex/input/sdl/sdl_input_driver.h>
+ #include <rex/logging.h>
+ #include <rex/ui/virtual_key.h>
+@@ -33,6 +35,33 @@ REXCVAR_DEFINE_BOOL(hid_generic_mapping, true, "Input",
+                     "Controllers SDL has no mapping for (some DirectInput-only and laptop "
+                     "gamepads) get a generic one (buttons 1-4 = A B X Y, the last ones = "
+                     "Back / Start, the first stick and hat = moving) instead of being ignored");
++REXCVAR_DEFINE_BOOL(gamepad_as_guitar, true, "Input",
++                    "A regular controller reports itself as a guitar (Guitar Hero and other music "
++                    "games, where a plain controller means the singer). Frets A B Y X LB, strum on "
++                    "the d-pad, whammy on the right stick, Star Power on Back, as an Xbox 360 "
++                    "guitar. Guitars, drums and other kinds of controllers are unchanged. Applies "
++                    "when the controller connects.");
++REXCVAR_DEFINE_STRING(guitar_pad_green, "A", "Input/Guitar",
++                      "Regular controller as a guitar: green fret. Buttons A B X Y LB RB LT RT BACK START UP DOWN "
++                      "LEFT RIGHT LS RS LS_UP LS_DOWN LS_LEFT LS_RIGHT RS_UP RS_DOWN RS_LEFT RS_RIGHT (PlayStation: "
++                      "CROSS CIRCLE SQUARE TRIANGLE L1 R1 L2 R2 OPTIONS CREATE); several: A|LB");
++REXCVAR_DEFINE_STRING(guitar_pad_red, "B", "Input/Guitar", "Regular controller as a guitar: red fret");
++REXCVAR_DEFINE_STRING(guitar_pad_yellow, "Y", "Input/Guitar", "Regular controller as a guitar: yellow fret");
++REXCVAR_DEFINE_STRING(guitar_pad_blue, "X", "Input/Guitar", "Regular controller as a guitar: blue fret");
++REXCVAR_DEFINE_STRING(guitar_pad_orange, "LB", "Input/Guitar", "Regular controller as a guitar: orange fret");
++REXCVAR_DEFINE_STRING(guitar_pad_strum_up, "UP|LS_UP", "Input/Guitar", "Regular controller as a guitar: strum up");
++REXCVAR_DEFINE_STRING(guitar_pad_strum_down, "DOWN|LS_DOWN", "Input/Guitar",
++                      "Regular controller as a guitar: strum down");
++REXCVAR_DEFINE_STRING(guitar_pad_left, "LEFT|LS_LEFT", "Input/Guitar", "Regular controller as a guitar: menu left");
++REXCVAR_DEFINE_STRING(guitar_pad_right, "RIGHT|LS_RIGHT", "Input/Guitar",
++                      "Regular controller as a guitar: menu right");
++REXCVAR_DEFINE_STRING(guitar_pad_start, "START", "Input/Guitar", "Regular controller as a guitar: Start");
++REXCVAR_DEFINE_STRING(guitar_pad_star_power, "BACK|RB", "Input/Guitar",
++                      "Regular controller as a guitar: Star Power");
++REXCVAR_DEFINE_STRING(guitar_pad_whammy, "RT", "Input/Guitar",
++                      "Regular controller as a guitar: the whammy bar's analog control, RT, LT or RS (right stick)");
++REXCVAR_DEFINE_STRING(guitar_pad_tilt, "", "Input/Guitar",
++                      "Regular controller as a guitar: a button that tilts the guitar up (Star Power); empty = none");
+ REXCVAR_DEFINE_BOOL(input_poll_on_read, true, "Input",
+                     "Read the controllers at the moment the game asks for their state. Off = "
+                     "the state of the last update the UI thread ran, which the game's previous "
+@@ -171,11 +200,141 @@ uint8_t SdlTypeToXInputSubType(SDL_JoystickType t, const char* name) {
+   }
+ }
+ 
++// A regular controller that plays as a guitar (gamepad_as_guitar). Real
++// guitars, drums and the rest keep their own kind and their own state.
++bool IsGamepadAsGuitar(SDL_Gamepad* gamepad) {
++  return REXCVAR_GET(gamepad_as_guitar) &&
++         SdlTypeToXInputSubType(SDL_GetJoystickType(SDL_GetGamepadJoystick(gamepad)),
++                                SDL_GetGamepadName(gamepad)) == XINPUT_DEVSUBTYPE_GAMEPAD;
++}
++
+ uint8_t GamepadSubType(SDL_Gamepad* gamepad) {
++  if (IsGamepadAsGuitar(gamepad)) {
++    return XINPUT_DEVSUBTYPE_GUITAR;
++  }
+   return SdlTypeToXInputSubType(SDL_GetJoystickType(SDL_GetGamepadJoystick(gamepad)),
+                                 SDL_GetGamepadName(gamepad));
+ }
+ 
++// What each part of the guitar is on a regular controller (guitar_pad_*). The
++// layout and the names follow Piscacho's Guitar Hero: Warriors of Rock PC port
++// (gh6.ini's mando_*, MIT License, Copyright (c) 2026 Piscacho): Xbox names, the
++// PlayStation ones as aliases, several sources joined with "|", and the
++// triggers and stick directions as sources too.
++enum : uint32_t {
++  kSrcLT = 1u << 16,
++  kSrcRT = 1u << 17,
++  kSrcLsUp = 1u << 18,
++  kSrcLsDown = 1u << 19,
++  kSrcLsLeft = 1u << 20,
++  kSrcLsRight = 1u << 21,
++  kSrcRsUp = 1u << 22,
++  kSrcRsDown = 1u << 23,
++  kSrcRsLeft = 1u << 24,
++  kSrcRsRight = 1u << 25,
++  kSrcRsAny = X_INPUT_GAMEPAD_RIGHT_THUMB | kSrcRsUp | kSrcRsDown | kSrcRsLeft | kSrcRsRight,
++};
++
++uint32_t ParseSources(std::string_view text) {
++  static constexpr struct {
++    std::string_view name;
++    uint32_t bits;
++  } kNames[] = {
++      {"UP", X_INPUT_GAMEPAD_DPAD_UP},       {"DOWN", X_INPUT_GAMEPAD_DPAD_DOWN},
++      {"LEFT", X_INPUT_GAMEPAD_DPAD_LEFT},   {"RIGHT", X_INPUT_GAMEPAD_DPAD_RIGHT},
++      {"START", X_INPUT_GAMEPAD_START},      {"BACK", X_INPUT_GAMEPAD_BACK},
++      {"LS", X_INPUT_GAMEPAD_LEFT_THUMB},    {"RS", X_INPUT_GAMEPAD_RIGHT_THUMB},
++      {"LB", X_INPUT_GAMEPAD_LEFT_SHOULDER}, {"RB", X_INPUT_GAMEPAD_RIGHT_SHOULDER},
++      {"A", X_INPUT_GAMEPAD_A},              {"B", X_INPUT_GAMEPAD_B},
++      {"X", X_INPUT_GAMEPAD_X},              {"Y", X_INPUT_GAMEPAD_Y},
++      {"LT", kSrcLT},                        {"RT", kSrcRT},
++      {"LS_UP", kSrcLsUp},                   {"LS_DOWN", kSrcLsDown},
++      {"LS_LEFT", kSrcLsLeft},               {"LS_RIGHT", kSrcLsRight},
++      {"RS_UP", kSrcRsUp},                   {"RS_DOWN", kSrcRsDown},
++      {"RS_LEFT", kSrcRsLeft},               {"RS_RIGHT", kSrcRsRight},
++      {"CROSS", X_INPUT_GAMEPAD_A},          {"CIRCLE", X_INPUT_GAMEPAD_B},
++      {"SQUARE", X_INPUT_GAMEPAD_X},         {"TRIANGLE", X_INPUT_GAMEPAD_Y},
++      {"L1", X_INPUT_GAMEPAD_LEFT_SHOULDER}, {"R1", X_INPUT_GAMEPAD_RIGHT_SHOULDER},
++      {"L2", kSrcLT},                        {"R2", kSrcRT},
++      {"OPTIONS", X_INPUT_GAMEPAD_START},    {"CREATE", X_INPUT_GAMEPAD_BACK},
++      {"SHARE", X_INPUT_GAMEPAD_BACK},
++  };
++  uint32_t bits = 0;
++  size_t pos = 0;
++  while (pos <= text.size()) {
++    size_t end = text.find_first_of("|+, ", pos);
++    if (end == std::string_view::npos) end = text.size();
++    std::string token(text.substr(pos, end - pos));
++    for (char& c : token) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
++    for (const auto& n : kNames) {
++      if (token == n.name) bits |= n.bits;
++    }
++    pos = end + 1;
++  }
++  return bits;
++}
++
++// The controller's buttons, triggers and stick directions as source bits.
++uint32_t SourceBits(const X_INPUT_GAMEPAD& pad) {
++  constexpr int16_t kDeadZone = 16000;
++  const int16_t lx = pad.thumb_lx, ly = pad.thumb_ly, rx = pad.thumb_rx, ry = pad.thumb_ry;
++  uint32_t s = uint16_t(pad.buttons);
++  if (pad.left_trigger > 100) s |= kSrcLT;
++  if (pad.right_trigger > 100) s |= kSrcRT;
++  if (ly > kDeadZone) s |= kSrcLsUp;
++  if (ly < -kDeadZone) s |= kSrcLsDown;
++  if (lx < -kDeadZone) s |= kSrcLsLeft;
++  if (lx > kDeadZone) s |= kSrcLsRight;
++  if (ry > kDeadZone) s |= kSrcRsUp;
++  if (ry < -kDeadZone) s |= kSrcRsDown;
++  if (rx < -kDeadZone) s |= kSrcRsLeft;
++  if (rx > kDeadZone) s |= kSrcRsRight;
++  return s;
++}
++
++// A regular controller's state as an Xbox 360 guitar's: frets on A B Y X LB,
++// strum on the d-pad up and down, Star Power on Back, the whammy bar on the
++// right stick's X axis (-32768 at rest) and the tilt on its Y axis.
++X_INPUT_GAMEPAD PadToGuitar(const X_INPUT_GAMEPAD& pad) {
++  const struct {
++    const std::string& sources;
++    uint16_t guitar;
++  } kMap[] = {
++      {REXCVAR_GET(guitar_pad_green), X_INPUT_GAMEPAD_A},
++      {REXCVAR_GET(guitar_pad_red), X_INPUT_GAMEPAD_B},
++      {REXCVAR_GET(guitar_pad_yellow), X_INPUT_GAMEPAD_Y},
++      {REXCVAR_GET(guitar_pad_blue), X_INPUT_GAMEPAD_X},
++      {REXCVAR_GET(guitar_pad_orange), X_INPUT_GAMEPAD_LEFT_SHOULDER},
++      {REXCVAR_GET(guitar_pad_strum_up), X_INPUT_GAMEPAD_DPAD_UP},
++      {REXCVAR_GET(guitar_pad_strum_down), X_INPUT_GAMEPAD_DPAD_DOWN},
++      {REXCVAR_GET(guitar_pad_left), X_INPUT_GAMEPAD_DPAD_LEFT},
++      {REXCVAR_GET(guitar_pad_right), X_INPUT_GAMEPAD_DPAD_RIGHT},
++      {REXCVAR_GET(guitar_pad_start), X_INPUT_GAMEPAD_START},
++      {REXCVAR_GET(guitar_pad_star_power), X_INPUT_GAMEPAD_BACK},
++  };
++  const uint32_t s = SourceBits(pad);
++  uint16_t buttons = 0;
++  for (const auto& m : kMap) {
++    if (s & ParseSources(m.sources)) buttons |= m.guitar;
++  }
++
++  const uint32_t whammy = ParseSources(REXCVAR_GET(guitar_pad_whammy));
++  int depth = 0;  // 0..255
++  if (whammy & kSrcRT) depth = std::max<int>(depth, pad.right_trigger);
++  if (whammy & kSrcLT) depth = std::max<int>(depth, pad.left_trigger);
++  if (whammy & kSrcRsAny) {
++    const int16_t rx = pad.thumb_rx, ry = pad.thumb_ry;
++    depth = std::max(depth, std::min(255, std::max(std::abs(int(rx)), std::abs(int(ry))) >> 7));
++  }
++  const uint32_t tilt = ParseSources(REXCVAR_GET(guitar_pad_tilt));
++
++  X_INPUT_GAMEPAD out{};
++  out.buttons = buttons;
++  out.thumb_rx = static_cast<int16_t>(std::clamp(-32768 + depth * 257, -32768, 32767));
++  out.thumb_ry = static_cast<int16_t>((tilt && (s & tilt)) ? 32767 : 0);
++  return out;
++}
++
+ }  // namespace
+ 
+ SDLInputDriver::SDLInputDriver(rex::ui::Window* window, size_t window_z_order)
+@@ -394,6 +553,10 @@ X_RESULT SDLInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+     controller->state_changed = false;
+   }
+   std::memcpy(out_state, &controller->state, sizeof(*out_state));
++  if (is_active && IsGamepadAsGuitar(controller->sdl)) {
++    out_state->gamepad = PadToGuitar(controller->state.gamepad);
++    out_state->gamepad.buttons = rex::input::AutoStrum(controller->sdl, out_state->gamepad.buttons);
++  }
+   if (!is_active) {
+     // Simulate an "untouched" controller. When we become active again the
+     // pressed buttons aren't lost and will be visible again.
+diff --git a/src/rexglue/CMakeLists.txt b/src/rexglue/CMakeLists.txt
+index 5de4b70..cdb9b9f 100644
+--- a/src/rexglue/CMakeLists.txt
++++ b/src/rexglue/CMakeLists.txt
+@@ -11,6 +11,7 @@ add_executable(rexglue
+ )
+ 
+ rex_config_postfix(rexglue)
++rexglue_add_version_resource(rexglue DESCRIPTION "ReXGlue recompiler")
+ 
+ target_include_directories(rexglue
+     PRIVATE
+diff --git a/src/system/CMakeLists.txt b/src/system/CMakeLists.txt
+index 0c720f3..f205379 100644
+--- a/src/system/CMakeLists.txt
++++ b/src/system/CMakeLists.txt
+@@ -59,6 +59,7 @@ add_library(rex::system ALIAS rexruntime)
+ add_library(rex::kernel ALIAS rexruntime)
+ 
+ set_target_properties(rexruntime PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
++rexglue_add_version_resource(rexruntime DESCRIPTION "ReXGlue runtime")
+ 
+ rex_target_pch(rexruntime
+     <mutex>
+@@ -76,6 +77,8 @@ rex_target_pch(rexruntime
+ target_include_directories(rexruntime PUBLIC
+     $<BUILD_INTERFACE:${REXGLUE_ROOT}/include>
+     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
++    $<BUILD_INTERFACE:${REXGLUE_ROOT}/thirdparty/imgui>
++    $<BUILD_INTERFACE:${REXGLUE_ROOT}/thirdparty/xxHash>
+     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+ )
+ target_include_directories(rexruntime PRIVATE
+diff --git a/src/system/xex_module.cpp b/src/system/xex_module.cpp
+index 0726516..46d1d71 100644
+--- a/src/system/xex_module.cpp
++++ b/src/system/xex_module.cpp
+@@ -32,6 +32,10 @@
+ #include <rex/system/xmodule.h>
+ #include <rex/types.h>
+ 
++REXCVAR_DEFINE_BOOL(writable_code_segments, false, "Memory",
++                    "Enables a program to write to its own code segments in memory")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
++
+ static const uint8_t xe_xex2_retail_key[16] = {0x20, 0xB1, 0x85, 0xA5, 0x9D, 0x28, 0xFD, 0xC3,
+                                                0x40, 0x58, 0x3F, 0xBB, 0x08, 0x96, 0xBF, 0x91};
+ static const uint8_t xe_xex2_devkit_key[16] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+@@ -1022,7 +1026,10 @@ bool XexModule::LoadContinue() {
+     switch (desc.info) {
+       case XEX_SECTION_CODE:
+       case XEX_SECTION_READONLY_DATA:
+-        heap->Protect(address, size, memory::kMemoryProtectRead);
++        heap->Protect(address, size,
++                      REXCVAR_GET(writable_code_segments)
++                          ? memory::kMemoryProtectRead | memory::kMemoryProtectWrite
++                          : memory::kMemoryProtectRead);
+         break;
+       case XEX_SECTION_DATA:
+         heap->Protect(address, size, memory::kMemoryProtectRead | memory::kMemoryProtectWrite);

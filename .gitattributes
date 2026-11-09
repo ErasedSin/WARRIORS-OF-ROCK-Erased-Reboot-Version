@@ -1,0 +1,2 @@
+# The SDK patch must keep its line endings for git apply.
+*.patch -text

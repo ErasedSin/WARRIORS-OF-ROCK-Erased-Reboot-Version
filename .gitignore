@@ -39,3 +39,13 @@ crashdumps/
 .sisyphus/
 opencode.json
 oh-my-opencode.json
+
+# Launcher output
+mods/
+CLAUDE.local.md
+
+# Third-party font: license not confirmed for redistribution yet
+launcher/fonts/
+
+# Local paths
+game_assets_path.txt
