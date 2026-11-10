@@ -215,6 +215,7 @@ namespace ReWor
 
         public void Set(string key, bool v) { SetRaw(key, v ? "true" : "false"); }
         public void Set(string key, int v) { SetRaw(key, v.ToString()); }
+        public void SetNumber(string key, string v) { SetRaw(key, v); }
         public void Set(string key, string v) { SetRaw(key, "\"" + v + "\""); }
 
         public void Remove(string key)
@@ -251,6 +252,14 @@ namespace ReWor
                 "Este projeto não inclui nenhum arquivo do jogo e o autor não distribui o jogo. Use apenas a sua própria cópia de Guitar Hero: Warriors of Rock para Xbox 360. Diga não à pirataria.",
                 "This project includes no game files and its author does not distribute the game. Use only your own copy of Guitar Hero: Warriors of Rock for Xbox 360. Say no to piracy." } },
             { "tab_home", new[] { "INÍCIO", "HOME" } },
+            { "fps_label", new[] { "Taxa de quadros (acima de 60 precisa de um PC forte e de um monitor rápido)", "Frame rate (above 60 needs a strong PC and a fast display)" } },
+            { "fps_60", new[] { "60 FPS (como no console)", "60 FPS (as on the console)" } },
+            { "gpu_label", new[] { "API gráfica (vale ao abrir o jogo)", "Graphics API (applies when the game starts)" } },
+            { "gpu_any", new[] { "Automática (DirectX 12)", "Automatic (DirectX 12)" } },
+            { "win_minimize", new[] { "Minimizar", "Minimize" } },
+            { "win_mode_window", new[] { "Abrir em janela (F11)", "Window mode (F11)" } },
+            { "win_mode_full", new[] { "Tela cheia (F11)", "Fullscreen (F11)" } },
+            { "win_close", new[] { "Fechar", "Close" } },
             { "home_no_name", new[] { "Jogador", "Player" } },
             { "home_folder_ok", new[] { "Jogo encontrado", "Game found" } },
             { "home_folder_missing", new[] { "Falta escolher a pasta do jogo, na página JOGO.", "Choose the game folder first, on the GAME page." } },
@@ -334,6 +343,8 @@ namespace ReWor
             { "update_installed", new[] { "Versão instalada: v{0}", "Installed version: v{0}" } },
             { "update_idle", new[] { "Clique em VERIFICAR para procurar uma versão nova no GitHub.", "Click CHECK to look for a new version on GitHub." } },
             { "update_check", new[] { "VERIFICAR", "CHECK" } },
+            { "update_ask_title", new[] { "Atualização disponível", "Update available" } },
+            { "update_ask", new[] { "Saiu a versão {0} (você tem a {1}).\n\nBaixar e instalar agora? O launcher fecha e abre de novo sozinho; suas configurações ficam.", "Version {0} is out (you have {1}).\n\nDownload and install it now? The launcher closes and opens again by itself; your settings stay." } },
             { "update_install", new[] { "BAIXAR E INSTALAR", "DOWNLOAD AND INSTALL" } },
             { "update_page", new[] { "Abrir no GitHub", "Open on GitHub" } },
             { "update_checking", new[] { "Procurando...", "Checking..." } },
@@ -764,7 +775,7 @@ namespace ReWor
         readonly Settings settings;
         readonly FontFamily titleFamily = TitleFont.Load();
 
-        ComboBox resolution, drawScale, presentEffect, anisotropy, language;
+        ComboBox resolution, drawScale, presentEffect, anisotropy, language, gpuApi, frameRate;
         CheckBox fullscreen, vsync, gamma16, motionBlur, screenNoise, depthOfField, bloom, showFps, debugMenu, skipIntro;
 
         // keybind cvar (the keyboard's pad button it presses), label key, then the A S J K L and 1 2 3 4 5 presets.
@@ -824,7 +835,7 @@ namespace ReWor
         const int VideoPage = 2;
         const int MicPage = 6;
         const int OnlinePage = 7;
-        const string AppVersion = "1.1";
+        const string AppVersion = "1.2";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
         const bool OnlineTab = true;
@@ -870,11 +881,20 @@ namespace ReWor
             Strings.English = LoadLanguage();
 
             Text = "Erased Reboot Version - re-wor";
-            FormBorderStyle = FormBorderStyle.FixedSingle;
-            MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(W, H);
-            BackColor = Bg;
+            BackColor = Color.Black;
+            host = new Canvas { Size = new Size(W, H), BackColor = Bg };
+            Controls.Add(host);
+            BuildWindowButtons();
+            Paint += PaintBackdrop;
+            Resize += delegate { PlaceHost(); };
+            KeyPreview = true;
+            KeyDown += delegate(object s, KeyEventArgs e)
+            {
+                if (e.KeyCode == Keys.F11) { SetFullscreen(!fullscreenWindow); e.Handled = true; }
+            };
+            SetFullscreen(LoadWindowMode());
             ForeColor = Text1;
             Font = new Font("Segoe UI", 9.5f);
             DoubleBuffered = true;
@@ -886,7 +906,12 @@ namespace ReWor
             BuildUi();
             LoadSettings();
             ShowPage(IsGameFolder(gameFolder) ? HomePage : GamePage);
-            Shown += delegate { if (!IsGameFolder(gameFolder)) ChooseGameFolder(); };
+            Shown += delegate
+            {
+                if (!IsGameFolder(gameFolder)) ChooseGameFolder();
+                autoUpdateCheck = true;
+                CheckForUpdate();
+            };
             FormClosed += delegate { if (meter != null) { meter.Dispose(); meter = null; } };
             PlayIntro();
         }
@@ -915,8 +940,8 @@ namespace ReWor
             int page = currentPage;
             SuspendLayout();
             var old = new List<Control>();
-            foreach (Control c in Controls) old.Add(c);
-            Controls.Clear();
+            foreach (Control c in host.Controls) old.Add(c);
+            host.Controls.Clear();
             foreach (Control c in old) c.Dispose();
             navButtons.Clear();
             pages.Clear();
@@ -929,9 +954,126 @@ namespace ReWor
         Label pageTitle;
         string[] pageNames;
 
+        // The launcher's pages keep their 1000 x 620 layout in "host", centered in
+        // the window: fullscreen by default (F11 or the button at the top right
+        // switches), remembered in launcher_window.txt.
+        Canvas host;
+        bool fullscreenWindow;
+        Button windowModeButton;
+        readonly ToolTip windowTips = new ToolTip();
+        const string WindowFile = "launcher_window.txt";
+
+        bool LoadWindowMode()
+        {
+            try { return File.ReadAllText(Path.Combine(gameDir, WindowFile)).Trim() != "window"; }
+            catch (Exception) { return true; }
+        }
+
+        void SetFullscreen(bool full)
+        {
+            fullscreenWindow = full;
+            SuspendLayout();
+            if (full)
+            {
+                FormBorderStyle = FormBorderStyle.None;
+                MaximizeBox = false;
+                WindowState = FormWindowState.Normal;
+                Bounds = Screen.FromControl(this).Bounds;
+            }
+            else
+            {
+                FormBorderStyle = FormBorderStyle.FixedSingle;
+                MaximizeBox = false;
+                WindowState = FormWindowState.Normal;
+                ClientSize = new Size(W, H);
+                Rectangle area = Screen.FromControl(this).WorkingArea;
+                Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
+            }
+            ResumeLayout();
+            PlaceHost();
+            if (windowModeButton != null)
+            {
+                windowModeButton.Text = full ? "\u2750" : "\u2610";
+                windowTips.SetToolTip(windowModeButton, Strings.T(full ? "win_mode_window" : "win_mode_full"));
+            }
+            foreach (Control c in Controls)
+                if (c.Tag as string == "window") c.Visible = full;
+            try { File.WriteAllText(Path.Combine(gameDir, WindowFile), full ? "fullscreen" : "window"); } catch (Exception) { }
+            Invalidate();
+        }
+
+        void PlaceHost()
+        {
+            if (host == null) return;
+            host.Location = new Point(Math.Max(0, (ClientSize.Width - W) / 2), Math.Max(0, (ClientSize.Height - H) / 2));
+            int x = ClientSize.Width - 8;
+            foreach (Control c in Controls)
+            {
+                if (c.Tag as string != "window") continue;
+                x -= c.Width;
+                c.Location = new Point(x, 8);
+                c.BringToFront();
+            }
+            Invalidate();
+        }
+
+        // Minimize, window mode and close, at the window's top right.
+        void BuildWindowButtons()
+        {
+            var specs = new[]
+            {
+                new[] { "\u2715", "win_close" },
+                new[] { "\u2750", "win_mode_window" },
+                new[] { "\u2014", "win_minimize" },
+            };
+            foreach (string[] spec in specs)
+            {
+                var b = new Button
+                {
+                    Text = spec[0], Size = new Size(46, 34), FlatStyle = FlatStyle.Flat, BackColor = Color.Black,
+                    ForeColor = Text2, Font = new Font("Segoe UI Symbol", 11f), Tag = "window", TabStop = false,
+                    Cursor = Cursors.Hand
+                };
+                b.FlatAppearance.BorderSize = 0;
+                b.FlatAppearance.MouseOverBackColor = spec[1] == "win_close" ? Red : Color.FromArgb(40, 40, 40);
+                windowTips.SetToolTip(b, Strings.T(spec[1]));
+                if (spec[1] == "win_close") b.Click += delegate { Close(); };
+                else if (spec[1] == "win_minimize") b.Click += delegate { WindowState = FormWindowState.Minimized; };
+                else { b.Click += delegate { SetFullscreen(!fullscreenWindow); }; windowModeButton = b; }
+                Controls.Add(b);
+            }
+        }
+
+        // Around the pages in fullscreen: black, a red glow from below, thin
+        // diagonal stripes and a red frame round the panel.
+        void PaintBackdrop(object sender, PaintEventArgs e)
+        {
+            if (!fullscreenWindow || host == null) return;
+            var g = e.Graphics;
+            Rectangle all = ClientRectangle;
+            if (all.Width <= 0 || all.Height <= 0) return;
+            using (var glow = new System.Drawing.Drawing2D.LinearGradientBrush(
+                all, Color.FromArgb(0, 0, 0), Color.FromArgb(70, 120, 0, 18), 90f))
+                g.FillRectangle(glow, all);
+            using (var stripe = new Pen(Color.FromArgb(22, 200, 16, 46), 2f))
+                for (int x = -all.Height; x < all.Width; x += 22)
+                    g.DrawLine(stripe, x, all.Height, x + all.Height, 0);
+            Rectangle frame = host.Bounds;
+            frame.Inflate(1, 1);
+            using (var pen = new Pen(RedDark, 2f)) g.DrawRectangle(pen, frame);
+            if (all.Height - host.Bottom > 60)
+            {
+                Rectangle below = new Rectangle(0, host.Bottom + 12, all.Width, all.Height - host.Bottom - 12);
+                using (var brush = new SolidBrush(Color.FromArgb(70, 255, 255, 255)))
+                using (var font = new Font(titleFamily, 14f, FontStyle.Regular, GraphicsUnit.Point))
+                using (var format = new StringFormat { Alignment = StringAlignment.Center })
+                    g.DrawString(Title1 + " " + Title2, font, brush, below, format);
+            }
+        }
+
         void BuildUi()
         {
-            Controls.Add(BuildSidebar());
+            host.Controls.Add(BuildSidebar());
 
             pageTitle = new Label
             {
@@ -939,10 +1081,10 @@ namespace ReWor
                 BackColor = Bg, Font = new Font(titleFamily, 22f, FontStyle.Regular, GraphicsUnit.Point),
                 UseCompatibleTextRendering = true
             };
-            Controls.Add(pageTitle);
-            Controls.Add(MakeLanguageButton("PT", W - 30 - 82, false));
-            Controls.Add(MakeLanguageButton("EN", W - 30 - 40, true));
-            Controls.Add(BuildSeal());
+            host.Controls.Add(pageTitle);
+            host.Controls.Add(MakeLanguageButton("PT", W - 30 - 82, false));
+            host.Controls.Add(MakeLanguageButton("EN", W - 30 - 40, true));
+            host.Controls.Add(BuildSeal());
 
             pageNames = PageNames();
             var onlinePage = BuildOnlineTab();
@@ -955,24 +1097,24 @@ namespace ReWor
                 built[i].Location = new Point(ContentX, 142);
                 built[i].Size = new Size(PageW, 384);
                 pages.Add(built[i]);
-                Controls.Add(built[i]);
+                host.Controls.Add(built[i]);
             }
 
             ShowProfilePicture();
 
             status = new Label { Location = new Point(ContentX, 548), Size = new Size(PageW - 300, 40), ForeColor = Text2, TextAlign = ContentAlignment.MiddleLeft };
-            Controls.Add(status);
+            host.Controls.Add(status);
 
             var save = MakeButton(Strings.T("save"), new Point(W - 30 - 160 - 12 - 120, 544), false);
             save.Size = new Size(120, 48);
             save.Click += delegate { if (Apply()) status.Text = Strings.T("saved"); };
-            Controls.Add(save);
+            host.Controls.Add(save);
 
             var play = MakeButton(Strings.T("play"), new Point(W - 30 - 160, 544), true);
             play.Size = new Size(160, 48);
             play.Font = new Font("Segoe UI", 13f, FontStyle.Bold);
             play.Click += delegate { if (Apply()) Launch(); };
-            Controls.Add(play);
+            host.Controls.Add(play);
             AcceptButton = play;
             bottomPlay = play;
             bottomSave = save;
@@ -1289,6 +1431,18 @@ namespace ReWor
                 new Choice(Strings.T("present_bilinear"), "bilinear"),
                 new Choice(Strings.T("present_cas"), "cas"),
                 new Choice(Strings.T("present_fsr"), "fsr"));
+            y += 60;
+
+            // The emulated vertical blank's rate: the game presents one frame per
+            // vertical blank, and src/framerate.cpp keeps what it counts in frames
+            // at the console's 60 a second.
+            AddLabel(page, Strings.T("fps_label"), y);
+            frameRate = AddCombo(page, y + 20,
+                new Choice(Strings.T("fps_60"), "60"),
+                new Choice("120 FPS", "120"),
+                new Choice("144 FPS", "144"),
+                new Choice("165 FPS", "165"),
+                new Choice("240 FPS", "240"));
             y += 60;
 
             fullscreen = AddCheck(page, Strings.T("fullscreen"), y); y += 28;
@@ -1862,6 +2016,10 @@ namespace ReWor
             return web;
         }
 
+        // At every start, quietly: a new version asks whether to install it, and
+        // anything else (no internet, already up to date) says nothing.
+        bool autoUpdateCheck;
+
         void CheckForUpdate()
         {
             updateStatus.Text = Strings.T("update_checking");
@@ -1872,9 +2030,11 @@ namespace ReWor
             {
                 web.Dispose();
                 if (IsDisposed) return;
+                bool automatic = autoUpdateCheck;
+                autoUpdateCheck = false;
                 if (e.Error != null)
                 {
-                    updateStatus.Text = Strings.T("update_failed");
+                    updateStatus.Text = automatic ? Strings.T("update_idle") : Strings.T("update_failed");
                     return;
                 }
                 string json = e.Result;
@@ -1889,6 +2049,13 @@ namespace ReWor
                     updateStatus.Text = string.Format(Strings.T("update_available"), tag);
                     updateStatus.ForeColor = RedBright;
                     updateButton.Enabled = true;
+                    if (automatic)
+                    {
+                        var answer = MessageBox.Show(this, string.Format(Strings.T("update_ask"), tag, "v" + AppVersion),
+                            Strings.T("update_ask_title"), MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                        ShowPage(pages.Count - 1);
+                        if (answer == DialogResult.Yes) InstallUpdate();
+                    }
                 }
                 else updateStatus.Text = newer ? Strings.T("update_no_zip") : Strings.T("update_current");
             };
@@ -1962,7 +2129,7 @@ namespace ReWor
             sb.AppendLine("$exe = " + q(Application.ExecutablePath));
             sb.AppendLine("Wait-Process -Id " + Process.GetCurrentProcess().Id + " -ErrorAction SilentlyContinue");
             sb.AppendLine("Start-Sleep -Seconds 1");
-            sb.AppendLine("$keep = 're_wor.toml', 'game_folder.txt', 'launcher_language.txt'");
+            sb.AppendLine("$keep = 're_wor.toml', 'game_folder.txt', 'launcher_language.txt', 'launcher_window.txt', 'profile_picture.png', 'profile_picture.bin'");
             sb.AppendLine("$gameSrc = Join-Path $src 'game'");
             sb.AppendLine("if (Test-Path -LiteralPath $gameSrc) {");
             sb.AppendLine("  Get-ChildItem -LiteralPath $gameSrc -Recurse -File | Where-Object { $keep -notcontains $_.Name } | ForEach-Object {");
@@ -2233,7 +2400,7 @@ namespace ReWor
         {
             if (introShown) return;
             introShown = true;
-            var intro = new Canvas { Location = new Point(0, 0), Size = ClientSize, BackColor = Color.Black };
+            var intro = new Canvas { Dock = DockStyle.Fill, BackColor = Color.Black };
             var timer = new Timer { Interval = 16 };
             DateTime started = DateTime.MinValue;
             bool ended = false;
@@ -2349,6 +2516,15 @@ namespace ReWor
                 new Choice(Strings.T("aniso_4x"), "3"),
                 new Choice("8x", "4"),
                 new Choice("16x", "5"));
+            y += 60;
+
+            // The SDK's gpu: Direct3D 12 (the mature one) or Vulkan. A backend
+            // that does not start falls back to the other one.
+            AddLabel(page, Strings.T("gpu_label"), y);
+            gpuApi = AddCombo(page, y + 20,
+                new Choice(Strings.T("gpu_any"), "any"),
+                new Choice("DirectX 12", "d3d12"),
+                new Choice("Vulkan", "vulkan"));
             y += 60;
 
             gamma16 = AddCheck(page, Strings.T("gamma16"), y); y += 36;
@@ -2505,7 +2681,17 @@ namespace ReWor
             SelectChoice(language, settings.GetInt("user_language", 1).ToString());
             fullscreen.Checked = settings.GetBool("fullscreen", true);
             vsync.Checked = settings.GetBool("present_vsync", false);
+            {
+                double hz;
+                string rate = settings.Get("video_mode_refresh_rate", "60");
+                if (!double.TryParse(rate, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out hz)) hz = 60;
+                SelectChoice(frameRate, ((int)Math.Round(hz)).ToString());
+                if (frameRate.SelectedItem == null) frameRate.SelectedIndex = 0;
+            }
             gamma16.Checked = settings.GetBool("gamma_render_target_as_unorm16", true);
+            SelectChoice(gpuApi, settings.Get("gpu", "any"));
+            if (gpuApi.SelectedItem == null) gpuApi.SelectedIndex = 0;
             motionBlur.Checked = settings.GetBool(CvarPrefix + "motion_blur", true);
             screenNoise.Checked = settings.GetBool(CvarPrefix + "screen_noise", true);
             depthOfField.Checked = settings.GetBool(CvarPrefix + "dof", true);
@@ -2577,7 +2763,9 @@ namespace ReWor
             // the game to the display and dropped it to about 50 when a frame was late.
             settings.Set("vsync", true);
             settings.Set("present_vsync", vsync.Checked);
+            settings.SetNumber("video_mode_refresh_rate", Value(frameRate) + ".0");
             settings.Set("gamma_render_target_as_unorm16", gamma16.Checked);
+            settings.Set("gpu", Value(gpuApi));
             settings.Set(CvarPrefix + "motion_blur", motionBlur.Checked);
             settings.Set(CvarPrefix + "screen_noise", screenNoise.Checked);
             settings.Set(CvarPrefix + "dof", depthOfField.Checked);
@@ -2634,6 +2822,11 @@ namespace ReWor
             if (settings.Get("log_level", "") == "") settings.Set("log_level", "error");
             // The strongest graphics card, not the integrated one on a laptop with two.
             if (settings.Get("d3d12_adapter", "") == "") settings.Set("d3d12_adapter", -1);
+            // Less CPU: a thread watches a held lock for 20 microseconds before it
+            // sleeps, instead of sleeping and waking at once; and the audio worker
+            // in Windows' Pro Audio class, so a busy CPU holds the sound up less.
+            if (settings.Get("critical_section_spin_us", "") == "") settings.Set("critical_section_spin_us", 20);
+            if (settings.Get("audio_thread_priority", "") == "") settings.Set("audio_thread_priority", true);
         }
 
         bool Apply()

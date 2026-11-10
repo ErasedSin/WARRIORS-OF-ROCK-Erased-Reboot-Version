@@ -527,6 +527,59 @@ index 934d8cb..88089ed 100644
    std::string name_;
    std::atomic<uint32_t> signed_in_user_{0};
    std::vector<std::unique_ptr<Setting>> setting_list_;
+diff --git a/src/audio/audio_system.cpp b/src/audio/audio_system.cpp
+index 7a711a8..d859274 100644
+--- a/src/audio/audio_system.cpp
++++ b/src/audio/audio_system.cpp
+@@ -24,6 +24,20 @@
+ #include <rex/thread.h>
+ #include <rex/cvar.h>
+ 
++#ifdef _WIN32
++#ifndef NOMINMAX
++#define NOMINMAX
++#endif
++#ifndef WIN32_LEAN_AND_MEAN
++#define WIN32_LEAN_AND_MEAN
++#endif
++#include <windows.h>
++#endif
++
++REXCVAR_DEFINE_BOOL(audio_thread_priority, false, "Audio",
++                    "Run the audio worker (which calls the game's sound callback) in Windows' "
++                    "\"Pro Audio\" multimedia class, so a busy PC holds it up less");
++
+ REXCVAR_DEFINE_INT32(
+     audio_maxqframes, 8, "Audio",
+     "Max buffered audio frames (range 4-64). Lower reduces latency but may cause stuttering.");
+@@ -96,7 +110,27 @@ X_STATUS AudioSystem::Setup(system::KernelState* kernel_state) {
+   return X_STATUS_SUCCESS;
+ }
+ 
++namespace {
++// AvSetMmThreadCharacteristicsW from avrt.dll, loaded when asked for.
++void RaiseAudioThreadPriority() {
++#ifdef _WIN32
++  if (!REXCVAR_GET(audio_thread_priority)) return;
++  HMODULE avrt = LoadLibraryW(L"avrt.dll");
++  if (!avrt) return;
++  using SetMm = HANDLE(WINAPI*)(LPCWSTR, LPDWORD);
++  auto set_mm = reinterpret_cast<SetMm>(GetProcAddress(avrt, "AvSetMmThreadCharacteristicsW"));
++  DWORD task = 0;
++  if (set_mm && set_mm(L"Pro Audio", &task)) {
++    REXAPU_INFO("Audio worker in the Pro Audio class");
++  } else {
++    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
++  }
++#endif
++}
++}  // namespace
++
+ void AudioSystem::WorkerThreadMain() {
++  RaiseAudioThreadPriority();
+   // Initialize driver and ringbuffer.
+   Initialize();
+ 
 diff --git a/src/audio/xma_context.cpp b/src/audio/xma_context.cpp
 index 11b83be..1178b52 100644
 --- a/src/audio/xma_context.cpp
@@ -2622,6 +2675,59 @@ index 631af33..580b7d6 100644
    // Games seem to sit and loop until we trigger this notification:
    // XN_SYS_UI (off)
    REX_KERNEL_STATE()->BroadcastNotification(0x00000009, 0);
+diff --git a/src/kernel/xboxkrnl/xboxkrnl_rtl.cpp b/src/kernel/xboxkrnl/xboxkrnl_rtl.cpp
+index 8b862fc..d3e2ed1 100644
+--- a/src/kernel/xboxkrnl/xboxkrnl_rtl.cpp
++++ b/src/kernel/xboxkrnl/xboxkrnl_rtl.cpp
+@@ -13,8 +13,24 @@
+ #pragma GCC diagnostic ignored "-Wunused-parameter"
+ 
+ #include <algorithm>
++#include <chrono>
+ #include <string>
+ 
++#if defined(_M_X64) || defined(__x86_64__)
++#include <immintrin.h>
++#endif
++
++#include <rex/cvar.h>
++
++// Guest locks are held for very short times, and a host thread that goes to
++// sleep on one costs far more (a kernel wait and a wake-up) than watching it
++// for a few microseconds: in songs the main thread and the job workers took
++// the same locks by turns and slept and woke each other tens of thousands of
++// times a second. 0 = only the spin count the title asked for.
++REXCVAR_DEFINE_INT32(critical_section_spin_us, 0, "Kernel",
++                     "Microseconds a thread watches a held critical section before it sleeps "
++                     "(0 = only the title's own spin count)");
++
+ #include <rex/chrono/chrono_steady_cast.h>
+ #include <rex/kernel/xboxkrnl/private.h>
+ #include <rex/kernel/xboxkrnl/rtl.h>
+@@ -397,6 +413,23 @@ void RtlEnterCriticalSection_entry(ppc_ptr_t<X_RTL_CRITICAL_SECTION> cs) {
+     }
+   }
+ 
++  const int32_t watch_us = REXCVAR_GET(critical_section_spin_us);
++  if (watch_us > 0) {
++    const auto until = std::chrono::steady_clock::now() + std::chrono::microseconds(watch_us);
++    do {
++      for (int i = 0; i < 32; ++i) {
++        if (cs->lock_count == -1 && rex::thread::atomic_cas(-1, 0, &cs->lock_count)) {
++          cs->owning_thread = cur_thread;
++          cs->recursion_count = 1;
++          return;
++        }
++#if defined(_M_X64) || defined(__x86_64__)
++        _mm_pause();
++#endif
++      }
++    } while (std::chrono::steady_clock::now() < until);
++  }
++
+   if (rex::thread::atomic_inc(&cs->lock_count) != 0) {
+     // Create a full waiter.
+     xeKeWaitForSingleObject(reinterpret_cast<void*>(cs.host_address()), 8, 0, 0, nullptr);
 diff --git a/src/rexglue/CMakeLists.txt b/src/rexglue/CMakeLists.txt
 index 5de4b70..cdb9b9f 100644
 --- a/src/rexglue/CMakeLists.txt
@@ -2803,3 +2909,31 @@ index 0726516..46d1d71 100644
          break;
        case XEX_SECTION_DATA:
          heap->Protect(address, size, memory::kMemoryProtectRead | memory::kMemoryProtectWrite);
+diff --git a/src/ui/rex_app.cpp b/src/ui/rex_app.cpp
+index 077827e..f473aad 100644
+--- a/src/ui/rex_app.cpp
++++ b/src/ui/rex_app.cpp
+@@ -79,6 +79,9 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+ }
+ #endif
+ 
++REXCVAR_DEFINE_STRING(gpu, "any", "GPU",
++                      "Graphics API the GPU plugin draws with: any (Direct3D 12 where it is built "
++                      "in, else Vulkan), d3d12 or vulkan");
+ REXCVAR_DEFINE_STRING(gpu_plugin, "", "GPU",
+                       "GPU emulation plugin to load at startup (e.g. 'xenos'); empty disables "
+                       "GPU emulation")
+@@ -932,7 +935,12 @@ bool ReXApp::SetupPresentation() {
+   OnPreSetup(config_);
+ 
+   if (!config_.graphics && !config_.gpu_plugin.empty()) {
+-    config_.graphics = rex::system::LoadGpuPlugin(config_.gpu_plugin);
++    config_.graphics = rex::system::LoadGpuPlugin(config_.gpu_plugin, REXCVAR_GET(gpu));
++    if (!config_.graphics && REXCVAR_GET(gpu) != "any") {
++      // The API asked for is not built in or does not start: the other one.
++      REXLOG_WARN("GPU backend '{}' failed; trying any other", REXCVAR_GET(gpu));
++      config_.graphics = rex::system::LoadGpuPlugin(config_.gpu_plugin, "any");
++    }
+     if (!config_.graphics) {
+       // Fatal by design: no silent headless fallback.
+       auto msg =

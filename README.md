@@ -17,7 +17,21 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 
 ## What's new
 
-Compared with re-wor, this version adds:
+**In 1.2:**
+
+- 🚀 **Above 60 FPS:** 120, 144, 165 or 240 FPS (VIDEO tab). Whatever the game counts in frames (script waits, the
+  whammy, button presses, the loading screen) keeps the console's speed, so the notes and the music don't speed up.
+- 🎨 **Vulkan** besides DirectX 12 (GRAPHICS tab); a backend that doesn't start falls back to the other.
+- 🧵 **Less CPU and steadier sound:** threads briefly watch a held lock before they sleep, and the audio runs in
+  Windows' "Pro Audio" class.
+- 👥 **A profile for each player:** players 2 to 4 get their own name and their own saves.
+- 🚪 **Quit from the main menu:** press B and confirm.
+- 🌐 **Online play (experimental):** reaches the matchmaking over LAN or a VPN.
+- 🎼 **The music stays in time:** the game's clock ran 0.25 % fast, so the notes slowly got ahead of the song.
+- ⏭️ Skip the opening video, and a profile picture chosen in the launcher.
+- 🔥 **A new launcher home page**, fullscreen (F11 for a window), that checks for updates by itself when it opens.
+
+**Compared with re-wor**, this version adds:
 
 - 🎵 **Every track of the songs:** vocals, bass and drums play with the guitar (XMA frames that span two packets are
   put back together; the fix comes from TFujiwara's SDK fork).
@@ -60,7 +74,7 @@ Windows, with Visual Studio 2022 Build Tools (C++), LLVM/Clang, CMake and Ninja.
    cd rexglue-sdk-erased
    git checkout 3c41e4b
    git apply ..\re-wor\sdk\erased-reboot-sdk.patch
-   cmake --preset win-amd64
+   cmake --preset win-amd64 -DREXGLUE_USE_VULKAN=ON
    cmake --build out/build/win-amd64 --config Release
    cmake --install out/build/win-amd64 --config Release
    ```
@@ -123,7 +137,12 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
 
-**Novidades:** áudio completo (vocal, baixo e bateria), resolução interna abaixo de 720p, 60 FPS estáveis sem V-Sync,
+**Novidades da 1.2:** mais de 60 FPS (120, 144, 165 ou 240, sem acelerar as notas), Vulkan além do DirectX 12, menos
+uso de CPU e áudio mais estável, um perfil para cada jogador, sair do jogo pelo menu principal (B), online
+experimental, música sempre no tempo, pular o vídeo de abertura e um launcher novo em tela cheia que procura
+atualizações sozinho.
+
+**Desde a primeira versão:** áudio completo (vocal, baixo e bateria), resolução interna abaixo de 720p, 60 FPS estáveis sem V-Sync,
 controle comum e teclado como guitarra (botões configuráveis), DLC e músicas customizadas do Onyx (pasta `dlc`), menos
 uso de CPU, opções dentro do jogo (F5) e um launcher novo em português e inglês.
 

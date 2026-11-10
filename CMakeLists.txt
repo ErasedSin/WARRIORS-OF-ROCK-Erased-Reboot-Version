@@ -47,6 +47,7 @@ set(REWOR_SOURCES
     src/timer.cpp
     src/intro.cpp
     src/quit_prompt.cpp
+    src/framerate.cpp
     src/profile_picture.cpp
 )
 

@@ -120,3 +120,92 @@ jump_address_on_true = 0x8251DEA0   # li r3,0 and the function's return
 [[midasm_hook]]
 address = 0x8242C510   # stfd f0,-19760(r7) (sub_8242C450), before the frame wait
 name = "ReWorMainMenuHook"
+
+# Frame rates above 60 (src/framerate.cpp, rewor_frame_rate_fix): what the
+# game counts in frames keeps the console's 60 per second.
+[[midasm_hook]]
+address = 0x8242C57C   # addi r1,r1,128 (sub_8242C450: the end of the main thread's frame)
+name = "ReWorFrameEndHook"
+[[midasm_hook]]
+address = 0x82629360   # extsw r8,r30 (sub_826291F8: r30 = vblanks per second)
+name = "ReWorVblankClockHook"
+registers = ["r30"]
+[[midasm_hook]]
+address = 0x82629588   # extsw r11,r30 (sub_826291F8: r30 = vblanks per second)
+name = "ReWorVblankClockHook"
+registers = ["r30"]
+[[midasm_hook]]
+address = 0x8256B2A0   # entry of sub_8256B2A0: a wait of r4 game frames set, r3 = the wait
+name = "ReWorScriptWaitSetHook"
+registers = ["r3", "r4"]
+[[midasm_hook]]
+address = 0x8256B250   # entry of sub_8256B250: the same, another wait type
+name = "ReWorScriptWaitSetHook"
+registers = ["r3", "r4"]
+[[midasm_hook]]
+address = 0x8256B5E4   # addi r11,r11,-1 (sub_8256B5A0: a game-frame wait's count)
+name = "ReWorScriptWaitCountHook"
+registers = ["r3", "r11"]
+[[midasm_hook]]
+address = 0x824CD5B0   # bgt cr6 (sub_824CD3D8: r30 = a controller's state, r9 = pressed)
+name = "ReWorPadUpdateHook"
+registers = ["r30", "r9"]
+[[midasm_hook]]
+address = 0x824D58C8   # entry of sub_824D58C8 (ControllerMake): r4 = the script
+name = "ReWorPadPollHook"
+registers = ["r4"]
+[[midasm_hook]]
+address = 0x824D5988   # addi r1,r1,112 (ControllerMake's exit)
+name = "ReWorPadPollEndHook"
+[[midasm_hook]]
+address = 0x82187120   # fsubs f0,f30,f0 (sub_82186FF8: the whammy minus the previous frame's)
+name = "ReWorWhammyHook"
+registers = ["r31", "f30", "f0"]
+[[midasm_hook]]
+address = 0x82187244   # fsubs f12,f30,f0 (sub_82186FF8: first axis)
+name = "ReWorWhammyHook"
+registers = ["r31", "f30", "f0"]
+[[midasm_hook]]
+address = 0x82186F94   # fsubs f13,f0,f13 (sub_82186E08: the touch strip)
+name = "ReWorWhammyHook"
+registers = ["r31", "f0", "f13"]
+[[midasm_hook]]
+address = 0x82187258   # fsubs f0,f29,f0 (sub_82186FF8: second axis)
+name = "ReWorWhammyAxis2Hook"
+registers = ["r31", "f29", "f0"]
+[[midasm_hook]]
+address = 0x82187140   # lfs f13,16216(r11) (sub_82186FF8: r29 = the countdown, 5)
+name = "ReWorWhammyCountdownHook"
+registers = ["r29"]
+[[midasm_hook]]
+address = 0x82187278   # lfs f13,16216(r11) (sub_82186FF8: r29 = the countdown, 5)
+name = "ReWorWhammyCountdownHook"
+registers = ["r29"]
+[[midasm_hook]]
+address = 0x82186FC0   # stwx r9,r31,r8 (sub_82186E08: r9 = the countdown, 5)
+name = "ReWorWhammyCountdownHook"
+registers = ["r9"]
+[[midasm_hook]]
+address = 0x8218EB24   # cmpwi cr6,r11,5 (sub_8218E9A0: r30 = the count's address)
+name = "ReWorWhammyRunHook"
+registers = ["r30", "r11"]
+[[midasm_hook]]
+address = 0x8218EC10   # cmpwi cr6,r11,5 (sub_8218E9A0: r10 = the count's address)
+name = "ReWorWhammyRunHook"
+registers = ["r10", "r11"]
+[[midasm_hook]]
+address = 0x825F9E30   # sub_825F9D10: f31 = the loading star's turn this frame
+name = "ReWorLoadingStarHook"
+registers = ["f31"]
+[[midasm_hook]]
+address = 0x8243190C   # add r11,r10,r11 (sub_824318C0: r10 = the loading icon's step)
+name = "ReWorLoadingIconHook"
+registers = ["r10"]
+[[midasm_hook]]
+address = 0x82100950   # fmuls f11,f12,f0 (sub_82100910: f12 = the strings' fade per frame)
+name = "ReWorStringFadeHook"
+registers = ["f12"]
+[[midasm_hook]]
+address = 0x821008E8   # stfs f1,76(r30) (sub_821005F0: f1 = the strings' frequency)
+name = "ReWorStringFrequencyHook"
+registers = ["f1"]
