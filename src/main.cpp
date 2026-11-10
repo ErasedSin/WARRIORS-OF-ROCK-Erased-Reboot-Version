@@ -2,6 +2,7 @@
 
 #include "discord_rpc.h"
 #include "options_menu.h"
+#include "quit_prompt.h"
 
 #include <rex/cvar.h>
 #include <rex/filesystem.h>
@@ -550,6 +551,8 @@ class ReWorApp : public rex::ReXApp {
     });
     rex::ui::RegisterBind("rewor_options", "F5", "Erased Reboot Version options",
                           [this]() { ToggleOptionsMenu(options_menu_.get()); });
+    quit_prompt_ = CreateQuitPrompt(
+        drawer, [this]() { return runtime() ? runtime()->input_system() : nullptr; }, window());
     window()->SetTitle("Guitar Hero: Warriors of Rock");
 #ifdef _WIN32
     HWND hwnd = static_cast<HWND>(window()->GetNativeWindowHandle());
@@ -576,6 +579,7 @@ class ReWorApp : public rex::ReXApp {
  private:
   std::unique_ptr<FpsCounterDialog> fps_counter_;
   std::unique_ptr<rex::ui::ImGuiDialog> options_menu_;
+  std::unique_ptr<rex::ui::ImGuiDialog> quit_prompt_;
   std::filesystem::path config_path_;
 };
 

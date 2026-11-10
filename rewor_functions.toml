@@ -114,3 +114,9 @@ address = 0x8251DE44   # mr r31,r3, after the prologue: r3 = the script's parame
 name = "ReWorPlayMovieHook"
 registers = ["r3"]
 jump_address_on_true = 0x8251DEA0   # li r3,0 and the function's return
+
+# Quitting from the main menu (src/quit_prompt.cpp): once per frame on the main
+# thread, whether the main menu's screen element exists.
+[[midasm_hook]]
+address = 0x8242C510   # stfd f0,-19760(r7) (sub_8242C450), before the frame wait
+name = "ReWorMainMenuHook"

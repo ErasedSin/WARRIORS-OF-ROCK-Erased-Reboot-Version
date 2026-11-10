@@ -1,4 +1,4 @@
-// re-wor launcher: edits the port's settings (re_wor.toml), writes patched game
+﻿// re-wor launcher: edits the port's settings (re_wor.toml), writes patched game
 // scripts into the mods folder for graphics toggles, and starts the game.
 // Targets .NET Framework 4.x so the compiler that ships with Windows can build it.
 
@@ -250,6 +250,17 @@ namespace ReWor
             { "seal_text", new[] {
                 "Este projeto não inclui nenhum arquivo do jogo e o autor não distribui o jogo. Use apenas a sua própria cópia de Guitar Hero: Warriors of Rock para Xbox 360. Diga não à pirataria.",
                 "This project includes no game files and its author does not distribute the game. Use only your own copy of Guitar Hero: Warriors of Rock for Xbox 360. Say no to piracy." } },
+            { "tab_home", new[] { "INÍCIO", "HOME" } },
+            { "home_no_name", new[] { "Jogador", "Player" } },
+            { "home_folder_ok", new[] { "Jogo encontrado", "Game found" } },
+            { "home_folder_missing", new[] { "Falta escolher a pasta do jogo, na página JOGO.", "Choose the game folder first, on the GAME page." } },
+            { "home_hint", new[] { "Vídeo, controles, microfone e o resto ficam nas páginas ao lado.", "Video, controls, microphone and the rest are on the pages at the side." } },
+            { "home_version", new[] { "versão {0}", "version {0}" } },
+            { "home_fullscreen", new[] { "Tela cheia", "Fullscreen" } },
+            { "home_window", new[] { "Janela", "Window" } },
+            { "home_online_on", new[] { "Ligado", "On" } },
+            { "home_online_off", new[] { "Desligado", "Off" } },
+            { "home_skip_intro", new[] { "Sem vídeo de abertura", "No opening video" } },
             { "tab_game", new[] { "JOGO", "GAME" } },
             { "tab_video", new[] { "VÍDEO", "VIDEO" } },
             { "tab_gfx", new[] { "GRÁFICOS", "GRAPHICS" } },
@@ -277,6 +288,8 @@ namespace ReWor
             { "profile_name", new[] { "Nome do perfil (aparece no jogo, até 15 letras)", "Profile name (shown in the game, up to 15 letters)" } },
             { "dev_auto", new[] { "Automático (o próximo livre)", "Automatic (the next free one)" } },
             { "dev_none", new[] { "Ninguém", "Nobody" } },
+            { "player_name_cue", new[] { "Nome do perfil do P{0}", "P{0}'s profile name" } },
+            { "player_default_name", new[] { "Jogador {0}", "Player {0}" } },
             { "dev_missing", new[] { "Desconectado: {0}", "Disconnected: {0}" } },
             { "dev_x360_guitar", new[] { "Guitarra Xbox 360", "Xbox 360 guitar" } },
             { "dev_x360_drums", new[] { "Bateria Xbox 360", "Xbox 360 drums" } },
@@ -781,7 +794,12 @@ namespace ReWor
         const int PictureSide = 64;
         const string PictureFile = "profile_picture.png";
         const string PictureData = "profile_picture.bin";
-        PictureBox profilePicture;
+        PictureBox profilePicture, homePicture;
+        Label homeName, homeFolder;
+        Label[] homeCards;
+        Button bottomPlay, bottomSave;
+        static bool introShown;
+        const double IntroMs = 1500;
         CheckBox onlineEnabled;
         ComboBox onlineIp;
         TextBox onlineHost;
@@ -790,6 +808,9 @@ namespace ReWor
         readonly ComboBox[] playerReading = new ComboBox[4];
         readonly bool[] readSdl = new bool[4];
         readonly ComboBox[] playerDevices = new ComboBox[4];
+        // Players 2 to 4's own profiles (the SDK's player_2_name...): each with
+        // its own name and saves. Player 1's is the profile name above.
+        readonly TextBox[] playerNames = new TextBox[4];
         readonly Canvas[] playerBadges = new Canvas[4];
         readonly string[] savedDevices = { "auto", "auto", "auto", "auto" };
         List<InputDevice> devices = new List<InputDevice>();
@@ -797,8 +818,12 @@ namespace ReWor
         Timer inputTimer;
         int scanCountdown;
         bool fillingDevices;
-        const int PlayersPage = 3;
-        const int MicPage = 5;
+        const int HomePage = 0;
+        const int GamePage = 1;
+        const int PlayersPage = 4;
+        const int VideoPage = 2;
+        const int MicPage = 6;
+        const int OnlinePage = 7;
         const string AppVersion = "1.1";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
@@ -860,9 +885,10 @@ namespace ReWor
 
             BuildUi();
             LoadSettings();
-            ShowPage(IsGameFolder(gameFolder) ? 1 : 0);
+            ShowPage(IsGameFolder(gameFolder) ? HomePage : GamePage);
             Shown += delegate { if (!IsGameFolder(gameFolder)) ChooseGameFolder(); };
             FormClosed += delegate { if (meter != null) { meter.Dispose(); meter = null; } };
+            PlayIntro();
         }
 
         bool LoadLanguage()
@@ -920,7 +946,7 @@ namespace ReWor
 
             pageNames = PageNames();
             var onlinePage = BuildOnlineTab();
-            var builtList = new List<Control> { BuildGameTab(), BuildVideoTab(), BuildGraphicsTab(), BuildPlayersTab(), BuildKeyboardTab(), BuildMicTab() };
+            var builtList = new List<Control> { BuildHomeTab(), BuildGameTab(), BuildVideoTab(), BuildGraphicsTab(), BuildPlayersTab(), BuildKeyboardTab(), BuildMicTab() };
             if (OnlineTab) builtList.Add(onlinePage);
             builtList.Add(BuildUpdateTab());
             Control[] built = builtList.ToArray();
@@ -931,6 +957,8 @@ namespace ReWor
                 pages.Add(built[i]);
                 Controls.Add(built[i]);
             }
+
+            ShowProfilePicture();
 
             status = new Label { Location = new Point(ContentX, 548), Size = new Size(PageW - 300, 40), ForeColor = Text2, TextAlign = ContentAlignment.MiddleLeft };
             Controls.Add(status);
@@ -946,11 +974,14 @@ namespace ReWor
             play.Click += delegate { if (Apply()) Launch(); };
             Controls.Add(play);
             AcceptButton = play;
+            bottomPlay = play;
+            bottomSave = save;
+            if (currentPage == HomePage) play.Visible = save.Visible = false;
         }
 
         static string[] PageNames()
         {
-            var names = new List<string> { Strings.T("tab_game"), Strings.T("tab_video"), Strings.T("tab_gfx"), Strings.T("tab_players"), Strings.T("tab_keyboard"), Strings.T("tab_mic") };
+            var names = new List<string> { Strings.T("tab_home"), Strings.T("tab_game"), Strings.T("tab_video"), Strings.T("tab_gfx"), Strings.T("tab_players"), Strings.T("tab_keyboard"), Strings.T("tab_mic") };
             if (OnlineTab) names.Add(Strings.T("tab_online"));
             names.Add(Strings.T("tab_update"));
             return names.ToArray();
@@ -1005,7 +1036,7 @@ namespace ReWor
                 int index = i;
                 var nav = new Button
                 {
-                    Text = "   " + names[i], Location = new Point(16, 160 + i * 50), Size = new Size(Side - 35, 44),
+                    Text = "   " + names[i], Location = new Point(16, 156 + i * 44), Size = new Size(Side - 35, 40),
                     FlatStyle = FlatStyle.Flat, ForeColor = Text2, BackColor = side.BackColor, Cursor = Cursors.Hand,
                     Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, TabStop = false
                 };
@@ -1116,6 +1147,10 @@ namespace ReWor
             }
             if (pageTitle != null && pageNames != null) pageTitle.Text = WithoutAccents(pageNames[index]);
             if (micDevice != null && (index == MicPage) != (meter != null)) RestartMicMeter();
+            if (index == HomePage) ShowHome();
+            // The home page has its own big PLAY button.
+            if (bottomPlay != null) bottomPlay.Visible = index != HomePage;
+            if (bottomSave != null) bottomSave.Visible = index != HomePage;
         }
 
         // The title font has no accented letters (VÍDEO came out as "V DEO").
@@ -1305,7 +1340,6 @@ namespace ReWor
             };
             new ToolTip().SetToolTip(profilePicture, Strings.T("picture_hint"));
             page.Controls.Add(profilePicture);
-            ShowProfilePicture();
 
             page.Controls.Add(new Label
             {
@@ -1315,7 +1349,7 @@ namespace ReWor
             for (int i = 0; i < 4; i++)
             {
                 int player = i;
-                int y = 92 + i * 38;
+                int y = i == 0 ? 92 : 130 + (i - 1) * 56;
                 var badge = new Canvas { Location = new Point(RightX, y), Size = new Size(40, 28), BackColor = Panel };
                 badge.Paint += delegate(object s, PaintEventArgs e) { PaintBadge(e.Graphics, player, badge.ClientSize); };
                 page.Controls.Add(badge);
@@ -1341,12 +1375,21 @@ namespace ReWor
                 readingTips.SetToolTip(reading, Strings.T("reading_tip"));
                 page.Controls.Add(reading);
                 playerReading[i] = reading;
+                if (i == 0) continue;
+                var nameBox = new TextBox
+                {
+                    Location = new Point(RightX + 48, y + 30), Size = new Size(ColumnW - 48, 22), BorderStyle = BorderStyle.FixedSingle,
+                    BackColor = Field, ForeColor = Text1, MaxLength = 15
+                };
+                SetCue(nameBox, string.Format(Strings.T("player_name_cue"), i + 1));
+                page.Controls.Add(nameBox);
+                playerNames[i] = nameBox;
             }
 
 
             page.Controls.Add(new Label
             {
-                Text = Strings.T("players_note"), Location = new Point(RightX, 252), Size = new Size(ColumnW, 62),
+                Text = Strings.T("players_note"), Location = new Point(RightX, 300), Size = new Size(ColumnW, 62),
                 ForeColor = Text2, Font = new Font("Segoe UI", 8f)
             });
 
@@ -1358,6 +1401,15 @@ namespace ReWor
             inputTimer.Tick += delegate { PollDevices(); };
             inputTimer.Start();
             return page;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern IntPtr SendMessage(IntPtr window, int message, IntPtr wParam, string lParam);
+
+        // The grey text an empty box shows (EM_SETCUEBANNER).
+        static void SetCue(TextBox box, string text)
+        {
+            box.HandleCreated += delegate { SendMessage(box.Handle, 0x1501, (IntPtr)1, text); };
         }
 
         void PollDevices()
@@ -1932,9 +1984,13 @@ namespace ReWor
         // gives them to the profile's gamer picture (src/profile_picture.cpp).
         void ShowProfilePicture()
         {
-            Image old = profilePicture.Image;
-            profilePicture.Image = null;
-            if (old != null) old.Dispose();
+            foreach (PictureBox box in new[] { profilePicture, homePicture })
+            {
+                if (box == null) continue;
+                Image old = box.Image;
+                box.Image = null;
+                if (old != null) old.Dispose();
+            }
             string path = Path.Combine(gameDir, PictureFile);
             if (!File.Exists(path)) return;
             try
@@ -1942,7 +1998,10 @@ namespace ReWor
                 // From memory, so the file is not kept open.
                 using (var stream = new MemoryStream(File.ReadAllBytes(path)))
                 using (var loaded = Image.FromStream(stream))
-                    profilePicture.Image = new Bitmap(loaded);
+                {
+                    foreach (PictureBox box in new[] { profilePicture, homePicture })
+                        if (box != null) box.Image = new Bitmap(loaded);
+                }
             }
             catch (Exception) { }
         }
@@ -1995,15 +2054,227 @@ namespace ReWor
 
         void RemoveProfilePicture()
         {
-            Image old = profilePicture.Image;
-            profilePicture.Image = null;
-            if (old != null) old.Dispose();
             try
             {
                 File.Delete(Path.Combine(gameDir, PictureFile));
                 File.Delete(Path.Combine(gameDir, PictureData));
             }
             catch (Exception) { }
+            ShowProfilePicture();
+        }
+
+        // The title in the title font: the first word white, the rest red, over a
+        // red glow. "size" is the first word's size in points; alpha fades it in.
+        void DrawLogo(Graphics g, Rectangle area, float size, int alpha)
+        {
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            using (var glow = new System.Drawing.Drawing2D.LinearGradientBrush(
+                area, Color.FromArgb(alpha * 110 / 255, 150, 0, 22), Color.FromArgb(0, 0, 0, 0), 90f))
+                g.FillRectangle(glow, area);
+            using (var big = new Font(titleFamily, size, FontStyle.Regular, GraphicsUnit.Point))
+            using (var small = new Font(titleFamily, size * 0.45f, FontStyle.Regular, GraphicsUnit.Point))
+            using (var shadow = new SolidBrush(Color.FromArgb(alpha * 170 / 255, 90, 0, 14)))
+            using (var white = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255)))
+            using (var red = new SolidBrush(Color.FromArgb(alpha, Red)))
+            {
+                SizeF first = g.MeasureString(Title1, big);
+                // The title font's space is very narrow: the words go one by one.
+                float gap = size * 0.28f, secondWidth = -gap;
+                string[] words = Title2.Split(' ');
+                foreach (string word in words) secondWidth += g.MeasureString(word, small).Width + gap;
+                float secondHeight = g.MeasureString(Title2, small).Height;
+                float height = first.Height * 0.74f + secondHeight;
+                float top = area.Top + (area.Height - height) / 2f;
+                float x = area.Left + (area.Width - first.Width) / 2f;
+                g.DrawString(Title1, big, shadow, x + 3, top + 3);
+                g.DrawString(Title1, big, white, x, top);
+                x = area.Left + (area.Width - secondWidth) / 2f;
+                float y = top + first.Height * 0.74f;
+                foreach (string word in words)
+                {
+                    g.DrawString(word, small, shadow, x + 2, y + 2);
+                    g.DrawString(word, small, red, x, y);
+                    x += g.MeasureString(word, small).Width + gap;
+                }
+            }
+        }
+
+        // The first page: the title, the profile and a big PLAY button.
+        Control BuildHomeTab()
+        {
+            var page = NewPage();
+            var hero = new Canvas { Location = new Point(0, 2), Size = new Size(PageW, 128), BackColor = Color.Black };
+            hero.Paint += delegate(object s, PaintEventArgs e)
+            {
+                DrawLogo(e.Graphics, hero.ClientRectangle, 40f, 255);
+                // Thin diagonal stripes on the sides and a red edge under the cover.
+                using (var stripe = new Pen(Color.FromArgb(40, 200, 16, 46), 2f))
+                    for (int x = -hero.Height; x < hero.Width; x += 14)
+                    {
+                        if (x > 150 && x < hero.Width - 150 - hero.Height) continue;
+                        e.Graphics.DrawLine(stripe, x, hero.Height, x + hero.Height, 0);
+                    }
+                using (var edge = new SolidBrush(Red))
+                    e.Graphics.FillRectangle(edge, 0, hero.Height - 3, hero.Width, 3);
+            };
+            page.Controls.Add(hero);
+
+            homePicture = new PictureBox
+            {
+                Location = new Point(24, 148), Size = new Size(96, 96), BackColor = Field,
+                BorderStyle = BorderStyle.FixedSingle, SizeMode = PictureBoxSizeMode.Zoom, Cursor = Cursors.Hand
+            };
+            homePicture.MouseClick += delegate(object s, MouseEventArgs e)
+            {
+                if (e.Button == MouseButtons.Right) RemoveProfilePicture();
+                else ChooseProfilePicture();
+            };
+            new ToolTip().SetToolTip(homePicture, Strings.T("picture_hint"));
+            page.Controls.Add(homePicture);
+
+            homeName = new Label
+            {
+                Location = new Point(134, 150), Size = new Size(PageW - 134 - 300, 40), ForeColor = Color.White,
+                Font = new Font("Segoe UI", 18f, FontStyle.Bold), AutoEllipsis = true
+            };
+            page.Controls.Add(homeName);
+            homeFolder = new Label
+            {
+                Location = new Point(136, 194), Size = new Size(PageW - 136 - 300, 50), ForeColor = Text2,
+                Font = new Font("Segoe UI", 8.5f), AutoEllipsis = true
+            };
+            page.Controls.Add(homeFolder);
+
+            var play = MakeButton(Strings.T("play"), new Point(PageW - 24 - 250, 150), true);
+            play.Size = new Size(250, 76);
+            play.Font = new Font("Segoe UI", 24f, FontStyle.Bold);
+            play.Click += delegate { if (Apply()) Launch(); };
+            page.Controls.Add(play);
+            page.Controls.Add(new Label
+            {
+                Text = string.Format(Strings.T("home_version"), AppVersion), Location = new Point(PageW - 24 - 250, 228),
+                Size = new Size(250, 20), ForeColor = Text2, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 8f)
+            });
+
+            // Three cards with how the game is set up; a click opens the page.
+            int cardW = (PageW - 48 - 2 * 12) / 3;
+            homeCards = new Label[3];
+            string[] cardTitles = { Strings.T("tab_players"), Strings.T("tab_video"), OnlineTab ? Strings.T("tab_online") : Strings.T("tab_game") };
+            int[] cardPages = { PlayersPage, VideoPage, OnlineTab ? OnlinePage : GamePage };
+            for (int i = 0; i < 3; i++)
+            {
+                int target = cardPages[i];
+                var card = new Canvas
+                {
+                    Location = new Point(24 + i * (cardW + 12), 262), Size = new Size(cardW, 70),
+                    BackColor = Field, Cursor = Cursors.Hand
+                };
+                card.Paint += delegate(object s, PaintEventArgs e)
+                {
+                    using (var bar = new SolidBrush(Red)) e.Graphics.FillRectangle(bar, 0, 0, 3, card.Height);
+                };
+                var title = new Label
+                {
+                    Text = cardTitles[i], Location = new Point(14, 10), Size = new Size(cardW - 20, 18),
+                    ForeColor = RedBright, Font = new Font("Segoe UI", 8f, FontStyle.Bold), Cursor = Cursors.Hand
+                };
+                var value = new Label
+                {
+                    Location = new Point(14, 28), Size = new Size(cardW - 20, 38), ForeColor = Text1,
+                    Font = new Font("Segoe UI", 9.5f), AutoEllipsis = true, Cursor = Cursors.Hand
+                };
+                EventHandler open = delegate { ShowPage(target); };
+                card.Click += open;
+                title.Click += open;
+                value.Click += open;
+                card.Controls.Add(title);
+                card.Controls.Add(value);
+                homeCards[i] = value;
+                page.Controls.Add(card);
+            }
+
+            return page;
+        }
+
+        void ShowHome()
+        {
+            if (homeName == null) return;
+            string name = profileName != null ? profileName.Text.Trim() : "";
+            homeName.Text = name == "" ? Strings.T("home_no_name") : name;
+            bool found = IsGameFolder(gameFolder);
+            homeFolder.ForeColor = found ? Text2 : RedBright;
+            homeFolder.Text = found ? Strings.T("home_folder_ok") + "\n" + gameFolder : Strings.T("home_folder_missing");
+            if (homeCards == null) return;
+
+            var players = new List<string>();
+            for (int i = 0; i < playerDevices.Length; i++)
+            {
+                ComboBox box = playerDevices[i];
+                if (box == null || box.Text == "" || box.Text == Strings.T("dev_none")) continue;
+                players.Add("P" + (i + 1) + " " + box.Text.Split('—')[0].Trim());
+            }
+            homeCards[0].Text = players.Count == 0 ? Strings.T("dev_none") : string.Join("\n", players.ToArray());
+
+            string video = resolution != null ? resolution.Text.Split('(')[0].Trim() : "";
+            if (fullscreen != null) video += "\n" + Strings.T(fullscreen.Checked ? "home_fullscreen" : "home_window");
+            homeCards[1].Text = video;
+
+            if (OnlineTab && onlineEnabled != null)
+                homeCards[2].Text = Strings.T(onlineEnabled.Checked ? "home_online_on" : "home_online_off");
+            else
+                homeCards[2].Text = (language != null ? language.Text : "") +
+                    (skipIntro != null && skipIntro.Checked ? "\n" + Strings.T("home_skip_intro") : "");
+        }
+
+        // A short opening: the title fades in over the whole window, a red line
+        // grows under it, and it fades out. A click skips it. Once per run.
+        void PlayIntro()
+        {
+            if (introShown) return;
+            introShown = true;
+            var intro = new Canvas { Location = new Point(0, 0), Size = ClientSize, BackColor = Color.Black };
+            var timer = new Timer { Interval = 16 };
+            DateTime started = DateTime.MinValue;
+            bool ended = false;
+            Action end = delegate
+            {
+                if (ended) return;
+                ended = true;
+                timer.Stop();
+                timer.Dispose();
+                Controls.Remove(intro);
+                intro.Dispose();
+            };
+            intro.Paint += delegate(object s, PaintEventArgs e)
+            {
+                double t = started == DateTime.MinValue ? 0 : (DateTime.UtcNow - started).TotalMilliseconds / IntroMs;
+                t = Math.Max(0, Math.Min(1, t));
+                double fadeIn = Math.Min(1, t / 0.3);
+                double fadeOut = t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
+                int alpha = (int)(255 * fadeIn * fadeOut);
+                double ease = 1 - Math.Pow(1 - Math.Min(1, t / 0.6), 3);
+                var g = e.Graphics;
+                DrawLogo(g, intro.ClientRectangle, (float)(58 + 8 * ease), alpha);
+                int half = (int)(260 * ease);
+                int cx = intro.Width / 2, y = intro.Height / 2 + 96;
+                using (var line = new SolidBrush(Color.FromArgb(alpha, RedBright)))
+                    g.FillRectangle(line, cx - half, y, half * 2, 3);
+            };
+            timer.Tick += delegate
+            {
+                if ((DateTime.UtcNow - started).TotalMilliseconds >= IntroMs) end();
+                else intro.Invalidate();
+            };
+            intro.MouseDown += delegate { end(); };
+            Shown += delegate
+            {
+                if (ended) return;
+                started = DateTime.UtcNow;
+                timer.Start();
+            };
+            Controls.Add(intro);
+            intro.BringToFront();
         }
 
         Control BuildKeyboardTab()
@@ -2243,6 +2514,8 @@ namespace ReWor
             debugMenu.Checked = settings.GetBool(CvarPrefix + "debug_menu", false);
             skipIntro.Checked = settings.GetBool(CvarPrefix + "skip_intro", false);
             profileName.Text = settings.Get("online_name", "");
+            for (int i = 1; i < 4; i++) playerNames[i].Text = settings.Get("player_" + (i + 1) + "_name", "");
+            ShowHome();
             onlineEnabled.Checked = settings.GetBool(CvarPrefix + "online", false);
             SelectChoice(onlineIp, settings.Get(CvarPrefix + "online_ip", ""));
             if (onlineIp.SelectedItem == null) onlineIp.SelectedIndex = 0;
@@ -2319,6 +2592,19 @@ namespace ReWor
             string name = profileName.Text.Trim().Replace("\"", "").Replace("\\", "");
             if (name == "") settings.Remove("online_name");
             else settings.Set("online_name", name);
+            // A profile for each player 2 to 4 with a name, or with a controller of
+            // its own chosen (then named "Player N"): the game gives it its saves.
+            settings.Set("player_profiles", true);
+            for (int i = 1; i < 4; i++)
+            {
+                string key = "player_" + (i + 1) + "_name";
+                string playerName = playerNames[i].Text.Trim().Replace("\"", "").Replace("\\", "");
+                string device = Value(playerDevices[i]);
+                if (playerName == "" && device != "auto" && device != "none")
+                    playerName = string.Format(Strings.T("player_default_name"), i + 1);
+                if (playerName == "") settings.Remove(key);
+                else settings.Set(key, playerName);
+            }
             settings.Set(CvarPrefix + "online", OnlineTab && onlineEnabled.Checked);
             settings.Set(CvarPrefix + "online_ip", Value(onlineIp));
             settings.Set(CvarPrefix + "online_host", onlineHost.Text.Trim());

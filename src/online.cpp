@@ -247,9 +247,9 @@ REX_HOOK_RAW(__imp__XamUserGetXUID) {
   if (user >= 4) {
     result = kInvalidArg;
   } else {
-    const auto& profile = REX_KERNEL_STATE()->user_profile();
+    const auto& profile = REX_KERNEL_STATE()->user_profile(user);
     if (profile->IsSignedIn(user)) {
-      xuid = g_online ? g_xuid : profile->xuid();
+      xuid = g_online ? g_xuid + profile->index() : profile->xuid();
       result = kSuccess;
     }
   }
@@ -267,12 +267,12 @@ REX_HOOK_RAW(__imp__XamUserGetSigninInfo) {
     return;
   }
   std::memset(base + info, 0, 40);
-  const auto& profile = REX_KERNEL_STATE()->user_profile();
+  const auto& profile = REX_KERNEL_STATE()->user_profile(user);
   if (user >= 4 || !profile->IsSignedIn(user)) {
     ctx.r3.u64 = kNoSuchUser;
     return;
   }
-  Store64(base, info, g_online ? g_xuid : profile->xuid());
+  Store64(base, info, g_online ? g_xuid + profile->index() : profile->xuid());
   Store32(base, info + 12, g_online ? 2 : profile->signin_state());
   const std::string name = profile->name();
   std::memcpy(base + info + 24, name.data(), std::min<size_t>(name.size(), 15));

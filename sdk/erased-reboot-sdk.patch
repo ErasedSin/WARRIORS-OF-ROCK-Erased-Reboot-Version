@@ -329,6 +329,43 @@ index 8426798..8a4b828 100644
  };
  
  }  // namespace rex::audio
+diff --git a/include/rex/input/device.h b/include/rex/input/device.h
+index 11abcd3..6899e19 100644
+--- a/include/rex/input/device.h
++++ b/include/rex/input/device.h
+@@ -28,6 +28,18 @@ struct DeviceInfo {
+   std::string name;
+   std::string guid;
+   uint8_t subtype = 0x01;  // XINPUT_DEVSUBTYPE_*
++  // The device's own kind (XINPUT_DEVSUBTYPE_*), before a regular controller is
++  // turned into a guitar (gamepad_as_guitar): what player1_device... choose by.
++  uint8_t native_subtype = 0x01;
++  // Where the device is on the PC, so a player can name it: its XInput slot
++  // (0-3, the quadrant lit on an Xbox 360 controller's ring; -1 when it has
++  // none) and its USB vendor and product.
++  int32_t xinput_slot = -1;
++  uint16_t vendor = 0;
++  uint16_t product = 0;
++  // Read by the XInput driver (raw XInput) rather than SDL. With both drivers on,
++  // a controller can show up twice, once from each.
++  bool raw_xinput = false;
+   // SDL_GamepadType of a real controller (3 Xbox One, 6 PS5, 7 Switch Pro...), 0 when
+   // unknown or synthetic. Lets the game show the controller's own button glyphs.
+   uint8_t gamepad_type = 0;
+diff --git a/include/rex/input/device_assignment.h b/include/rex/input/device_assignment.h
+index a318f2c..25ad667 100644
+--- a/include/rex/input/device_assignment.h
++++ b/include/rex/input/device_assignment.h
+@@ -49,4 +49,9 @@ class SharedAssignment final : public DeviceAssignment {
+   std::vector<DeviceId> user0_;
+ };
+ 
++// The drivers the players' devices need (player1_device...): the XInput one
++// when a player reads a controller through XInput, SDL when one reads through SDL.
++bool PlayersNeedXInputDriver();
++bool PlayersNeedSdlDriver();
++
+ }  // namespace rex::input
 diff --git a/include/rex/input/guitar.h b/include/rex/input/guitar.h
 new file mode 100644
 index 0000000..73d0034
@@ -357,6 +394,21 @@ index 0000000..73d0034
 +uint16_t AutoStrum(const void* device, uint16_t buttons);
 +
 +}  // namespace rex::input
+diff --git a/include/rex/input/sdl/sdl_input_driver.h b/include/rex/input/sdl/sdl_input_driver.h
+index 1a0254d..d961033 100644
+--- a/include/rex/input/sdl/sdl_input_driver.h
++++ b/include/rex/input/sdl/sdl_input_driver.h
+@@ -65,6 +65,10 @@ class SDLInputDriver final : public InputDriver, public rex::ui::WindowListener
+     bool state_changed;
+     bool is_active;
+     DeviceId id;
++    // The device's XInput slot (Windows), -1 when it has none. A guitar's kind
++    // and tilt are read there (xinput_guitar: its kind, 0 when it is no guitar).
++    int xinput_user = -1;
++    uint8_t xinput_guitar = 0;
+     // Per pad rather than per guest user, so it survives reassignment.
+     KeystrokeState keystroke;
+   };
 diff --git a/include/rex/memory/utils.h b/include/rex/memory/utils.h
 index 8ccb52c..0b4708c 100644
 --- a/include/rex/memory/utils.h
@@ -386,6 +438,95 @@ index 902bffd..8013f8c 100644
  REXCVAR_DECLARE(bool, protect_zero);
  REXCVAR_DECLARE(bool, protect_on_release);
  REXCVAR_DECLARE(bool, scribble_heap);
+diff --git a/include/rex/system/kernel_state.h b/include/rex/system/kernel_state.h
+index 9b9cf9e..efc12a3 100644
+--- a/include/rex/system/kernel_state.h
++++ b/include/rex/system/kernel_state.h
+@@ -200,6 +200,22 @@ class KernelState {
+   xam::AppManager* app_manager() const { return app_manager_.get(); }
+   xam::ContentManager* content_manager() const { return content_manager_.get(); }
+   xam::UserProfile* user_profile() const { return user_profile_.get(); }
++  // The profile of user_index: with player_profiles, that player's own when
++  // they have one; otherwise player 1's (whose IsSignedIn tells the rest).
++  xam::UserProfile* user_profile(uint32_t user_index) const {
++    if (user_index >= 1 && user_index < 4 && player_profiles_[user_index]) {
++      return player_profiles_[user_index].get();
++    }
++    return user_profile_.get();
++  }
++  // The users signed in, one bit each (XN_SYS_SIGNINCHANGED's data).
++  uint32_t signed_in_mask() const {
++    uint32_t mask = 1u << user_profile_->signed_in_user();
++    for (uint32_t i = 1; i < 4; ++i) {
++      if (player_profiles_[i]) mask |= 1u << i;
++    }
++    return mask;
++  }
+ 
+   // Access must be guarded by the global critical region.
+   util::ObjectTable* object_table() { return &object_table_; }
+@@ -354,6 +370,7 @@ class KernelState {
+   std::unique_ptr<xam::AppManager> app_manager_;
+   std::unique_ptr<xam::ContentManager> content_manager_;
+   std::unique_ptr<xam::UserProfile> user_profile_;
++  std::unique_ptr<xam::UserProfile> player_profiles_[4];
+ 
+   rex::thread::global_critical_region global_critical_region_;
+ 
+diff --git a/include/rex/system/xam/content_manager.h b/include/rex/system/xam/content_manager.h
+index 4ce01f9..0a8aa07 100644
+--- a/include/rex/system/xam/content_manager.h
++++ b/include/rex/system/xam/content_manager.h
+@@ -172,6 +172,7 @@ class ContentManager {
+                                  XContentType content_type, XCONTENT_AGGREGATE_DATA& data) const;
+ 
+   std::filesystem::path ResolveGameUserContentPath();
++  std::filesystem::path ResolveGameUserContentPath(const std::string& user_name);
+   bool IsContentOpen(const XCONTENT_AGGREGATE_DATA& data) const;
+   void CloseOpenedFilesFromContent(const std::string_view root_name);
+ 
+diff --git a/include/rex/system/xam/user_profile.h b/include/rex/system/xam/user_profile.h
+index 934d8cb..88089ed 100644
+--- a/include/rex/system/xam/user_profile.h
++++ b/include/rex/system/xam/user_profile.h
+@@ -216,7 +216,15 @@ class UserProfile {
+     }
+   };
+ 
+-  UserProfile();
++  // index: the user (0-3) this profile is. With player_profiles each player
++  // has a profile of their own; without, there is one (index 0).
++  explicit UserProfile(uint32_t index = 0);
++
++  // player_profiles: a profile per player (players 2-4 each with a name of
++  // their own, player_2_name...). The name of player index (1-3), or "" when
++  // that player has none.
++  static bool PerPlayer();
++  static std::string PlayerName(uint32_t index);
+ 
+   uint64_t xuid() const { return xuid_; }
+   std::string name() const { return name_; }
+@@ -228,7 +236,10 @@ class UserProfile {
+   // that pressed Start, when another device holds user 0), so the player is
+   // signed in to Xbox LIVE whichever pad they play with.
+   uint32_t signed_in_user() const { return signed_in_user_.load(std::memory_order_relaxed); }
+-  bool IsSignedIn(uint32_t user_index) const { return user_index == signed_in_user(); }
++  bool IsSignedIn(uint32_t user_index) const {
++    return per_player_ ? user_index == index_ : user_index == signed_in_user();
++  }
++  uint32_t index() const { return index_; }
+   void set_signed_in_user(uint32_t user_index);
+ 
+   void set_kernel_state(KernelState* ks) { kernel_state_ = ks; }
+@@ -238,6 +249,8 @@ class UserProfile {
+ 
+  private:
+   uint64_t xuid_;
++  uint32_t index_ = 0;
++  bool per_player_ = false;
+   std::string name_;
+   std::atomic<uint32_t> signed_in_user_{0};
+   std::vector<std::unique_ptr<Setting>> setting_list_;
 diff --git a/src/audio/xma_context.cpp b/src/audio/xma_context.cpp
 index 11b83be..1178b52 100644
 --- a/src/audio/xma_context.cpp
@@ -1106,6 +1247,261 @@ index 3ea3535..746203d 100644
      mnk/mnk_input_driver.cpp
      nop/nop_input_driver.cpp
  )
+diff --git a/src/input/device_assignment.cpp b/src/input/device_assignment.cpp
+index dd252db..d987487 100644
+--- a/src/input/device_assignment.cpp
++++ b/src/input/device_assignment.cpp
+@@ -11,23 +11,241 @@
+ 
+ #include <rex/input/device_assignment.h>
+ 
++#include <algorithm>
++#include <array>
++#include <cctype>
++#include <cstdio>
++#include <cstdlib>
++#include <string>
++
++#include <rex/cvar.h>
++#include <rex/platform.h>
++
++// The device each player uses. "auto" takes the devices no player chose, in the
++// order they connected; "xinput2" is the controller at XInput slot 2 (the second
++// quadrant lit on an Xbox 360 controller) read through XInput, raw (Xbox 360
++// guitars keep their tilt), and "xinput2:sdl" the same controller read through
++// SDL; "hid:054C:09CC:1" the first device with that USB vendor and product (a
++// PlayStation controller, say); "guitar2" the second guitar connected,
++// "gamepad1" the first regular controller, "drums1" the first drum kit;
++// "keyboard" the keyboard; "none" no device.
++REXCVAR_DEFINE_STRING(player1_device, "auto", "Input/Players",
++                      "Player 1's device: auto, xinput1-4 (or xinput1-4:sdl), hid:VVVV:PPPP:n, guitar1-4, "
++                      "gamepad1-4, drums1-4, keyboard or none")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
++REXCVAR_DEFINE_STRING(player2_device, "auto", "Input/Players", "Player 2's device (see player1_device)")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
++REXCVAR_DEFINE_STRING(player3_device, "auto", "Input/Players", "Player 3's device (see player1_device)")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
++REXCVAR_DEFINE_STRING(player4_device, "auto", "Input/Players", "Player 4's device (see player1_device)")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
++
++REXCVAR_DECLARE(std::string, input_backend);
++
+ namespace rex::input {
+ 
++namespace {
++
++enum class Kind { kAuto, kNone, kKeyboard, kGuitar, kGamepad, kDrums, kXInput, kHid };
++
++struct PlayerDevice {
++  Kind kind = Kind::kAuto;
++  uint32_t number = 1;  // the nth device of that kind, from 1; kXInput: the slot, from 1
++  uint16_t vendor = 0, product = 0;  // kHid
++  bool sdl = false;                  // kXInput: read through SDL rather than raw XInput
++};
++
++PlayerDevice ParsePlayerDevice(std::string text) {
++  for (auto& c : text) c = char(std::tolower(static_cast<unsigned char>(c)));
++  PlayerDevice out;
++  if (text.rfind("hid:", 0) == 0) {
++    unsigned vendor = 0, product = 0, number = 1;
++    const int read = std::sscanf(text.c_str() + 4, "%x:%x:%u", &vendor, &product, &number);
++    if (read >= 2) {
++      out.kind = Kind::kHid;
++      out.vendor = uint16_t(vendor);
++      out.product = uint16_t(product);
++      out.number = std::max(1u, number);
++    }
++    return out;
++  }
++  const size_t suffix = text.find(":sdl");
++  if (suffix != std::string::npos) {
++    out.sdl = true;
++    text.resize(suffix);
++  }
++  size_t digits = text.size();
++  while (digits > 0 && std::isdigit(static_cast<unsigned char>(text[digits - 1]))) --digits;
++  if (digits < text.size()) {
++    out.number = uint32_t(std::max(1, std::atoi(text.c_str() + digits)));
++    text.resize(digits);
++  }
++  if (text == "none") out.kind = Kind::kNone;
++  else if (text == "keyboard") out.kind = Kind::kKeyboard;
++  else if (text == "guitar") out.kind = Kind::kGuitar;
++  else if (text == "gamepad" || text == "controller") out.kind = Kind::kGamepad;
++  else if (text == "drums") out.kind = Kind::kDrums;
++  else if (text == "xinput") out.kind = Kind::kXInput;
++  return out;
++}
++
++std::array<PlayerDevice, kMaxGuestUsers> Players() {
++  return {ParsePlayerDevice(REXCVAR_GET(player1_device)), ParsePlayerDevice(REXCVAR_GET(player2_device)),
++          ParsePlayerDevice(REXCVAR_GET(player3_device)), ParsePlayerDevice(REXCVAR_GET(player4_device))};
++}
++
++bool DefaultIsXInput() { return REXCVAR_GET(input_backend) == "xinput"; }
++
++// With both drivers on, an XInput controller shows up twice. The players who
++// did not name the reading (auto, guitar1...) get it through the default one
++// (input_backend); the other copy is left out.
++bool OtherReading(const DeviceInfo& device) {
++  if (device.synthetic) return false;
++  if (DefaultIsXInput()) return !device.raw_xinput && device.xinput_slot >= 0;
++  return device.raw_xinput;
++}
++
++Kind DeviceKind(const DeviceInfo& device);
++
++bool Matches(const DeviceInfo& device, const PlayerDevice& want) {
++  switch (want.kind) {
++    case Kind::kXInput:
++      return device.xinput_slot >= 0 && uint32_t(device.xinput_slot) + 1 == want.number &&
++             device.raw_xinput != want.sdl;
++    case Kind::kHid:
++      return !device.synthetic && !device.raw_xinput && device.vendor == want.vendor &&
++             device.product == want.product;
++    default:
++      return !OtherReading(device) && DeviceKind(device) == want.kind;
++  }
++}
++
++Kind DeviceKind(const DeviceInfo& device) {
++  if (device.keyboard) return Kind::kKeyboard;
++  switch (device.native_subtype) {
++    case 0x06:  // XINPUT_DEVSUBTYPE_GUITAR
++    case 0x07:  // XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE
++    case 0x0B:  // XINPUT_DEVSUBTYPE_GUITAR_BASS
++      return Kind::kGuitar;
++    case 0x08:  // XINPUT_DEVSUBTYPE_DRUM_KIT
++      return Kind::kDrums;
++    default:
++      return device.synthetic ? Kind::kNone : Kind::kGamepad;
++  }
++}
++
++}  // namespace
++
++bool PlayersNeedXInputDriver() {
++#if REX_PLATFORM_WIN32
++  if (DefaultIsXInput()) return true;
++  for (const auto& player : Players()) {
++    if (player.kind == Kind::kXInput && !player.sdl) return true;
++  }
++#endif
++  return false;
++}
++
++// With XInput as the default reading, SDL still reads the controllers XInput
++// does not see (PlayStation and other pads), for the players who chose one or
++// left the choice to the game.
++bool PlayersNeedSdlDriver() {
++  if (!DefaultIsXInput()) return true;
++  for (const auto& player : Players()) {
++    switch (player.kind) {
++      case Kind::kNone:
++      case Kind::kKeyboard:
++        break;
++      case Kind::kXInput:
++        if (player.sdl) return true;
++        break;
++      default:
++        return true;
++    }
++  }
++  return false;
++}
++
+ void SlotAssignment::OnDevicesChanged(const std::vector<DeviceInfo>& devices) {
+   for (auto& user : users_) {
+     user.clear();
+   }
+ 
+-  // Key off the ordinal rather than list position, so unplugging pad one does
+-  // not promote pad two to player one.
+-  for (const auto& device : devices) {
+-    if (device.synthetic) {
+-      const uint32_t user = device.user_index >= 0 && uint32_t(device.user_index) < kMaxGuestUsers
+-                                ? uint32_t(device.user_index)
+-                                : 0;
++  const auto players = Players();
++  std::vector<bool> used(devices.size(), false);
++  // XInput slots a player took, through either reading: the other copy of that
++  // controller goes to nobody.
++  std::array<bool, 4> slot_taken = {};
++
++  // The players who chose a device get it: the nth of its kind in connection
++  // order, so one device never feeds two players.
++  bool keyboard_chosen = false;
++  for (uint32_t player = 0; player < kMaxGuestUsers; ++player) {
++    const PlayerDevice& want = players[player];
++    if (want.kind == Kind::kAuto || want.kind == Kind::kNone) continue;
++    keyboard_chosen |= want.kind == Kind::kKeyboard;
++    uint32_t seen = 0;
++    for (size_t i = 0; i < devices.size(); ++i) {
++      if (!Matches(devices[i], want)) continue;
++      // A slot names one device; the other kinds count devices in connection order.
++      if (want.kind != Kind::kXInput && ++seen != want.number) continue;
++      if (!used[i]) {
++        used[i] = true;
++        users_[player].push_back(devices[i].id);
++        if (devices[i].xinput_slot >= 0 && devices[i].xinput_slot < 4) slot_taken[devices[i].xinput_slot] = true;
++      }
++      break;
++    }
++  }
++
++  auto is_auto = [&](uint32_t user) { return players[user].kind == Kind::kAuto; };
++  auto free_for_auto = [&](size_t i) {
++    const auto& device = devices[i];
++    if (used[i] || device.synthetic || OtherReading(device)) return false;
++    return !(device.xinput_slot >= 0 && device.xinput_slot < 4 && slot_taken[device.xinput_slot]);
++  };
++
++  // The other pads feed the "auto" players. Key off the connection order rather
++  // than list position, so unplugging pad one does not promote pad two to
++  // player one; a pad whose player chose another device takes the next free one.
++  std::vector<size_t> pads;
++  for (size_t i = 0; i < devices.size(); ++i) {
++    if (free_for_auto(i)) pads.push_back(i);
++  }
++  std::sort(pads.begin(), pads.end(),
++            [&](size_t a, size_t b) { return devices[a].ordinal < devices[b].ordinal; });
++  std::vector<size_t> waiting;
++  for (size_t rank = 0; rank < pads.size(); ++rank) {
++    const size_t i = pads[rank];
++    if (rank < kMaxGuestUsers && is_auto(uint32_t(rank)) && users_[rank].empty()) {
++      used[i] = true;
++      users_[rank].push_back(devices[i].id);
++    } else {
++      waiting.push_back(i);
++    }
++  }
++  for (size_t i : waiting) {
++    for (uint32_t user = 0; user < kMaxGuestUsers; ++user) {
++      if (is_auto(user) && users_[user].empty()) {
++        used[i] = true;
++        users_[user].push_back(devices[i].id);
++        break;
++      }
++    }
++  }
++
++  // The keyboard no player chose, and the stand-in devices: their own guest
++  // user (keyboard_player), user 0 by default, next to its pad. Only an "auto"
++  // player: one who chose a device plays with that device alone (a keyboard
++  // that is a guitar would make the game see that player's pad as a guitar).
++  for (size_t i = 0; i < devices.size(); ++i) {
++    const auto& device = devices[i];
++    if (used[i] || !device.synthetic || (device.keyboard && keyboard_chosen)) continue;
++    const uint32_t user = device.user_index >= 0 && uint32_t(device.user_index) < kMaxGuestUsers
++                              ? uint32_t(device.user_index)
++                              : 0;
++    if (players[user].kind == Kind::kAuto) {
+       users_[user].push_back(device.id);
+-    } else if (device.ordinal < kMaxGuestUsers) {
+-      users_[device.ordinal].push_back(device.id);
+     }
+   }
+ }
 diff --git a/src/input/guitar.cpp b/src/input/guitar.cpp
 new file mode 100644
 index 0000000..87de763
@@ -1211,8 +1607,30 @@ index 0000000..87de763
 +}
 +
 +}  // namespace rex::input
+diff --git a/src/input/input_system.cpp b/src/input/input_system.cpp
+index a0af71e..c8b449f 100644
+--- a/src/input/input_system.cpp
++++ b/src/input/input_system.cpp
+@@ -638,7 +638,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
+ 
+   if (!tool_mode) {
+ #if REX_PLATFORM_WIN32
+-    if (REXCVAR_GET(input_backend) == "xinput") {
++    if (PlayersNeedXInputDriver()) {
+       auto xinput_driver = std::make_unique<xinput::XinputInputDriver>(nullptr, 0);
+       if (xinput_driver->Setup() == X_STATUS_SUCCESS) {
+         input->AddDriver(std::move(xinput_driver));
+@@ -646,7 +646,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
+     }
+ #endif
+ 
+-    if (REXCVAR_GET(input_backend) == "sdl") {
++    if (PlayersNeedSdlDriver()) {
+       auto sdl_driver = std::make_unique<sdl::SDLInputDriver>(nullptr, 0);
+       if (sdl_driver->Setup() == X_STATUS_SUCCESS) {
+         input->AddDriver(std::move(sdl_driver));
 diff --git a/src/input/mnk/mnk_input_driver.cpp b/src/input/mnk/mnk_input_driver.cpp
-index 796042e..ac27889 100644
+index 796042e..3a7795c 100644
 --- a/src/input/mnk/mnk_input_driver.cpp
 +++ b/src/input/mnk/mnk_input_driver.cpp
 @@ -11,6 +11,7 @@
@@ -1223,43 +1641,49 @@ index 796042e..ac27889 100644
  #include <rex/input/input.h>
  #include <rex/logging.h>
  #include <rex/ui/keybinds.h>
-@@ -26,6 +27,8 @@
+@@ -26,6 +27,11 @@
  // On by default: the keyboard plays as a controller next to the pads (both
  // drive player 1, or the keyboard is player keyboard_player), so the game is
  // playable without one.
-+REXCVAR_DECLARE(bool, gamepad_as_guitar);
++REXCVAR_DEFINE_BOOL(keyboard_as_guitar, true, "Input",
++                    "The keyboard plays as a guitar (Guitar Hero and other music games) instead of a "
++                    "regular controller. Applies when the game starts")
++    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 +
  REXCVAR_DEFINE_BOOL(mnk_mode, true, "Input",
                      "Keyboard play: the keyboard works as a controller (with or without a pad)");
  REXCVAR_DEFINE_BOOL(mnk_mouse, false, "Input",
-@@ -422,8 +425,9 @@ void MnkInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+@@ -422,10 +428,12 @@ void MnkInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
    DeviceInfo info;
    info.id = kMnkDevice;
    info.name = IsPassthroughEnabled() ? "Keyboard" : "Keyboard and Mouse";
 -  info.subtype =
 -      IsPassthroughEnabled() ? XINPUT_DEVSUBTYPE_USB_KEYBOARD : XINPUT_DEVSUBTYPE_GAMEPAD;
 +  info.subtype = IsPassthroughEnabled()            ? XINPUT_DEVSUBTYPE_USB_KEYBOARD
-+                 : REXCVAR_GET(gamepad_as_guitar) ? XINPUT_DEVSUBTYPE_GUITAR
++                 : REXCVAR_GET(keyboard_as_guitar) ? XINPUT_DEVSUBTYPE_GUITAR
 +                                                  : XINPUT_DEVSUBTYPE_GAMEPAD;
    info.synthetic = true;
    info.keyboard = true;
++  info.native_subtype = XINPUT_DEVSUBTYPE_USB_KEYBOARD;
    const uint32_t player = REXCVAR_GET(keyboard_player);
-@@ -444,7 +448,9 @@ X_RESULT MnkInputDriver::GetDeviceCapabilities(DeviceId id, uint32_t flags,
+   info.user_index = player >= 2 && player <= kMaxGuestUsers ? int32_t(player - 1) : -1;
+   out.push_back(info);
+@@ -444,7 +452,9 @@ X_RESULT MnkInputDriver::GetDeviceCapabilities(DeviceId id, uint32_t flags,
        return X_ERROR_SUCCESS;
      }
      out_caps->type = XINPUT_DEVTYPE_GAMEPAD;
 -    out_caps->sub_type = XINPUT_DEVSUBTYPE_GAMEPAD;
-+    // Like a regular controller (gamepad_as_guitar, sdl_input_driver.cpp): the
++    // Like a regular controller as a guitar (gamepad_as_guitar, sdl_input_driver.cpp): the
 +    // keyboard shares player 1 with the first controller, so both report the same.
-+    out_caps->sub_type = REXCVAR_GET(gamepad_as_guitar) ? XINPUT_DEVSUBTYPE_GUITAR : XINPUT_DEVSUBTYPE_GAMEPAD;
++    out_caps->sub_type = REXCVAR_GET(keyboard_as_guitar) ? XINPUT_DEVSUBTYPE_GUITAR : XINPUT_DEVSUBTYPE_GAMEPAD;
      out_caps->flags = 0;
      out_caps->gamepad.buttons = 0xFFFF;
      out_caps->gamepad.left_trigger = 0xFF;
-@@ -609,6 +615,14 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+@@ -609,6 +619,14 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
      out_state->gamepad.thumb_ly = clamp16(ly);
      out_state->gamepad.thumb_rx = clamp16(rx);
      out_state->gamepad.thumb_ry = clamp16(ry);
-+    if (REXCVAR_GET(gamepad_as_guitar)) {
++    if (REXCVAR_GET(keyboard_as_guitar)) {
 +      // As an Xbox 360 guitar: the whammy bar is the right stick's X axis at
 +      // -32768 when untouched (the right stick right key presses it all the
 +      // way), and the tilt is its Y axis (right stick up).
@@ -1271,7 +1695,7 @@ index 796042e..ac27889 100644
    return X_ERROR_SUCCESS;
  }
 diff --git a/src/input/sdl/sdl_input_driver.cpp b/src/input/sdl/sdl_input_driver.cpp
-index 0e4460c..a3084ef 100644
+index 0e4460c..e27337b 100644
 --- a/src/input/sdl/sdl_input_driver.cpp
 +++ b/src/input/sdl/sdl_input_driver.cpp
 @@ -14,6 +14,7 @@
@@ -1282,7 +1706,7 @@ index 0e4460c..a3084ef 100644
  #include <filesystem>
  #include <string>
  #include <string_view>
-@@ -22,6 +23,7 @@
+@@ -22,10 +23,21 @@
  #include <rex/chrono/clock.h>
  #include <rex/cvar.h>
  #include <rex/input/flags.h>
@@ -1290,11 +1714,25 @@ index 0e4460c..a3084ef 100644
  #include <rex/input/sdl/sdl_input_driver.h>
  #include <rex/logging.h>
  #include <rex/ui/virtual_key.h>
-@@ -33,6 +35,33 @@ REXCVAR_DEFINE_BOOL(hid_generic_mapping, true, "Input",
+ 
++#ifdef _WIN32
++#ifndef NOMINMAX
++#define NOMINMAX
++#endif
++#ifndef WIN32_LEAN_AND_MEAN
++#define WIN32_LEAN_AND_MEAN
++#endif
++#include <windows.h>
++#endif
++
+ REXCVAR_DEFINE_STRING(hid_mappings_file, "gamecontrollerdb.txt", "Input",
+                       "Path to SDL gamecontroller mappings file");
+ 
+@@ -33,6 +45,33 @@ REXCVAR_DEFINE_BOOL(hid_generic_mapping, true, "Input",
                      "Controllers SDL has no mapping for (some DirectInput-only and laptop "
                      "gamepads) get a generic one (buttons 1-4 = A B X Y, the last ones = "
                      "Back / Start, the first stick and hat = moving) instead of being ignored");
-+REXCVAR_DEFINE_BOOL(gamepad_as_guitar, true, "Input",
++REXCVAR_DEFINE_BOOL(gamepad_as_guitar, false, "Input",
 +                    "A regular controller reports itself as a guitar (Guitar Hero and other music "
 +                    "games, where a plain controller means the singer). Frets A B Y X LB, strum on "
 +                    "the d-pad, whammy on the right stick, Star Power on Back, as an Xbox 360 "
@@ -1324,7 +1762,7 @@ index 0e4460c..a3084ef 100644
  REXCVAR_DEFINE_BOOL(input_poll_on_read, true, "Input",
                      "Read the controllers at the moment the game asks for their state. Off = "
                      "the state of the last update the UI thread ran, which the game's previous "
-@@ -171,11 +200,141 @@ uint8_t SdlTypeToXInputSubType(SDL_JoystickType t, const char* name) {
+@@ -171,11 +210,229 @@ uint8_t SdlTypeToXInputSubType(SDL_JoystickType t, const char* name) {
    }
  }
  
@@ -1344,6 +1782,94 @@ index 0e4460c..a3084ef 100644
                                  SDL_GetGamepadName(gamepad));
  }
  
++bool IsGuitarSubType(uint8_t s) {
++  return s == XINPUT_DEVSUBTYPE_GUITAR || s == XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE ||
++         s == XINPUT_DEVSUBTYPE_GUITAR_BASS;
++}
++
++#ifdef _WIN32
++// SDL reports the three XInput guitar kinds (guitar, alternate guitar, bass) as
++// one, so every guitar reached the guest as the plain kind, and Guitar Hero
++// guitars (alternate) lost their tilt. A guitar's kind and its tilt (right stick
++// Y) are read straight from XInput, at the slot SDL found it in.
++struct XInputPadRaw {
++  uint16_t buttons;
++  uint8_t left_trigger, right_trigger;
++  int16_t lx, ly, rx, ry;
++};
++struct XInputStateRaw {
++  uint32_t packet;
++  XInputPadRaw pad;
++};
++struct XInputCapsRaw {
++  uint8_t type, sub_type;
++  uint16_t flags;
++  XInputPadRaw pad;
++  uint16_t left_motor, right_motor;
++};
++using XInputGetStateFn = DWORD(WINAPI*)(DWORD, XInputStateRaw*);
++using XInputGetCapabilitiesFn = DWORD(WINAPI*)(DWORD, DWORD, XInputCapsRaw*);
++
++struct XInputCapsExRaw {
++  XInputCapsRaw caps;
++  uint16_t vendor, product, version, unknown1;
++  uint32_t unknown2;
++};
++using XInputGetCapabilitiesExFn = DWORD(WINAPI*)(DWORD, DWORD, DWORD, XInputCapsExRaw*);
++
++struct XInputApi {
++  XInputGetStateFn get_state = nullptr;
++  XInputGetCapabilitiesFn get_caps = nullptr;
++  XInputGetCapabilitiesExFn get_caps_ex = nullptr;  // ordinal 108, with VID and PID
++};
++
++const XInputApi& XInput() {
++  static const XInputApi api = [] {
++    XInputApi a;
++    if (HMODULE m = LoadLibraryW(L"xinput1_4.dll")) {
++      a.get_state = reinterpret_cast<XInputGetStateFn>(GetProcAddress(m, "XInputGetState"));
++      a.get_caps = reinterpret_cast<XInputGetCapabilitiesFn>(GetProcAddress(m, "XInputGetCapabilities"));
++      a.get_caps_ex = reinterpret_cast<XInputGetCapabilitiesExFn>(GetProcAddress(m, MAKEINTRESOURCEA(108)));
++    }
++    return a;
++  }();
++  return api;
++}
++
++// The guitar kind at an XInput slot; 0 when the slot holds no guitar.
++uint8_t XInputGuitarSubType(int user) {
++  if (user < 0 || user > 3 || !XInput().get_caps) return 0;
++  XInputCapsRaw caps{};
++  if (XInput().get_caps(DWORD(user), 0, &caps) != ERROR_SUCCESS) return 0;
++  return IsGuitarSubType(caps.sub_type) ? caps.sub_type : 0;
++}
++
++// The XInput slot of a device SDL opened, -1 when it has none. SDL opens a
++// wired Xbox 360 guitar through HIDAPI as a regular controller, so the slot is
++// the free one with the same vendor and product, the one SDL reports first.
++// taken: slots other devices already hold, one bit each.
++int XInputSlotOf(SDL_Gamepad* gamepad, uint32_t taken) {
++  auto is_free = [&](int user) { return user >= 0 && user < 4 && !(taken & (1u << user)); };
++  const int reported = SDL_GetGamepadPlayerIndex(gamepad);
++  const uint16_t vendor = SDL_GetGamepadVendor(gamepad), product = SDL_GetGamepadProduct(gamepad);
++  if (!XInput().get_caps_ex || (!vendor && !product)) return -1;
++  int found = -1;
++  for (int user = 0; user < 4; ++user) {
++    XInputCapsExRaw ex{};
++    if (!is_free(user) || XInput().get_caps_ex(1, DWORD(user), 0, &ex) != ERROR_SUCCESS) continue;
++    // What SDL does for the wireless Xbox 360 receiver, which reports no product.
++    if (ex.product == 0 && (ex.caps.flags & 0x0002)) {
++      ex.vendor = 0x045E;
++      ex.product = 0x028E;
++    }
++    if (ex.vendor != vendor || ex.product != product) continue;
++    if (user == reported) return user;
++    if (found < 0) found = user;
++  }
++  return found;
++}
++#endif
++
 +// What each part of the guitar is on a regular controller (guitar_pad_*). The
 +// layout and the names follow Piscacho's Guitar Hero: Warriors of Rock PC port
 +// (gh6.ini's mando_*, MIT License, Copyright (c) 2026 Piscacho): Xbox names, the
@@ -1466,17 +1992,636 @@ index 0e4460c..a3084ef 100644
  }  // namespace
  
  SDLInputDriver::SDLInputDriver(rex::ui::Window* window, size_t window_z_order)
-@@ -394,6 +553,10 @@ X_RESULT SDLInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+@@ -324,6 +581,15 @@ void SDLInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+                      static_cast<int>(sizeof(guid_text)));
+     info.guid = guid_text;
+     info.subtype = GamepadSubType(controller.sdl);
++    info.native_subtype = SdlTypeToXInputSubType(SDL_GetJoystickType(SDL_GetGamepadJoystick(controller.sdl)), name);
++#ifdef _WIN32
++    if (controller.xinput_guitar) {
++      info.subtype = info.native_subtype = controller.xinput_guitar;
++    }
++    info.xinput_slot = controller.xinput_user;
++#endif
++    info.vendor = SDL_GetGamepadVendor(controller.sdl);
++    info.product = SDL_GetGamepadProduct(controller.sdl);
+     info.gamepad_type = static_cast<uint8_t>(SDL_GetGamepadType(controller.sdl));
+     info.synthetic = false;
+     out.push_back(info);
+@@ -394,6 +660,18 @@ X_RESULT SDLInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
      controller->state_changed = false;
    }
    std::memcpy(out_state, &controller->state, sizeof(*out_state));
-+  if (is_active && IsGamepadAsGuitar(controller->sdl)) {
++  if (is_active && !controller->xinput_guitar && IsGamepadAsGuitar(controller->sdl)) {
 +    out_state->gamepad = PadToGuitar(controller->state.gamepad);
 +    out_state->gamepad.buttons = rex::input::AutoStrum(controller->sdl, out_state->gamepad.buttons);
 +  }
++#ifdef _WIN32
++  if (is_active && controller->xinput_guitar && XInput().get_state) {
++    XInputStateRaw raw{};
++    if (XInput().get_state(DWORD(controller->xinput_user), &raw) == ERROR_SUCCESS) {
++      out_state->gamepad.thumb_ry = raw.pad.ry;
++    }
++  }
++#endif
    if (!is_active) {
      // Simulate an "untouched" controller. When we become active again the
      // pressed buttons aren't lost and will be visible again.
+@@ -746,6 +1024,18 @@ void SDLInputDriver::OnControllerDeviceAddedLocked(const SDL_Event& event) {
+   state.sdl = controller;
+   state.id = AllocateDeviceId();
+   state.state_changed = true;  // XInput starts with packet_number = 1
++#ifdef _WIN32
++  {
++    uint32_t taken = 0;
++    for (const auto& other : controllers_) {
++      if (other.xinput_user >= 0) taken |= 1u << other.xinput_user;
++    }
++    state.xinput_user = XInputSlotOf(controller, taken);
++    state.xinput_guitar = XInputGuitarSubType(state.xinput_user);
++    REXLOG_INFO("SDL OnControllerDeviceAdded: XInput slot {}, guitar kind {}.", state.xinput_user,
++                state.xinput_guitar);
++  }
++#endif
+   UpdateXCapabilities(state);
+   controllers_.push_back(state);
+ 
+@@ -956,6 +1246,11 @@ void SDLInputDriver::UpdateXCapabilities(ControllerState& state) {
+   auto& c = state.caps;
+   c.type = XINPUT_DEVTYPE_GAMEPAD;
+   c.sub_type = GamepadSubType(state.sdl);
++#ifdef _WIN32
++  if (state.xinput_guitar) {
++    c.sub_type = state.xinput_guitar;
++  }
++#endif
+   c.flags = cap_flags;
+   c.gamepad.buttons = 0xF3FF | (REXCVAR_GET(guide_button) ? X_INPUT_GAMEPAD_GUIDE : 0x0);
+   c.gamepad.left_trigger = 0xFF;
+diff --git a/src/input/xinput/xinput_input_driver.cpp b/src/input/xinput/xinput_input_driver.cpp
+index 635d69f..a271061 100644
+--- a/src/input/xinput/xinput_input_driver.cpp
++++ b/src/input/xinput/xinput_input_driver.cpp
+@@ -146,6 +146,9 @@ void XinputInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+     info.id = DeviceForSlot(slot);
+     info.name = "XInput Controller";
+     info.subtype = static_cast<uint8_t>(native_caps.SubType);
++    info.native_subtype = info.subtype;
++    info.xinput_slot = int32_t(slot);
++    info.raw_xinput = true;
+     info.synthetic = false;
+     out.push_back(info);
+   }
+diff --git a/src/kernel/xam/apps/xgi_app.cpp b/src/kernel/xam/apps/xgi_app.cpp
+index 3c60d5f..96a04ad 100644
+--- a/src/kernel/xam/apps/xgi_app.cpp
++++ b/src/kernel/xam/apps/xgi_app.cpp
+@@ -175,6 +175,61 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
+                                       uint32_t buffer_length) {
+   // NOTE: buffer_length may be zero or valid.
+   auto buffer = memory_->TranslateVirtual(buffer_ptr);
++
++  // In the direct (LAN / VPN) mode, every message the game sends is logged at
++  // warning level with its first words, and a search with the properties and
++  // contexts it asks for: what a game wants from matchmaking is the first
++  // thing to know when its search finds nothing.
++  static const bool trace_direct = std::getenv("REX_XNET_IP") != nullptr;
++  if (trace_direct && buffer_ptr) {
++    const uint32_t length = buffer_length ? buffer_length : 36;
++    std::string words;
++    for (uint32_t i = 0; i + 4 <= length && i < 40; i += 4) {
++      words += fmt::format(" {:08X}", memory::load_and_swap<uint32_t>(buffer + i));
++    }
++    REXKRNL_WARN("[OnlineXgi] message {:08X} length {}:{}", message, buffer_length, words);
++    if (message == 0x000B0007 && length >= 28) {
++      const uint32_t size = memory::load_and_swap<uint32_t>(buffer + 20);
++      const uint32_t value_ptr = memory::load_and_swap<uint32_t>(buffer + 24);
++      if (value_ptr && size) {
++        const uint8_t* value = memory_->TranslateVirtual(value_ptr);
++        std::string bytes;
++        for (uint32_t i = 0; i < size && i < 16; ++i) {
++          bytes += fmt::format(" {:02X}", value[i]);
++        }
++        REXKRNL_WARN("[OnlineXgi] property {:08X} value:{}",
++                     memory::load_and_swap<uint32_t>(buffer + 16), bytes);
++      }
++    }
++    if ((message == 0x000B0016 || message == 0x000B001C) && length >= 24) {
++      const uint32_t num_props = memory::load_and_swap<uint16_t>(buffer + 12);
++      const uint32_t num_ctx = memory::load_and_swap<uint16_t>(buffer + 14);
++      const uint32_t props_ptr = memory::load_and_swap<uint32_t>(buffer + 16);
++      const uint32_t ctx_ptr = memory::load_and_swap<uint32_t>(buffer + 20);
++      std::string text;
++      if (props_ptr) {
++        const uint8_t* props = memory_->TranslateVirtual(props_ptr);
++        for (uint32_t i = 0; i < num_props && i < 32; ++i) {
++          const uint8_t* prop = props + i * 24;
++          text += fmt::format(" {:08X}(type {})={:08X}{:08X}",
++                              memory::load_and_swap<uint32_t>(prop), prop[8],
++                              memory::load_and_swap<uint32_t>(prop + 16),
++                              memory::load_and_swap<uint32_t>(prop + 20));
++        }
++      }
++      std::string context_text;
++      if (ctx_ptr) {
++        const uint8_t* ctx = memory_->TranslateVirtual(ctx_ptr);
++        for (uint32_t i = 0; i < num_ctx && i < 32; ++i) {
++          context_text += fmt::format(" {:08X}={}", memory::load_and_swap<uint32_t>(ctx + i * 8),
++                                      memory::load_and_swap<uint32_t>(ctx + i * 8 + 4));
++        }
++      }
++      REXKRNL_WARN("[OnlineXgi] search procedure {} wants {} result(s): properties{} contexts{}",
++                   memory::load_and_swap<uint32_t>(buffer + 0),
++                   memory::load_and_swap<uint32_t>(buffer + 8), text, context_text);
++    }
++  }
+   switch (message) {
+     case 0x000B0006: {
+       assert_true(!buffer_length || buffer_length == 24);
+@@ -550,6 +605,50 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
+       memory::store_and_swap<uint32_t>(result + 0x44, 1); // filled public
+       memory::store_and_swap<uint32_t>(result + 0x48, 0); // filled private
+ 
++      // A game may read each result's properties and contexts. The direct
++      // mode has no word from the host, so the result carries what the search
++      // asked for, as a host with exactly that match would. Strings and
++      // binary values point into the caller's memory and are left out.
++      {
++        constexpr uint32_t kPropertySize = 24;
++        constexpr uint32_t kContextSize = 8;
++        uint32_t offset = (kHeaderSize + kResultSize + 7) & ~7u;
++        uint32_t prop_count = 0;
++        const uint32_t props_offset = offset;
++        if (props_ptr) {
++          const uint8_t* props = memory_->TranslateVirtual(props_ptr);
++          for (uint32_t i = 0; i < num_props && i < 32; ++i) {
++            const uint8_t* prop = props + i * kPropertySize;
++            if (prop[8] == 4 || prop[8] == 6 ||
++                offset + kPropertySize > results_buffer_size) {
++              continue;
++            }
++            std::memcpy(results + offset, prop, kPropertySize);
++            offset += kPropertySize;
++            ++prop_count;
++          }
++        }
++        uint32_t ctx_count = 0;
++        const uint32_t ctx_offset = offset;
++        if (ctx_ptr) {
++          const uint8_t* contexts = memory_->TranslateVirtual(ctx_ptr);
++          for (uint32_t i = 0; i < num_ctx && i < 32; ++i) {
++            if (offset + kContextSize > results_buffer_size) {
++              break;
++            }
++            std::memcpy(results + offset, contexts + i * kContextSize, kContextSize);
++            offset += kContextSize;
++            ++ctx_count;
++          }
++        }
++        memory::store_and_swap<uint32_t>(result + 0x4C, prop_count);
++        memory::store_and_swap<uint32_t>(result + 0x50, ctx_count);
++        memory::store_and_swap<uint32_t>(result + 0x54,
++                                         prop_count ? search_results_ptr + props_offset : 0);
++        memory::store_and_swap<uint32_t>(result + 0x58,
++                                         ctx_count ? search_results_ptr + ctx_offset : 0);
++      }
++
+       REXKRNL_WARN(
+           "[BurstSearch] injected one lobby: {}.{}.{}.{}:3074 result={:08X}",
+           ip[0], ip[1], ip[2], ip[3], search_results_ptr + kHeaderSize);
+diff --git a/src/kernel/xam/xam_content.cpp b/src/kernel/xam/xam_content.cpp
+index 86c4353..e11a902 100644
+--- a/src/kernel/xam/xam_content.cpp
++++ b/src/kernel/xam/xam_content.cpp
+@@ -75,7 +75,7 @@ u32 XamContentCreateEnumerator_entry(u32 user_index, u32 device_id, u32 content_
+     *buffer_size_ptr = sizeof(XCONTENT_DATA) * items_per_enumerate;
+   }
+ 
+-  uint64_t xuid = REX_KERNEL_STATE()->user_profile()->xuid();
++  uint64_t xuid = REX_KERNEL_STATE()->user_profile(user_index)->xuid();
+ 
+   auto e = make_object<XStaticEnumerator<XCONTENT_DATA>>(REX_KERNEL_STATE(), items_per_enumerate);
+   auto result = e->Initialize(0xFF, 0xFE, 0x20005, 0x20007, 0);
+@@ -119,7 +119,7 @@ u32 xeXamContentCreate(u32 user_index, mapped_string root_name, mapped_void cont
+                        u32 content_data_size, u32 flags, mapped_u32 disposition_ptr,
+                        mapped_u32 license_mask_ptr, u32 cache_size, u64 content_size,
+                        mapped_void overlapped_ptr) {
+-  uint64_t xuid = REX_KERNEL_STATE()->user_profile()->xuid();
++  uint64_t xuid = REX_KERNEL_STATE()->user_profile(user_index)->xuid();
+ 
+   XCONTENT_AGGREGATE_DATA content_data;
+   if (content_data_size == sizeof(XCONTENT_DATA)) {
+@@ -290,7 +290,7 @@ u32 XamContentGetCreator_entry(u32 user_index, mapped_void content_data_ptr,
+                                mapped_void overlapped_ptr) {
+   auto result = X_ERROR_SUCCESS;
+ 
+-  uint64_t xuid = REX_KERNEL_STATE()->user_profile()->xuid();
++  uint64_t xuid = REX_KERNEL_STATE()->user_profile(user_index)->xuid();
+   XCONTENT_AGGREGATE_DATA content_data = *content_data_ptr.as<XCONTENT_DATA*>();
+ 
+   bool content_exists = REX_KERNEL_STATE()->content_manager()->ContentExists(xuid, content_data);
+@@ -325,7 +325,7 @@ u32 XamContentGetThumbnail_entry(u32 user_index, mapped_void content_data_ptr,
+                                  mapped_void overlapped_ptr) {
+   assert_not_null(buffer_size_ptr);
+   uint32_t buffer_size = *buffer_size_ptr;
+-  uint64_t xuid = REX_KERNEL_STATE()->user_profile()->xuid();
++  uint64_t xuid = REX_KERNEL_STATE()->user_profile(user_index)->xuid();
+   XCONTENT_AGGREGATE_DATA content_data = *content_data_ptr.as<XCONTENT_DATA*>();
+ 
+   // Get thumbnail (if it exists).
+@@ -360,7 +360,7 @@ u32 XamContentGetThumbnail_entry(u32 user_index, mapped_void content_data_ptr,
+ u32 XamContentSetThumbnail_entry(u32 user_index, mapped_void content_data_ptr,
+                                  mapped_void buffer_ptr, u32 buffer_size,
+                                  mapped_void overlapped_ptr) {
+-  uint64_t xuid = REX_KERNEL_STATE()->user_profile()->xuid();
++  uint64_t xuid = REX_KERNEL_STATE()->user_profile(user_index)->xuid();
+   XCONTENT_AGGREGATE_DATA content_data = *content_data_ptr.as<XCONTENT_DATA*>();
+ 
+   // Buffer is PNG data.
+@@ -378,7 +378,7 @@ u32 XamContentSetThumbnail_entry(u32 user_index, mapped_void content_data_ptr,
+ 
+ u32 XamContentDelete_entry(u32 user_index, mapped_void content_data_ptr,
+                            mapped_void overlapped_ptr) {
+-  uint64_t xuid = REX_KERNEL_STATE()->user_profile()->xuid();
++  uint64_t xuid = REX_KERNEL_STATE()->user_profile(user_index)->xuid();
+   XCONTENT_AGGREGATE_DATA content_data = *content_data_ptr.as<XCONTENT_DATA*>();
+ 
+   auto result = REX_KERNEL_STATE()->content_manager()->DeleteContent(xuid, content_data);
+diff --git a/src/kernel/xam/xam_net.cpp b/src/kernel/xam/xam_net.cpp
+index fa7f662..842da93 100644
+--- a/src/kernel/xam/xam_net.cpp
++++ b/src/kernel/xam/xam_net.cpp
+@@ -194,6 +194,17 @@ struct XNetStartupParams {
+ 
+ XNetStartupParams xnet_startup_params = {};
+ 
++// A game may read a socket as a signed number and take a negative one for an
++// error (Guitar Hero: Warriors of Rock never binds such a socket), and kernel
++// handles start at 0xF8000000. The game gets the handle without those bits.
++constexpr uint32_t kSocketHandleBits = 0xF8000000;
++inline uint32_t GuestSocket(uint32_t handle) {
++  return handle & ~kSocketHandleBits;
++}
++inline uint32_t SocketHandle(uint32_t guest) {
++  return guest | kSocketHandleBits;
++}
++
+ u32 NetDll_XNetStartup_entry(u32 caller, ppc_ptr_t<XNetStartupParams> params) {
+   if (params) {
+     assert_true(params->cfgSizeOfStruct == sizeof(XNetStartupParams));
+@@ -321,7 +332,7 @@ u32 NetDll_WSARecvFrom_entry(u32 caller, u32 socket, ppc_ptr_t<XWSABUF> buffers_
+     uint32_t length;
+   };
+ 
+-  auto socket_object = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket);
++  auto socket_object = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket)));
+   if (!socket_object) {
+     XThread::SetLastError(0x2736);  // WSAENOTSOCK
+     return -1;
+@@ -477,7 +488,7 @@ u32 NetDll_WSASendTo_entry(u32 caller, u32 socket_handle, ppc_ptr_t<XWSABUF> buf
+   assert(!overlapped);
+   assert(!completion_routine);
+ 
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -963,6 +974,16 @@ void LogOnlineDatagram(const char* what, uint32_t ip, uint16_t port, uint32_t by
+ }
+ }  // namespace
+ 
++// The first calls of each socket function, at warning level: what a game does
++// with its sockets is the first thing to know when two players never meet.
++#define ONLINE_TRACE_FIRST(limit, ...)             \
++  do {                                             \
++    static std::atomic<uint32_t> trace_count{0};   \
++    if (trace_count.fetch_add(1) < (limit)) {      \
++      REXKRNL_WARN(__VA_ARGS__);                   \
++    }                                              \
++  } while (0)
++
+ u32 NetDll_socket_entry(u32 caller, u32 af, u32 type, u32 protocol) {
+   auto socket = object_ref<XSocket>(new XSocket(REX_KERNEL_STATE()));
+   X_STATUS result =
+@@ -974,8 +995,14 @@ u32 NetDll_socket_entry(u32 caller, u32 af, u32 type, u32 protocol) {
+ 
+     uint32_t error = xboxkrnl::xeRtlNtStatusToDosError(result);
+     XThread::SetLastError(error);
++    REXKRNL_WARN("[OnlineUDP] socket(af {}, type {}, protocol {}) failed: {:08X}",
++                 static_cast<uint32_t>(af), static_cast<uint32_t>(type),
++                 static_cast<uint32_t>(protocol), static_cast<uint32_t>(result));
+     return -1;
+   }
++  REXKRNL_WARN("[OnlineUDP] socket(af {}, type {}, protocol {}) = {:08X}",
++               static_cast<uint32_t>(af), static_cast<uint32_t>(type),
++               static_cast<uint32_t>(protocol), static_cast<uint32_t>(socket->handle()));
+ 
+   if (protocol == XSocket::X_IPPROTO_VDP) {
+     {
+@@ -985,11 +1012,12 @@ u32 NetDll_socket_entry(u32 caller, u32 af, u32 type, u32 protocol) {
+     rex::net::online::OnGameSocketOpened();
+   }
+ 
+-  return socket->handle();
++  return GuestSocket(socket->handle());
+ }
+ 
+ u32 NetDll_closesocket_entry(u32 caller, u32 socket_handle) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(20, "[OnlineUDP] closesocket {:08X}", static_cast<uint32_t>(socket_handle));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1017,7 +1045,7 @@ u32 NetDll_closesocket_entry(u32 caller, u32 socket_handle) {
+ }
+ 
+ i32 NetDll_shutdown_entry(u32 caller, u32 socket_handle, i32 how) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1038,7 +1066,8 @@ i32 NetDll_shutdown_entry(u32 caller, u32 socket_handle, i32 how) {
+ 
+ u32 NetDll_setsockopt_entry(u32 caller, u32 socket_handle, u32 level, u32 optname,
+                             mapped_void optval_ptr, u32 optlen) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(20, "[OnlineUDP] setsockopt {:08X} level {:X} option {:X}", static_cast<uint32_t>(socket_handle), static_cast<uint32_t>(level), static_cast<uint32_t>(optname));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1050,7 +1079,8 @@ u32 NetDll_setsockopt_entry(u32 caller, u32 socket_handle, u32 level, u32 optnam
+ }
+ 
+ u32 NetDll_ioctlsocket_entry(u32 caller, u32 socket_handle, u32 cmd, mapped_void arg_ptr) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(20, "[OnlineUDP] ioctlsocket {:08X} command {:08X}", static_cast<uint32_t>(socket_handle), static_cast<uint32_t>(cmd));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1068,7 +1098,7 @@ u32 NetDll_ioctlsocket_entry(u32 caller, u32 socket_handle, u32 cmd, mapped_void
+ }
+ 
+ u32 NetDll_bind_entry(u32 caller, u32 socket_handle, ppc_ptr_t<XSOCKADDR_IN> name, u32 namelen) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1079,6 +1109,8 @@ u32 NetDll_bind_entry(u32 caller, u32 socket_handle, ppc_ptr_t<XSOCKADDR_IN> nam
+   X_STATUS status = socket->Bind(&native_name, namelen);
+   if (XFAILED(status)) {
+     XThread::SetLastError(xboxkrnl::xeRtlNtStatusToDosError(status));
++    REXKRNL_WARN("[OnlineUDP] bind socket={:08X} port={} failed: {:08X}", socket_handle,
++                 ntohs(native_name.sin_port), static_cast<uint32_t>(status));
+     return -1;
+   }
+ 
+@@ -1089,7 +1121,8 @@ u32 NetDll_bind_entry(u32 caller, u32 socket_handle, ppc_ptr_t<XSOCKADDR_IN> nam
+ }
+ 
+ u32 NetDll_connect_entry(u32 caller, u32 socket_handle, ppc_ptr_t<XSOCKADDR> name, u32 namelen) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(20, "[OnlineUDP] connect {:08X}", static_cast<uint32_t>(socket_handle));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1107,7 +1140,8 @@ u32 NetDll_connect_entry(u32 caller, u32 socket_handle, ppc_ptr_t<XSOCKADDR> nam
+ }
+ 
+ u32 NetDll_listen_entry(u32 caller, u32 socket_handle, i32 backlog) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(20, "[OnlineUDP] listen {:08X}", static_cast<uint32_t>(socket_handle));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1125,13 +1159,14 @@ u32 NetDll_listen_entry(u32 caller, u32 socket_handle, i32 backlog) {
+ 
+ u32 NetDll_accept_entry(u32 caller, u32 socket_handle, ppc_ptr_t<XSOCKADDR> addr_ptr,
+                         mapped_u32 addrlen_ptr) {
++  ONLINE_TRACE_FIRST(20, "[OnlineUDP] accept {:08X}", static_cast<uint32_t>(socket_handle));
+   if (!addr_ptr) {
+     // WSAEFAULT
+     XThread::SetLastError(0x271E);
+     return -1;
+   }
+ 
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1146,7 +1181,7 @@ u32 NetDll_accept_entry(u32 caller, u32 socket_handle, ppc_ptr_t<XSOCKADDR> addr
+     std::memcpy(addr_ptr->sa_data, native_addr.sa_data, *addrlen_ptr - 2);
+     *addrlen_ptr = native_len;
+ 
+-    return new_socket->handle();
++    return GuestSocket(new_socket->handle());
+   } else {
+     return -1;
+   }
+@@ -1171,7 +1206,7 @@ struct host_set {
+         break;
+       }
+       // Convert from Xenia -> native
+-      auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++      auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+       if (!socket) {
+         this->count = i;
+         break;
+@@ -1184,7 +1219,7 @@ struct host_set {
+     guest_set->fd_count = 0;
+     for (uint32_t i = 0; i < this->count; ++i) {
+       auto socket = this->sockets[i];
+-      guest_set->fd_array[guest_set->fd_count++] = socket->handle();
++      guest_set->fd_array[guest_set->fd_count++] = GuestSocket(socket->handle());
+     }
+   }
+ 
+@@ -1210,6 +1245,7 @@ struct host_set {
+ i32 NetDll_select_entry(i32 caller, i32 nfds, ppc_ptr_t<x_fd_set> readfds,
+                         ppc_ptr_t<x_fd_set> writefds, ppc_ptr_t<x_fd_set> exceptfds,
+                         mapped_void timeout_ptr) {
++  ONLINE_TRACE_FIRST(10, "[OnlineUDP] select nfds {}", static_cast<int32_t>(nfds));
+   host_set host_readfds = {};
+   fd_set native_readfds = {};
+   if (readfds) {
+@@ -1264,7 +1300,8 @@ i32 NetDll_select_entry(i32 caller, i32 nfds, ppc_ptr_t<x_fd_set> readfds,
+ }
+ 
+ u32 NetDll_recv_entry(u32 caller, u32 socket_handle, mapped_void buf_ptr, u32 buf_len, u32 flags) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(20, "[OnlineUDP] recv {:08X} length {}", static_cast<uint32_t>(socket_handle), static_cast<uint32_t>(buf_len));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1321,7 +1358,8 @@ void BurstNetStatsTick() {
+ 
+ u32 NetDll_recvfrom_entry(u32 caller, u32 socket_handle, mapped_void buf_ptr, u32 buf_len,
+                           u32 flags, ppc_ptr_t<XSOCKADDR_IN> from_ptr, mapped_u32 fromlen_ptr) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(10, "[OnlineUDP] recvfrom {:08X} length {}", static_cast<uint32_t>(socket_handle), static_cast<uint32_t>(buf_len));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1413,7 +1451,8 @@ u32 NetDll_recvfrom_entry(u32 caller, u32 socket_handle, mapped_void buf_ptr, u3
+ }
+ 
+ u32 NetDll_send_entry(u32 caller, u32 socket_handle, mapped_void buf_ptr, u32 buf_len, u32 flags) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(40, "[OnlineUDP] send {:08X} length {}", static_cast<uint32_t>(socket_handle), static_cast<uint32_t>(buf_len));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+@@ -1514,7 +1553,8 @@ class BurstSimLatency {
+ 
+ u32 NetDll_sendto_entry(u32 caller, u32 socket_handle, mapped_void buf_ptr, u32 buf_len, u32 flags,
+                         ppc_ptr_t<XSOCKADDR_IN> to_ptr, u32 to_len) {
+-  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(socket_handle);
++  ONLINE_TRACE_FIRST(40, "[OnlineUDP] sendto {:08X} length {}", static_cast<uint32_t>(socket_handle), static_cast<uint32_t>(buf_len));
++  auto socket = REX_KERNEL_OBJECTS()->LookupObject<XSocket>(SocketHandle(static_cast<uint32_t>(socket_handle)));
+   if (!socket) {
+     // WSAENOTSOCK
+     XThread::SetLastError(0x2736);
+diff --git a/src/kernel/xam/xam_user.cpp b/src/kernel/xam/xam_user.cpp
+index 631af33..580b7d6 100644
+--- a/src/kernel/xam/xam_user.cpp
++++ b/src/kernel/xam/xam_user.cpp
+@@ -45,7 +45,7 @@ i32 XamUserGetXUID_entry(u32 user_index, u32 type_mask, mapped_u64 xuid_ptr) {
+   uint32_t result = X_E_NO_SUCH_USER;
+   uint64_t xuid = 0;
+   if (user_index < 4) {
+-    const auto& user_profile = REX_KERNEL_STATE()->user_profile();
++    const auto& user_profile = REX_KERNEL_STATE()->user_profile(user_index);
+     if (user_profile->IsSignedIn(user_index)) {
+       auto type = user_profile->type() & type_mask;
+       if (type & (2 | 4)) {
+@@ -68,7 +68,7 @@ i32 XamUserGetXUID_entry(u32 user_index, u32 type_mask, mapped_u64 xuid_ptr) {
+ u32 XamUserGetSigninState_entry(u32 user_index) {
+   // The one profile is signed in to Xbox LIVE on one user index: user 0, or
+   // the controller the title made player 1 (UserProfile::set_signed_in_user).
+-  if (REX_KERNEL_STATE()->user_profile()->IsSignedIn(user_index)) {
++  if (REX_KERNEL_STATE()->user_profile(user_index)->IsSignedIn(user_index)) {
+     REXKRNL_DEBUG("[BurstLive2] user {} -> Xbox LIVE sign-in state 2", uint32_t(user_index));
+     return 2;
+   }
+@@ -91,7 +91,7 @@ i32 XamUserGetSigninInfo_entry(u32 user_index, u32 flags, ppc_ptr_t<X_USER_SIGNI
+   }
+ 
+   std::memset(info, 0, sizeof(X_USER_SIGNIN_INFO));
+-  const auto& user_profile = REX_KERNEL_STATE()->user_profile();
++  const auto& user_profile = REX_KERNEL_STATE()->user_profile(user_index);
+   if (!user_profile->IsSignedIn(user_index)) {
+     return X_E_NO_SUCH_USER;
+   }
+@@ -107,7 +107,7 @@ u32 XamUserGetName_entry(u32 user_index, mapped_string buffer, u32 buffer_len) {
+     return X_E_INVALIDARG;
+   }
+ 
+-  const auto& user_profile = REX_KERNEL_STATE()->user_profile();
++  const auto& user_profile = REX_KERNEL_STATE()->user_profile(user_index);
+   if (!user_profile->IsSignedIn(user_index)) {
+     return X_E_NO_SUCH_USER;
+   }
+@@ -122,7 +122,7 @@ u32 XamUserGetGamerTag_entry(u32 user_index, mapped_wstring buffer, u32 buffer_l
+     return X_E_INVALIDARG;
+   }
+ 
+-  const auto& user_profile = REX_KERNEL_STATE()->user_profile();
++  const auto& user_profile = REX_KERNEL_STATE()->user_profile(user_index);
+   if (!user_profile->IsSignedIn(user_index)) {
+     return X_E_NO_SUCH_USER;
+   }
+@@ -210,7 +210,7 @@ uint32_t XamUserReadProfileSettingsEx(uint32_t title_id, uint32_t user_index, ui
+   // Title ID = 0 means us.
+   // 0xfffe07d1 = profile?
+ 
+-  if (!xuids && !REX_KERNEL_STATE()->user_profile()->IsSignedIn(user_index)) {
++  if (!xuids && !REX_KERNEL_STATE()->user_profile(user_index)->IsSignedIn(user_index)) {
+     // Only the signed-in user has a profile.
+     if (overlapped) {
+       REX_KERNEL_STATE()->CompleteOverlappedImmediate(
+@@ -220,7 +220,7 @@ uint32_t XamUserReadProfileSettingsEx(uint32_t title_id, uint32_t user_index, ui
+     return X_ERROR_NO_SUCH_USER;
+   }
+ 
+-  const auto& user_profile = REX_KERNEL_STATE()->user_profile();
++  const auto& user_profile = REX_KERNEL_STATE()->user_profile(user_index);
+ 
+   // First call asks for size (fill buffer_size_ptr).
+   // Second call asks for buffer contents with that size.
+@@ -307,7 +307,7 @@ u32 XamUserWriteProfileSettings_entry(u32 title_id, u32 user_index, u32 setting_
+     return X_ERROR_INVALID_PARAMETER;
+   }
+ 
+-  if (!REX_KERNEL_STATE()->user_profile()->IsSignedIn(user_index)) {
++  if (!REX_KERNEL_STATE()->user_profile(user_index)->IsSignedIn(user_index)) {
+     // Only the signed-in user has a profile.
+     if (overlapped) {
+       REX_KERNEL_STATE()->CompleteOverlappedImmediate(overlapped.guest_address(),
+@@ -318,7 +318,7 @@ u32 XamUserWriteProfileSettings_entry(u32 title_id, u32 user_index, u32 setting_
+   }
+ 
+   // Update and save settings.
+-  const auto& user_profile = REX_KERNEL_STATE()->user_profile();
++  const auto& user_profile = REX_KERNEL_STATE()->user_profile(user_index);
+ 
+   for (uint32_t n = 0; n < setting_count; ++n) {
+     const X_USER_PROFILE_SETTING& setting = settings[n];
+@@ -378,7 +378,7 @@ u32 XamUserCheckPrivilege_entry(u32 user_index, u32 mask, mapped_u32 out_value)
+ }
+ 
+ u32 XamUserContentRestrictionGetFlags_entry(u32 user_index, mapped_u32 out_flags) {
+-  if (!REX_KERNEL_STATE()->user_profile()->IsSignedIn(user_index)) {
++  if (!REX_KERNEL_STATE()->user_profile(user_index)->IsSignedIn(user_index)) {
+     return X_ERROR_NO_SUCH_USER;
+   }
+ 
+@@ -389,7 +389,7 @@ u32 XamUserContentRestrictionGetFlags_entry(u32 user_index, mapped_u32 out_flags
+ 
+ u32 XamUserContentRestrictionGetRating_entry(u32 user_index, u32 unk1, mapped_u32 out_unk2,
+                                              mapped_u32 out_unk3) {
+-  if (!REX_KERNEL_STATE()->user_profile()->IsSignedIn(user_index)) {
++  if (!REX_KERNEL_STATE()->user_profile(user_index)->IsSignedIn(user_index)) {
+     return X_ERROR_NO_SUCH_USER;
+   }
+ 
+@@ -420,7 +420,7 @@ u32 XamUserGetMembershipTier_entry(u32 user_index) {
+   if (user_index >= 4) {
+     return X_ERROR_INVALID_PARAMETER;
+   }
+-  if (!REX_KERNEL_STATE()->user_profile()->IsSignedIn(user_index)) {
++  if (!REX_KERNEL_STATE()->user_profile(user_index)->IsSignedIn(user_index)) {
+     return X_ERROR_NO_SUCH_USER;
+   }
+   return 6 /* 6 appears to be Gold */;
+@@ -434,7 +434,7 @@ u32 XamUserAreUsersFriends_entry(u32 user_index, u32 unk1, u32 unk2, mapped_u32
+   if (user_index >= 4) {
+     result = X_ERROR_INVALID_PARAMETER;
+   } else {
+-    const auto& user_profile = REX_KERNEL_STATE()->user_profile();
++    const auto& user_profile = REX_KERNEL_STATE()->user_profile(user_index);
+     if (user_profile->IsSignedIn(user_index)) {
+       if (user_profile->signin_state() == 0) {
+         result = X_ERROR_NOT_LOGGED_ON;
+@@ -472,7 +472,7 @@ u32 XamShowSigninUI_entry(u32 unk, u32 unk_mask) {
+   // alone):
+   // XN_SYS_SIGNINCHANGED (data = signed-in users mask)
+   REX_KERNEL_STATE()->BroadcastNotification(
+-      0x0000000A, 1u << REX_KERNEL_STATE()->user_profile()->signed_in_user());
++      0x0000000A, REX_KERNEL_STATE()->signed_in_mask());
+   // Games seem to sit and loop until we trigger this notification:
+   // XN_SYS_UI (off)
+   REX_KERNEL_STATE()->BroadcastNotification(0x00000009, 0);
 diff --git a/src/rexglue/CMakeLists.txt b/src/rexglue/CMakeLists.txt
 index 5de4b70..cdb9b9f 100644
 --- a/src/rexglue/CMakeLists.txt
@@ -1510,6 +2655,127 @@ index 0c720f3..f205379 100644
      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
  )
  target_include_directories(rexruntime PRIVATE
+diff --git a/src/system/kernel_state.cpp b/src/system/kernel_state.cpp
+index 5fc45f1..cfde5c2 100644
+--- a/src/system/kernel_state.cpp
++++ b/src/system/kernel_state.cpp
+@@ -68,6 +68,14 @@ KernelState::KernelState(Runtime* emulator)
+   app_manager_ = std::make_unique<xam::AppManager>();
+   user_profile_ = std::make_unique<xam::UserProfile>();
+   user_profile_->set_kernel_state(this);
++  if (xam::UserProfile::PerPlayer()) {
++    for (uint32_t i = 1; i < 4; ++i) {
++      if (xam::UserProfile::PlayerName(i).empty()) continue;
++      player_profiles_[i] = std::make_unique<xam::UserProfile>(i);
++      player_profiles_[i]->set_kernel_state(this);
++      REXSYS_INFO("[Signin] player {} has the profile {}", i + 1, player_profiles_[i]->name());
++    }
++  }
+ 
+   auto user_data_root = emulator_->user_data_root();
+   if (!user_data_root.empty()) {
+diff --git a/src/system/xam/content_manager.cpp b/src/system/xam/content_manager.cpp
+index ff71f87..cec97f9 100644
+--- a/src/system/xam/content_manager.cpp
++++ b/src/system/xam/content_manager.cpp
+@@ -464,8 +464,12 @@ X_RESULT ContentManager::UnmountAndDeleteContent(uint64_t xuid,
+ }
+ 
+ std::filesystem::path ContentManager::ResolveGameUserContentPath() {
++  return ResolveGameUserContentPath(kernel_state_->user_profile()->name());
++}
++
++std::filesystem::path ContentManager::ResolveGameUserContentPath(const std::string& name) {
+   auto title_id = fmt::format("{:08X}", kernel_state_->title_id());
+-  auto user_name = rex::to_path(kernel_state_->user_profile()->name());
++  auto user_name = rex::to_path(name);
+ 
+   // Per-game per-profile data location:
+   // content_root/title_id/profile/user_name
+diff --git a/src/system/xam/user_profile.cpp b/src/system/xam/user_profile.cpp
+index f29f017..fc3681f 100644
+--- a/src/system/xam/user_profile.cpp
++++ b/src/system/xam/user_profile.cpp
+@@ -13,22 +13,49 @@
+ 
+ #include <fmt/format.h>
+ 
++#include <rex/cvar.h>
+ #include <rex/logging.h>
+ #include <rex/net/online.h>
+ #include <rex/system/kernel_state.h>
+ #include <rex/system/xam/user_profile.h>
+ 
++REXCVAR_DEFINE_BOOL(player_profiles, false, "Kernel",
++                    "A profile for each player: players 2 to 4 sign in with the names in "
++                    "player_2_name..player_4_name (each with saves of its own); an empty name "
++                    "leaves that player without one. Off: one profile, player 1's.");
++REXCVAR_DEFINE_STRING(player_2_name, "", "Kernel", "Player 2's profile name (player_profiles)");
++REXCVAR_DEFINE_STRING(player_3_name, "", "Kernel", "Player 3's profile name (player_profiles)");
++REXCVAR_DEFINE_STRING(player_4_name, "", "Kernel", "Player 4's profile name (player_profiles)");
++
+ namespace rex {
+ namespace system {
+ namespace xam {
+ 
+-UserProfile::UserProfile() {
++bool UserProfile::PerPlayer() {
++  return REXCVAR_GET(player_profiles);
++}
++
++std::string UserProfile::PlayerName(uint32_t index) {
++  std::string name;
++  switch (index) {
++    case 1: name = REXCVAR_GET(player_2_name); break;
++    case 2: name = REXCVAR_GET(player_3_name); break;
++    case 3: name = REXCVAR_GET(player_4_name); break;
++    default: return "";
++  }
++  if (name.size() > 15) name.resize(15);
++  return name;
++}
++
++UserProfile::UserProfile(uint32_t index) : index_(index), per_player_(PerPlayer()) {
+   // 58410A1F checks the user XUID against a mask of 0x00C0000000000000 (3<<54),
+   // if non-zero, it prevents the user from playing the game.
+   // "You do not have permissions to perform this operation."
+-  xuid_ = 0xB13EBABEBABEBABE;
++  // Player 1 keeps the XUID the saves were always made with; the others' saves
++  // go under XUIDs of their own (the same rule: no bit of 3 << 54 set).
++  xuid_ = 0xB13EBABEBABEBABE + index;
+   // online_name, else the OS user name (shown to the other player online).
+-  name_ = rex::net::online::PlayerName();
++  name_ = index == 0 ? rex::net::online::PlayerName() : PlayerName(index);
+ 
+   // https://cs.rin.ru/forum/viewtopic.php?f=38&t=60668&hilit=gfwl+live&start=195
+   // https://github.com/arkem/py360/blob/master/py360/constants.py
+@@ -96,7 +123,7 @@ UserProfile::UserProfile() {
+ }
+ 
+ void UserProfile::set_signed_in_user(uint32_t user_index) {
+-  if (user_index >= 4) {
++  if (user_index >= 4 || per_player_) {
+     return;
+   }
+   const uint32_t previous = signed_in_user_.exchange(user_index, std::memory_order_relaxed);
+@@ -151,7 +178,7 @@ UserProfile::Setting* UserProfile::GetSetting(uint32_t setting_id) {
+ 
+ void UserProfile::LoadSetting(UserProfile::Setting* setting) {
+   if (setting->is_title_specific()) {
+-    auto content_dir = kernel_state_->content_manager()->ResolveGameUserContentPath();
++    auto content_dir = kernel_state_->content_manager()->ResolveGameUserContentPath(name_);
+     auto setting_id = fmt::format("{:08X}", setting->setting_id);
+     auto file_path = content_dir / setting_id;
+     auto file = rex::filesystem::OpenFile(file_path, "rb");
+@@ -176,7 +203,7 @@ void UserProfile::LoadSetting(UserProfile::Setting* setting) {
+ void UserProfile::SaveSetting(UserProfile::Setting* setting) {
+   if (setting->is_title_specific()) {
+     auto serialized_setting = setting->Serialize();
+-    auto content_dir = kernel_state_->content_manager()->ResolveGameUserContentPath();
++    auto content_dir = kernel_state_->content_manager()->ResolveGameUserContentPath(name_);
+     std::filesystem::create_directories(content_dir);
+     auto setting_id = fmt::format("{:08X}", setting->setting_id);
+     auto file_path = content_dir / setting_id;
 diff --git a/src/system/xex_module.cpp b/src/system/xex_module.cpp
 index 0726516..46d1d71 100644
 --- a/src/system/xex_module.cpp
