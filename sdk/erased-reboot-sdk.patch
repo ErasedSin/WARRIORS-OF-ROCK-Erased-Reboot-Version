@@ -425,6 +425,62 @@ index 8ccb52c..0b4708c 100644
  // Allocates a block of memory at the given page-aligned base address.
  // Fails if the memory is not available.
  // Specify nullptr for base_address to leave it up to the system.
+diff --git a/include/rex/system/achievement_cache.h b/include/rex/system/achievement_cache.h
+new file mode 100644
+index 0000000..8676605
+--- /dev/null
++++ b/include/rex/system/achievement_cache.h
+@@ -0,0 +1,33 @@
++#pragma once
++/**
++ * @file        rex/system/achievement_cache.h
++ * @brief       The achievements as files a launcher can read without the title's executable
++ *
++ * @license     BSD 3-Clause License, as the rest of the SDK (LICENSE in the project root). Added on the
++ *              recomp branch of ElGuslml/rexglue-sdk (RECOMP.md).
++ */
++
++#include <cstdint>
++#include <filesystem>
++#include <vector>
++
++#include <rex/system/achievement_store.h>
++#include <rex/system/util/xdbf_utils.h>
++#include <rex/system/xcontent.h>
++
++namespace rex::system {
++
++// A title's achievements live in its executable (the XDBF in the XEX, compressed and often encrypted), which a
++// launcher should not have to read. Each time the achievements are loaded, the runtime writes them next to the
++// unlocks (<dir>/<TITLEID>.toml, AchievementManager), rewriting only what changed:
++// - <dir>/<TITLEID>.info.toml: the title, its languages, and per achievement its id, gamerscore, flags, image id,
++//   icon, and label, description and unachieved description in every language the XDBF has (keys en, ja, de, fr,
++//   es, it, ko, zh-Hant, pt, zh-Hans, pl, ru). Texts that achievements.toml overrode replace the XDBF's in the
++//   language they were loaded in (`loaded_language`);
++// - <dir>/<TITLEID>/<image_id>.png: the icons, the XDBF's images as they are (PNG);
++// - <dir>/<TITLEID>/title.png: the title's own icon, the XDBF's image 0x8000 (the dashboard's), as it is.
++// --achievements_cache_only (ReXApp) writes them and exits, for a launcher that has just installed the game.
++void WriteAchievementCache(const util::XdbfGameData& db, uint32_t title_id, XLanguage loaded_language,
++                           const std::vector<AchievementInfo>& achievements, const std::filesystem::path& dir);
++
++}  // namespace rex::system
+diff --git a/include/rex/system/achievement_manager.h b/include/rex/system/achievement_manager.h
+index ca995dd..52ce73a 100644
+--- a/include/rex/system/achievement_manager.h
++++ b/include/rex/system/achievement_manager.h
+@@ -74,9 +74,11 @@ class AchievementManager {
+   void LoadUnlockState();
+   void SaveUnlockState() const;
+ 
+- private:
++  // Now, as a Windows FILETIME (what the unlock files keep).
+   static uint64_t CurrentFileTime();
+ 
++ private:
++
+   void DispatchCallbacks(
+       const std::unordered_map<AchievementListenerHandle, AchievementCallback>& callbacks,
+       const AchievementEvent& event) const;
 diff --git a/include/rex/system/flags.h b/include/rex/system/flags.h
 index 902bffd..8013f8c 100644
 --- a/include/rex/system/flags.h
@@ -439,7 +495,7 @@ index 902bffd..8013f8c 100644
  REXCVAR_DECLARE(bool, protect_on_release);
  REXCVAR_DECLARE(bool, scribble_heap);
 diff --git a/include/rex/system/kernel_state.h b/include/rex/system/kernel_state.h
-index 9b9cf9e..efc12a3 100644
+index 9b9cf9e..4334e6f 100644
 --- a/include/rex/system/kernel_state.h
 +++ b/include/rex/system/kernel_state.h
 @@ -200,6 +200,22 @@ class KernelState {
@@ -465,7 +521,17 @@ index 9b9cf9e..efc12a3 100644
  
    // Access must be guarded by the global critical region.
    util::ObjectTable* object_table() { return &object_table_; }
-@@ -354,6 +370,7 @@ class KernelState {
+@@ -326,6 +342,9 @@ class KernelState {
+ 
+   void SetLoadedAchievements(std::vector<AchievementInfo> achievements);
+   void UnlockAchievement(uint32_t id);
++  // An achievement earned by user_index: with player_profiles, players 2 to 4 keep it in their own profile
++  // (achievements/<XUID>/<title>.toml); player 1, or no profiles of their own, as UnlockAchievement.
++  void UnlockAchievementForUser(uint32_t user_index, uint32_t id);
+   bool IsAchievementUnlocked(uint32_t id) const;
+   // Returns the unlock FILETIME (100-ns intervals since 1601-01-01), or 0 if locked.
+   uint64_t GetAchievementUnlockTime(uint32_t id) const;
+@@ -354,6 +373,7 @@ class KernelState {
    std::unique_ptr<xam::AppManager> app_manager_;
    std::unique_ptr<xam::ContentManager> content_manager_;
    std::unique_ptr<xam::UserProfile> user_profile_;
@@ -1661,10 +1727,44 @@ index 0000000..87de763
 +
 +}  // namespace rex::input
 diff --git a/src/input/input_system.cpp b/src/input/input_system.cpp
-index a0af71e..c8b449f 100644
+index a0af71e..f788447 100644
 --- a/src/input/input_system.cpp
 +++ b/src/input/input_system.cpp
-@@ -638,7 +638,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
+@@ -41,6 +41,10 @@ REXCVAR_DEFINE_DOUBLE(left_stick_deadzone_percentage, 0.0, "Input",
+ REXCVAR_DEFINE_DOUBLE(right_stick_deadzone_percentage, 0.0, "Input",
+                       "Deadzone applied to the right stick, as a fraction of its range")
+     .range(0.0, 1.0);
++REXCVAR_DEFINE_INT32(guitar_tilt_sensitivity, 100, "Input/Guitar",
++                     "A guitar's tilt sensor (its right stick Y), in percent: above 100 a smaller tilt reaches the "
++                     "angle the game wants for Star Power (200 = half the tilt)")
++    .range(25, 400);
+ namespace rex::input {
+ 
+ namespace {
+@@ -297,6 +301,22 @@ X_RESULT InputSystem::GetState(uint32_t user_index, X_INPUT_STATE* out_state) {
+ 
+   X_RESULT result = GetStateForUI(user_index, out_state);
+ 
++  // A guitar's tilt, scaled by guitar_tilt_sensitivity: the game turns Star Power on past a fixed angle, which
++  // some guitars (or a worn sensor) reach only held almost upright.
++  const int32_t tilt_percent = REXCVAR_GET(guitar_tilt_sensitivity);
++  if (result == X_ERROR_SUCCESS && out_state && tilt_percent != 100) {
++    DeviceId chosen = ChooseDeviceForUser(user_index);
++    if (auto* driver = DriverForDevice(chosen)) {
++      X_INPUT_CAPABILITIES caps = {};
++      if (driver->GetDeviceCapabilities(chosen, 0, &caps) == X_ERROR_SUCCESS &&
++          (caps.sub_type == XINPUT_DEVSUBTYPE_GUITAR || caps.sub_type == XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE ||
++           caps.sub_type == XINPUT_DEVSUBTYPE_GUITAR_BASS)) {
++        const int32_t tilt = int32_t(int16_t(out_state->gamepad.thumb_ry)) * tilt_percent / 100;
++        out_state->gamepad.thumb_ry = int16_t(std::clamp(tilt, -32768, 32767));
++      }
++    }
++  }
++
+   if (result == X_ERROR_SUCCESS && out_state && user_index < kMaxGuestUsers) {
+     // The UI toggle combo is for the emulator, keep it from the guest.
+     const uint16_t combo = ui_toggle_combo_.load(std::memory_order_relaxed);
+@@ -638,7 +658,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
  
    if (!tool_mode) {
  #if REX_PLATFORM_WIN32
@@ -1673,7 +1773,7 @@ index a0af71e..c8b449f 100644
        auto xinput_driver = std::make_unique<xinput::XinputInputDriver>(nullptr, 0);
        if (xinput_driver->Setup() == X_STATUS_SUCCESS) {
          input->AddDriver(std::move(xinput_driver));
-@@ -646,7 +646,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
+@@ -646,7 +666,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
      }
  #endif
  
@@ -1683,7 +1783,7 @@ index a0af71e..c8b449f 100644
        if (sdl_driver->Setup() == X_STATUS_SUCCESS) {
          input->AddDriver(std::move(sdl_driver));
 diff --git a/src/input/mnk/mnk_input_driver.cpp b/src/input/mnk/mnk_input_driver.cpp
-index 796042e..3a7795c 100644
+index 796042e..9480e0f 100644
 --- a/src/input/mnk/mnk_input_driver.cpp
 +++ b/src/input/mnk/mnk_input_driver.cpp
 @@ -11,6 +11,7 @@
@@ -1706,7 +1806,60 @@ index 796042e..3a7795c 100644
  REXCVAR_DEFINE_BOOL(mnk_mode, true, "Input",
                      "Keyboard play: the keyboard works as a controller (with or without a pad)");
  REXCVAR_DEFINE_BOOL(mnk_mouse, false, "Input",
-@@ -422,10 +428,12 @@ void MnkInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+@@ -103,11 +109,15 @@ constexpr size_t kMaxQueuedKeystrokes = 256;
+ // so "Up" stays silent while Shift is held and "Shift+Up" stays silent without
+ // it. That is what lets the D-pad share the arrow keys. A consequence is
+ // that binding a bare modifier name ("Shift") can never fire, since holding it
+-// makes the live mask non-zero while the bind wants zero.
++// makes the live mask non-zero while the bind wants zero. So a modifier bound on
++// its own (a keyboard-mode guitar strums with Shift and Ctrl) stops being a
++// modifier: it is left out of the live mask (bare_bound_mods), for every bind.
+ constexpr uint8_t kModShift = 1u << 0;
+ constexpr uint8_t kModCtrl = 1u << 1;
+ constexpr uint8_t kModAlt = 1u << 2;
+ 
++std::atomic<uint8_t> bare_bound_mods{0};
++
+ uint8_t LiveModifiers(const bool (&key_down)[256]) {
+   uint8_t mods = 0;
+   if (key_down[static_cast<uint16_t>(rex::ui::VirtualKey::kShift)])
+@@ -395,8 +405,34 @@ static bool IsPassthroughEnabled() {
+   return REXCVAR_GET(mnk_passthrough);
+ }
+ 
++// The modifiers that a bind names on their own ("Shift", "LControl").
++static uint8_t BareModifiers(const std::string& cvar_val) {
++  uint8_t mods = 0;
++  std::string_view rest(cvar_val);
++  while (!rest.empty()) {
++    const size_t comma = rest.find(',');
++    std::string_view token = TrimSpaces(rest.substr(0, comma));
++    rest = comma == std::string_view::npos ? std::string_view() : rest.substr(comma + 1);
++    TakeModifiers(token);
++    switch (rex::ui::ParseVirtualKey(token)) {
++      case rex::ui::VirtualKey::kShift:
++        mods |= kModShift;
++        break;
++      case rex::ui::VirtualKey::kControl:
++        mods |= kModCtrl;
++        break;
++      case rex::ui::VirtualKey::kMenu:
++        mods |= kModAlt;
++        break;
++      default:
++        break;
++    }
++  }
++  return mods;
++}
++
+ static bool IsBindPressed(const bool (&key_down)[256], const std::string& cvar_val) {
+-  const uint8_t live_mods = LiveModifiers(key_down);
++  const uint8_t live_mods = LiveModifiers(key_down) & ~bare_bound_mods.load(std::memory_order_relaxed);
+   std::string_view rest(cvar_val);
+   while (!rest.empty()) {
+     size_t comma = rest.find(',');
+@@ -422,10 +458,12 @@ void MnkInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
    DeviceInfo info;
    info.id = kMnkDevice;
    info.name = IsPassthroughEnabled() ? "Keyboard" : "Keyboard and Mouse";
@@ -1721,7 +1874,7 @@ index 796042e..3a7795c 100644
    const uint32_t player = REXCVAR_GET(keyboard_player);
    info.user_index = player >= 2 && player <= kMaxGuestUsers ? int32_t(player - 1) : -1;
    out.push_back(info);
-@@ -444,7 +452,9 @@ X_RESULT MnkInputDriver::GetDeviceCapabilities(DeviceId id, uint32_t flags,
+@@ -444,7 +482,9 @@ X_RESULT MnkInputDriver::GetDeviceCapabilities(DeviceId id, uint32_t flags,
        return X_ERROR_SUCCESS;
      }
      out_caps->type = XINPUT_DEVTYPE_GAMEPAD;
@@ -1732,7 +1885,31 @@ index 796042e..3a7795c 100644
      out_caps->flags = 0;
      out_caps->gamepad.buttons = 0xFFFF;
      out_caps->gamepad.left_trigger = 0xFF;
-@@ -609,6 +619,14 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+@@ -494,6 +534,23 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+     return X_ERROR_SUCCESS;
+   }
+ 
++  {
++    uint8_t bare = 0;
++    for (const std::string* bind :
++         {&REXCVAR_GET(keybind_a), &REXCVAR_GET(keybind_b), &REXCVAR_GET(keybind_x), &REXCVAR_GET(keybind_y),
++          &REXCVAR_GET(keybind_left_shoulder), &REXCVAR_GET(keybind_right_shoulder),
++          &REXCVAR_GET(keybind_lstick_press), &REXCVAR_GET(keybind_rstick_press), &REXCVAR_GET(keybind_back),
++          &REXCVAR_GET(keybind_start), &REXCVAR_GET(keybind_guide), &REXCVAR_GET(keybind_dpad_up),
++          &REXCVAR_GET(keybind_dpad_down), &REXCVAR_GET(keybind_dpad_left), &REXCVAR_GET(keybind_dpad_right),
++          &REXCVAR_GET(keybind_left_trigger), &REXCVAR_GET(keybind_right_trigger),
++          &REXCVAR_GET(keybind_lstick_left), &REXCVAR_GET(keybind_lstick_right), &REXCVAR_GET(keybind_lstick_up),
++          &REXCVAR_GET(keybind_lstick_down), &REXCVAR_GET(keybind_rstick_left), &REXCVAR_GET(keybind_rstick_right),
++          &REXCVAR_GET(keybind_rstick_up), &REXCVAR_GET(keybind_rstick_down)}) {
++      bare |= BareModifiers(*bind);
++    }
++    bare_bound_mods.store(bare, std::memory_order_relaxed);
++  }
++
+   // The menu keys press what the screen wants them to (SetMenuKeyButtons);
+   // while they do, they're kept from the other binds (Enter is also Start).
+   uint16_t buttons = 0;
+@@ -609,6 +666,14 @@ X_RESULT MnkInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
      out_state->gamepad.thumb_ly = clamp16(ly);
      out_state->gamepad.thumb_rx = clamp16(rx);
      out_state->gamepad.thumb_ry = clamp16(ry);
@@ -1748,18 +1925,19 @@ index 796042e..3a7795c 100644
    return X_ERROR_SUCCESS;
  }
 diff --git a/src/input/sdl/sdl_input_driver.cpp b/src/input/sdl/sdl_input_driver.cpp
-index 0e4460c..e27337b 100644
+index 0e4460c..0b66c22 100644
 --- a/src/input/sdl/sdl_input_driver.cpp
 +++ b/src/input/sdl/sdl_input_driver.cpp
-@@ -14,6 +14,7 @@
+@@ -14,6 +14,8 @@
  #include <atomic>
  #include <cctype>
  #include <chrono>
++#include <cstdio>
 +#include <cstdlib>
  #include <filesystem>
  #include <string>
  #include <string_view>
-@@ -22,10 +23,21 @@
+@@ -22,10 +24,21 @@
  #include <rex/chrono/clock.h>
  #include <rex/cvar.h>
  #include <rex/input/flags.h>
@@ -1781,7 +1959,7 @@ index 0e4460c..e27337b 100644
  REXCVAR_DEFINE_STRING(hid_mappings_file, "gamecontrollerdb.txt", "Input",
                        "Path to SDL gamecontroller mappings file");
  
-@@ -33,6 +45,33 @@ REXCVAR_DEFINE_BOOL(hid_generic_mapping, true, "Input",
+@@ -33,6 +46,39 @@ REXCVAR_DEFINE_BOOL(hid_generic_mapping, true, "Input",
                      "Controllers SDL has no mapping for (some DirectInput-only and laptop "
                      "gamepads) get a generic one (buttons 1-4 = A B X Y, the last ones = "
                      "Back / Start, the first stick and hat = moving) instead of being ignored");
@@ -1812,22 +1990,58 @@ index 0e4460c..e27337b 100644
 +                      "Regular controller as a guitar: the whammy bar's analog control, RT, LT or RS (right stick)");
 +REXCVAR_DEFINE_STRING(guitar_pad_tilt, "", "Input/Guitar",
 +                      "Regular controller as a guitar: a button that tilts the guitar up (Star Power); empty = none");
++REXCVAR_DEFINE_STRING(guitar_hid_maps, "", "Input/Guitar",
++                      "Guitars that Windows sees as a generic USB controller (a Wii or PS3 guitar through an adapter, "
++                      "as Clone Hero sets them up): entries VVVV:PPPP|fields separated by ';', VVVV:PPPP the USB "
++                      "vendor and product (hex) and fields an SDL mapping of the guitar onto an Xbox 360 guitar "
++                      "(a b y x leftshoulder = green red yellow blue orange, dpup dpdown = strum, back = Star Power, "
++                      "rightx = whammy, righty = tilt). The launcher's guitar setup writes them.");
  REXCVAR_DEFINE_BOOL(input_poll_on_read, true, "Input",
                      "Read the controllers at the moment the game asks for their state. Off = "
                      "the state of the last update the UI thread ran, which the game's previous "
-@@ -171,11 +210,229 @@ uint8_t SdlTypeToXInputSubType(SDL_JoystickType t, const char* name) {
+@@ -171,11 +217,265 @@ uint8_t SdlTypeToXInputSubType(SDL_JoystickType t, const char* name) {
    }
  }
  
++// The guitar_hid_maps fields for a USB vendor and product, or "" when the device has none.
++std::string HidGuitarFields(uint16_t vendor, uint16_t product) {
++  if (!vendor && !product) return {};
++  char key[10];
++  std::snprintf(key, sizeof(key), "%04X:%04X", vendor, product);
++  const std::string maps = REXCVAR_GET(guitar_hid_maps);
++  size_t start = 0;
++  while (start < maps.size()) {
++    size_t end = maps.find(';', start);
++    if (end == std::string::npos) end = maps.size();
++    std::string entry = maps.substr(start, end - start);
++    start = end + 1;
++    const size_t bar = entry.find('|');
++    if (bar == std::string::npos) continue;
++    std::string id = entry.substr(0, bar);
++    id.erase(std::remove_if(id.begin(), id.end(), [](unsigned char c) { return std::isspace(c); }), id.end());
++    std::transform(id.begin(), id.end(), id.begin(), [](unsigned char c) { return char(std::toupper(c)); });
++    if (id == key) return entry.substr(bar + 1);
++  }
++  return {};
++}
++
++bool IsHidGuitar(SDL_Gamepad* gamepad) {
++  return !HidGuitarFields(SDL_GetGamepadVendor(gamepad), SDL_GetGamepadProduct(gamepad)).empty();
++}
++
 +// A regular controller that plays as a guitar (gamepad_as_guitar). Real
 +// guitars, drums and the rest keep their own kind and their own state.
 +bool IsGamepadAsGuitar(SDL_Gamepad* gamepad) {
-+  return REXCVAR_GET(gamepad_as_guitar) &&
++  return REXCVAR_GET(gamepad_as_guitar) && !IsHidGuitar(gamepad) &&
 +         SdlTypeToXInputSubType(SDL_GetJoystickType(SDL_GetGamepadJoystick(gamepad)),
 +                                SDL_GetGamepadName(gamepad)) == XINPUT_DEVSUBTYPE_GAMEPAD;
 +}
 +
  uint8_t GamepadSubType(SDL_Gamepad* gamepad) {
++  // A Guitar Hero guitar (the alternate kind keeps its tilt), with the buttons of its guitar_hid_maps entry.
++  if (IsHidGuitar(gamepad)) {
++    return XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE;
++  }
 +  if (IsGamepadAsGuitar(gamepad)) {
 +    return XINPUT_DEVSUBTYPE_GUITAR;
 +  }
@@ -1940,6 +2154,10 @@ index 0e4460c..e27337b 100644
 +  kSrcRsLeft = 1u << 24,
 +  kSrcRsRight = 1u << 25,
 +  kSrcRsAny = X_INPUT_GAMEPAD_RIGHT_THUMB | kSrcRsUp | kSrcRsDown | kSrcRsLeft | kSrcRsRight,
++  // The right stick's axes as they come: a real guitar that reaches the game as a
++  // regular controller (Parsec's virtual controller) keeps its whammy bar and tilt.
++  kSrcRxAxis = 1u << 26,
++  kSrcRyAxis = 1u << 27,
 +};
 +
 +uint32_t ParseSources(std::string_view text) {
@@ -1965,6 +2183,7 @@ index 0e4460c..e27337b 100644
 +      {"L2", kSrcLT},                        {"R2", kSrcRT},
 +      {"OPTIONS", X_INPUT_GAMEPAD_START},    {"CREATE", X_INPUT_GAMEPAD_BACK},
 +      {"SHARE", X_INPUT_GAMEPAD_BACK},
++      {"RX", kSrcRxAxis},                    {"RY", kSrcRyAxis},
 +  };
 +  uint32_t bits = 0;
 +  size_t pos = 0;
@@ -2037,15 +2256,16 @@ index 0e4460c..e27337b 100644
 +
 +  X_INPUT_GAMEPAD out{};
 +  out.buttons = buttons;
-+  out.thumb_rx = static_cast<int16_t>(std::clamp(-32768 + depth * 257, -32768, 32767));
-+  out.thumb_ry = static_cast<int16_t>((tilt && (s & tilt)) ? 32767 : 0);
++  out.thumb_rx = (whammy & kSrcRxAxis) ? int16_t(pad.thumb_rx)
++                                       : static_cast<int16_t>(std::clamp(-32768 + depth * 257, -32768, 32767));
++  out.thumb_ry = (tilt & kSrcRyAxis) ? int16_t(pad.thumb_ry) : static_cast<int16_t>((tilt && (s & tilt)) ? 32767 : 0);
 +  return out;
 +}
 +
  }  // namespace
  
  SDLInputDriver::SDLInputDriver(rex::ui::Window* window, size_t window_z_order)
-@@ -324,6 +581,15 @@ void SDLInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+@@ -324,6 +624,15 @@ void SDLInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
                       static_cast<int>(sizeof(guid_text)));
      info.guid = guid_text;
      info.subtype = GamepadSubType(controller.sdl);
@@ -2061,7 +2281,7 @@ index 0e4460c..e27337b 100644
      info.gamepad_type = static_cast<uint8_t>(SDL_GetGamepadType(controller.sdl));
      info.synthetic = false;
      out.push_back(info);
-@@ -394,6 +660,18 @@ X_RESULT SDLInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+@@ -394,6 +703,18 @@ X_RESULT SDLInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
      controller->state_changed = false;
    }
    std::memcpy(out_state, &controller->state, sizeof(*out_state));
@@ -2080,7 +2300,28 @@ index 0e4460c..e27337b 100644
    if (!is_active) {
      // Simulate an "untouched" controller. When we become active again the
      // pressed buttons aren't lost and will be visible again.
-@@ -746,6 +1024,18 @@ void SDLInputDriver::OnControllerDeviceAddedLocked(const SDL_Event& event) {
+@@ -634,6 +955,20 @@ void SDLInputDriver::OnJoystickDeviceAddedLocked(const SDL_Event& event) {
+       "HasGamepadMapping({})",
+       name ? name : "?", SDL_GetJoystickVendorForID(id), SDL_GetJoystickProductForID(id), guid_text,
+       is_gamepad);
++  // A guitar set up in guitar_hid_maps: its own mapping, whatever SDL knew of the device.
++  const std::string guitar_fields =
++      HidGuitarFields(SDL_GetJoystickVendorForID(id), SDL_GetJoystickProductForID(id));
++  if (!guitar_fields.empty()) {
++    const std::string mapping =
++        std::string(guid_text) + "," + (name && *name ? name : "USB guitar") + "," + guitar_fields;
++    if (SDL_AddGamepadMapping(mapping.c_str()) < 0) {
++      REXLOG_WARN("SDL JoystickAdded: \"{}\": guitar mapping refused: {}", name ? name : "?", SDL_GetError());
++    } else {
++      REXLOG_INFO("SDL JoystickAdded: \"{}\" plays as a guitar (guitar_hid_maps): {}", name ? name : "?",
++                  mapping);
++      return;
++    }
++  }
+   if (!is_gamepad) {
+     if (REXCVAR_GET(hid_generic_mapping) && AddGenericMapping(id, name, guid_text)) {
+       return;
+@@ -746,6 +1081,18 @@ void SDLInputDriver::OnControllerDeviceAddedLocked(const SDL_Event& event) {
    state.sdl = controller;
    state.id = AllocateDeviceId();
    state.state_changed = true;  // XInput starts with packet_number = 1
@@ -2099,7 +2340,7 @@ index 0e4460c..e27337b 100644
    UpdateXCapabilities(state);
    controllers_.push_back(state);
  
-@@ -956,6 +1246,11 @@ void SDLInputDriver::UpdateXCapabilities(ControllerState& state) {
+@@ -956,6 +1303,11 @@ void SDLInputDriver::UpdateXCapabilities(ControllerState& state) {
    auto& c = state.caps;
    c.type = XINPUT_DEVTYPE_GAMEPAD;
    c.sub_type = GamepadSubType(state.sdl);
@@ -2126,7 +2367,7 @@ index 635d69f..a271061 100644
      out.push_back(info);
    }
 diff --git a/src/kernel/xam/apps/xgi_app.cpp b/src/kernel/xam/apps/xgi_app.cpp
-index 3c60d5f..96a04ad 100644
+index 3c60d5f..d999c7a 100644
 --- a/src/kernel/xam/apps/xgi_app.cpp
 +++ b/src/kernel/xam/apps/xgi_app.cpp
 @@ -175,6 +175,61 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
@@ -2191,7 +2432,20 @@ index 3c60d5f..96a04ad 100644
    switch (message) {
      case 0x000B0006: {
        assert_true(!buffer_length || buffer_length == 24);
-@@ -550,6 +605,50 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
+@@ -235,8 +290,10 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
+         auto* base = memory_->TranslateVirtual(achievements_ptr);
+         for (uint32_t i = 0; i < achievement_count; ++i) {
+           uint32_t id = memory::load_and_swap<uint32_t>(base + i * kEntryStride + kEntryIdOffset);
+-          REXKRNL_INFO("XGIUserWriteAchievements: id={} ({})", id, i);
+-          kernel_state_->UnlockAchievement(id);
++          // XUSER_ACHIEVEMENT: { user index, achievement id }.
++          uint32_t user_index = memory::load_and_swap<uint32_t>(base + i * kEntryStride);
++          REXKRNL_INFO("XGIUserWriteAchievements: id={} user={} ({})", id, user_index, i);
++          kernel_state_->UnlockAchievementForUser(user_index, id);
+         }
+       } else {
+         REXKRNL_INFO("XGIUserWriteAchievements: skipped (count={} ptr={:08X})", achievement_count,
+@@ -550,6 +607,50 @@ X_HRESULT XgiApp::DispatchMessageSync(uint32_t message, uint32_t buffer_ptr,
        memory::store_and_swap<uint32_t>(result + 0x44, 1); // filled public
        memory::store_and_swap<uint32_t>(result + 0x48, 0); // filled private
  
@@ -2741,10 +2995,18 @@ index 5de4b70..cdb9b9f 100644
  target_include_directories(rexglue
      PRIVATE
 diff --git a/src/system/CMakeLists.txt b/src/system/CMakeLists.txt
-index 0c720f3..f205379 100644
+index 0c720f3..0a17b46 100644
 --- a/src/system/CMakeLists.txt
 +++ b/src/system/CMakeLists.txt
-@@ -59,6 +59,7 @@ add_library(rex::system ALIAS rexruntime)
+@@ -1,6 +1,7 @@
+ set(REXSYSTEM_SOURCES
+     runtime.cpp
+     embedded_metadata.cpp
++    achievement_cache.cpp
+     achievement_manager.cpp
+     achievements.cpp
+     kernel_state.cpp
+@@ -59,6 +60,7 @@ add_library(rex::system ALIAS rexruntime)
  add_library(rex::kernel ALIAS rexruntime)
  
  set_target_properties(rexruntime PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
@@ -2752,7 +3014,7 @@ index 0c720f3..f205379 100644
  
  rex_target_pch(rexruntime
      <mutex>
-@@ -76,6 +77,8 @@ rex_target_pch(rexruntime
+@@ -76,6 +78,8 @@ rex_target_pch(rexruntime
  target_include_directories(rexruntime PUBLIC
      $<BUILD_INTERFACE:${REXGLUE_ROOT}/include>
      $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
@@ -2761,11 +3023,251 @@ index 0c720f3..f205379 100644
      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
  )
  target_include_directories(rexruntime PRIVATE
+diff --git a/src/system/achievement_cache.cpp b/src/system/achievement_cache.cpp
+new file mode 100644
+index 0000000..6ba928c
+--- /dev/null
++++ b/src/system/achievement_cache.cpp
+@@ -0,0 +1,213 @@
++/**
++ * @file        system/achievement_cache.cpp
++ * @brief       The achievements as files for launchers (see rex/system/achievement_cache.h)
++ *
++ * @license     BSD 3-Clause License, as the rest of the SDK (LICENSE in the project root). Added on the
++ *              recomp branch of ElGuslml/rexglue-sdk (RECOMP.md).
++ */
++
++#include <rex/system/achievement_cache.h>
++
++#include <algorithm>
++#include <fstream>
++#include <iterator>
++#include <string>
++#include <string_view>
++
++#include <fmt/format.h>
++#include <rex/filesystem.h>
++#include <rex/logging.h>
++
++namespace rex::system {
++namespace {
++
++// XLanguage 1-12 -> the key of its texts in the cache.
++constexpr const char* kLanguageKeys[] = {"",   "en", "ja",      "de", "fr",      "es", "it",
++                                         "ko", "zh-Hant", "pt", "zh-Hans", "pl", "ru"};
++
++std::string Escape(std::string_view text) {
++  std::string out;
++  out.reserve(text.size() + 2);
++  out += '"';
++  for (char c : text) {
++    unsigned char ch = static_cast<unsigned char>(c);
++    if (c == '"') {
++      out += "\\\"";
++    } else if (c == '\\') {
++      out += "\\\\";
++    } else if (c == '\n') {
++      out += "\\n";
++    } else if (c == '\r') {
++      out += "\\r";
++    } else if (c == '\t') {
++      out += "\\t";
++    } else if (ch < 0x20 || ch == 0x7F) {
++      out += fmt::format("\\u{:04X}", ch);
++    } else {
++      out += c;
++    }
++  }
++  out += '"';
++  return out;
++}
++
++bool SameContent(const std::filesystem::path& path, const void* data, size_t size) {
++  std::error_code ec;
++  if (std::filesystem::file_size(path, ec) != size || ec) {
++    return false;
++  }
++  std::ifstream file(path, std::ios::binary);
++  std::string existing((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
++  return existing.size() == size && std::equal(existing.begin(), existing.end(), static_cast<const char*>(data));
++}
++
++// Written as a temporary file and renamed, so that a launcher never reads half a file.
++bool WriteIfChanged(const std::filesystem::path& path, const void* data, size_t size) {
++  if (SameContent(path, data, size)) {
++    return true;
++  }
++  std::filesystem::path temporary = path;
++  temporary += ".tmp";
++  {
++    std::ofstream file(temporary, std::ios::binary | std::ios::trunc);
++    if (!file || !file.write(static_cast<const char*>(data), std::streamsize(size))) {
++      REXSYS_WARN("Achievement cache: cannot write {}", rex::path_to_utf8(temporary));
++      return false;
++    }
++  }
++  std::error_code ec;
++  std::filesystem::rename(temporary, path, ec);
++  if (ec) {
++    REXSYS_WARN("Achievement cache: cannot replace {}: {}", rex::path_to_utf8(path), ec.message());
++    std::filesystem::remove(temporary, ec);
++    return false;
++  }
++  return true;
++}
++
++}  // namespace
++
++void WriteAchievementCache(const util::XdbfGameData& db, uint32_t title_id, XLanguage loaded_language,
++                           const std::vector<AchievementInfo>& achievements, const std::filesystem::path& dir) {
++  if (!db.is_valid() || dir.empty()) {
++    return;
++  }
++  std::error_code ec;
++  const std::string title_hex = fmt::format("{:08X}", title_id);
++  const std::filesystem::path icon_dir = dir / title_hex;
++  std::filesystem::create_directories(icon_dir, ec);
++  if (ec) {
++    REXSYS_WARN("Achievement cache: cannot create {}: {}", rex::path_to_utf8(icon_dir), ec.message());
++    return;
++  }
++
++  // The languages the XDBF has: those it has the title's name in (as XdbfGameData::GetExistingLanguage).
++  std::vector<XLanguage> languages;
++  for (uint32_t l = 1; l < uint32_t(XLanguage::kMaxLanguages); ++l) {
++    if (!db.title(XLanguage(l)).empty()) {
++      languages.push_back(XLanguage(l));
++    }
++  }
++  const XLanguage default_language = db.default_language();
++  if (std::find(languages.begin(), languages.end(), default_language) == languages.end() &&
++      uint32_t(default_language) < uint32_t(XLanguage::kMaxLanguages)) {
++    languages.insert(languages.begin(), default_language);
++  }
++  const XLanguage loaded = db.GetExistingLanguage(loaded_language);
++  auto key = [](XLanguage language) { return kLanguageKeys[uint32_t(language)]; };
++
++  // The title's own icon: the XDBF's image 0x8000, the one the console's dashboard shows.
++  if (auto title_icon = db.icon(); title_icon && title_icon.size > 0) {
++    WriteIfChanged(icon_dir / "title.png", title_icon.buffer, title_icon.size);
++  }
++
++  std::string content = fmt::format(
++      "# The achievements of title {}, for launchers: written by the ReXGlue runtime (recomp branch, RECOMP.md)\n"
++      "# when it loads them, if they changed. The unlocks are in {}.toml, the icons in the folder {}.\n\n",
++      title_hex, title_hex, title_hex);
++  content += fmt::format("title_id = \"{}\"\n", title_hex);
++  content += fmt::format("title = {}\n", Escape(db.title()));
++  content += fmt::format("default_language = \"{}\"\n", key(default_language));
++  content += "languages = [";
++  for (size_t i = 0; i < languages.size(); ++i) {
++    content += fmt::format("{}\"{}\"", i ? ", " : "", key(languages[i]));
++  }
++  content += "]\n";
++
++  const auto entries = db.GetAchievements();
++  std::vector<uint32_t> icons_written;
++  for (const AchievementInfo& achievement : achievements) {
++    auto entry = std::find_if(entries.begin(), entries.end(),
++                              [&](const util::XdbfAchievementTableEntry& e) { return uint32_t(e.id) == achievement.id; });
++
++    // The icon: the XDBF's image, as it is.
++    std::string icon;
++    if (achievement.image_id != 0) {
++      bool written = std::find(icons_written.begin(), icons_written.end(), achievement.image_id) != icons_written.end();
++      if (!written) {
++        auto block = db.GetEntry(util::XdbfSection::kImage, achievement.image_id);
++        if (block && block.size > 0 &&
++            WriteIfChanged(icon_dir / fmt::format("{}.png", achievement.image_id), block.buffer, block.size)) {
++          icons_written.push_back(achievement.image_id);
++          written = true;
++        }
++      }
++      if (written) {
++        icon = fmt::format("{}/{}.png", title_hex, achievement.image_id);
++      }
++    }
++
++    content += "\n[[achievements]]\n";
++    content += fmt::format("id = {}\n", achievement.id);
++    content += fmt::format("gamerscore = {}\n", achievement.gamerscore);
++    content += fmt::format("flags = {}\n", achievement.flags);
++    content += fmt::format("image_id = {}\n", achievement.image_id);
++    if (!icon.empty()) {
++      content += fmt::format("icon = \"{}\"\n", icon);
++    }
++
++    // The texts per language. The loaded language's come from the manager when achievements.toml overrode them,
++    // or when the achievement is not in the XDBF at all.
++    struct Texts {
++      std::string label, description, unachieved;
++    };
++    auto texts_in = [&](XLanguage language) -> Texts {
++      bool from_xdbf = entry != entries.end();
++      if (from_xdbf && language == loaded) {
++        from_xdbf = db.GetStringTableEntry(loaded, entry->label_id) == achievement.label;
++      }
++      if (!from_xdbf) {
++        return {achievement.label, achievement.description, achievement.unachieved_description};
++      }
++      return {db.GetStringTableEntry(language, entry->label_id), db.GetStringTableEntry(language, entry->description_id),
++              db.GetStringTableEntry(language, entry->unachieved_id)};
++    };
++    std::vector<std::pair<XLanguage, Texts>> per_language;
++    for (XLanguage language : languages) {
++      if (entry == entries.end() && language != loaded) {
++        continue;
++      }
++      per_language.emplace_back(language, texts_in(language));
++    }
++    if (per_language.empty()) {
++      per_language.emplace_back(loaded, texts_in(loaded));
++    }
++    const char* tables[] = {"label", "description", "unachieved_description"};
++    for (int field = 0; field < 3; ++field) {
++      content += fmt::format("[achievements.{}]\n", tables[field]);
++      for (const auto& [language, texts] : per_language) {
++        const std::string& text = field == 0 ? texts.label : field == 1 ? texts.description : texts.unachieved;
++        content += fmt::format("{} = {}\n", key(language), Escape(text));
++      }
++    }
++  }
++
++  const std::filesystem::path info_path = dir / (title_hex + ".info.toml");
++  bool unchanged = SameContent(info_path, content.data(), content.size());
++  if (!unchanged && WriteIfChanged(info_path, content.data(), content.size())) {
++    REXSYS_INFO("Achievement cache: {} achievements, {} icons, {} languages in {}", achievements.size(),
++                icons_written.size(), languages.size(), rex::path_to_utf8(dir));
++  }
++}
++
++}  // namespace rex::system
 diff --git a/src/system/kernel_state.cpp b/src/system/kernel_state.cpp
-index 5fc45f1..cfde5c2 100644
+index 5fc45f1..8eafa24 100644
 --- a/src/system/kernel_state.cpp
 +++ b/src/system/kernel_state.cpp
-@@ -68,6 +68,14 @@ KernelState::KernelState(Runtime* emulator)
+@@ -14,7 +14,12 @@
+ #include <filesystem>
+ #include <string>
+ 
++#include <cstdlib>
++#include <fstream>
++#include <map>
++
+ #include <fmt/format.h>
++#include <toml++/toml.hpp>
+ #include <rex/assert.h>
+ #include <rex/image_info.h>
+ #include <rex/logging.h>
+@@ -26,6 +31,7 @@
+ #include <rex/string.h>
+ #include <rex/kernel/xboxkrnl/threading.h>
+ #include <rex/system/kernel_module.h>
++#include <rex/system/achievement_cache.h>
+ #include <rex/system/kernel_state.h>
+ #include <rex/system/function_dispatcher.h>
+ #include <chrono>
+@@ -68,6 +74,14 @@ KernelState::KernelState(Runtime* emulator)
    app_manager_ = std::make_unique<xam::AppManager>();
    user_profile_ = std::make_unique<xam::UserProfile>();
    user_profile_->set_kernel_state(this);
@@ -2780,6 +3282,66 @@ index 5fc45f1..cfde5c2 100644
  
    auto user_data_root = emulator_->user_data_root();
    if (!user_data_root.empty()) {
+@@ -269,6 +283,46 @@ void KernelState::UnlockAchievement(uint32_t id) {
+   (void)achievement_manager_.UnlockAchievement(id, AchievementNotification::kShow);
+ }
+ 
++void KernelState::UnlockAchievementForUser(uint32_t user_index, uint32_t id) {
++  xam::UserProfile* profile = user_index >= 1 && user_index < 4 ? user_profile(user_index) : nullptr;
++  const auto user_root = emulator_->user_data_root();
++  if (!profile || profile == user_profile_.get() || profile->xuid() == 0 || user_root.empty()) {
++    UnlockAchievement(id);
++    return;
++  }
++  const std::filesystem::path path = user_root / "achievements" / fmt::format("{:016X}", profile->xuid()) /
++                                     fmt::format("{:08X}.toml", title_id());
++  std::map<uint32_t, uint64_t> unlocked;
++  std::error_code ec;
++  if (std::filesystem::exists(path, ec)) {
++    try {
++      auto table = toml::parse_file(path.string());
++      if (auto* entries = table["unlocked"].as_table()) {
++        for (const auto& [key, value] : *entries) {
++          const uint32_t entry_id = uint32_t(std::strtoul(std::string(key.str()).c_str(), nullptr, 10));
++          int64_t filetime = 0;
++          if (auto* fields = value.as_table()) filetime = (*fields)["filetime"].value_or<int64_t>(0);
++          unlocked[entry_id] = uint64_t(filetime);
++        }
++      }
++    } catch (const toml::parse_error& error) {
++      REXSYS_WARN("Achievements: cannot read {}: {}", path.string(), error.what());
++    }
++  }
++  if (unlocked.count(id)) {
++    return;
++  }
++  unlocked[id] = AchievementManager::CurrentFileTime();
++  std::string content = "# Achievement unlock state - managed by ReXGlue runtime\n\n";
++  for (const auto& [entry_id, filetime] : unlocked) {
++    content += fmt::format("[unlocked.{}]\nfiletime = {}\n\n", entry_id, filetime);
++  }
++  std::filesystem::create_directories(path.parent_path(), ec);
++  std::ofstream(path, std::ios::binary | std::ios::trunc) << content;
++  REXSYS_INFO("Achievements: {} earned by player {} ({})", id, user_index + 1, profile->name());
++  achievement_manager_.ShowAchievementNotification(id);
++}
++
+ bool KernelState::IsAchievementUnlocked(uint32_t id) const {
+   return achievement_manager_.IsUnlocked(id);
+ }
+@@ -330,6 +384,12 @@ void KernelState::LoadAchievementsData() {
+     }
+     achievement_manager_.SetUnlockSavePath(path);
+     achievement_manager_.LoadUnlockState();
++    // The achievements' list and icons for the launchers (achievements/<title>.info.toml and <title>/*.png), as on
++    // ElGuslml's recomp branch of the SDK (BSD).
++    if (db.is_valid()) {
++      WriteAchievementCache(db, title_id(), static_cast<XLanguage>(REXCVAR_GET(user_language)),
++                            achievement_manager_.ListAchievements(), user_root / "achievements");
++    }
+     REXSYS_INFO("Achievements: {} in the title data, {} unlocked ({})",
+                 achievement_manager_.ListAchievements().size(),
+                 [&] {
 diff --git a/src/system/xam/content_manager.cpp b/src/system/xam/content_manager.cpp
 index ff71f87..cec97f9 100644
 --- a/src/system/xam/content_manager.cpp
@@ -2909,6 +3471,90 @@ index 0726516..46d1d71 100644
          break;
        case XEX_SECTION_DATA:
          heap->Protect(address, size, memory::kMemoryProtectRead | memory::kMemoryProtectWrite);
+diff --git a/src/ui/keybinds.cpp b/src/ui/keybinds.cpp
+index 53c813b..2452db6 100644
+--- a/src/ui/keybinds.cpp
++++ b/src/ui/keybinds.cpp
+@@ -14,6 +14,8 @@
+ #include <string>
+ #include <deque>
+ #include <unordered_map>
++#include <algorithm>
++#include <cctype>
+ 
+ namespace rex::ui {
+ 
+@@ -143,9 +145,45 @@ static const std::unordered_map<std::string, VirtualKey> kKeyNames = {
+     {"MMB", VirtualKey::kMButton},
+ };
+ 
++// Other names for the keys above (what keyboard-mode guitars and key mappers call
++// them). The window reports either Shift, Ctrl or Alt as the same key.
++static const std::unordered_map<std::string, VirtualKey> kKeyAliases = {
++    {"LShift", VirtualKey::kShift},     {"RShift", VirtualKey::kShift},
++    {"LeftShift", VirtualKey::kShift},  {"RightShift", VirtualKey::kShift},
++    {"Ctrl", VirtualKey::kControl},     {"LCtrl", VirtualKey::kControl},
++    {"RCtrl", VirtualKey::kControl},    {"LControl", VirtualKey::kControl},
++    {"RControl", VirtualKey::kControl}, {"LeftControl", VirtualKey::kControl},
++    {"RightControl", VirtualKey::kControl},
++    {"LAlt", VirtualKey::kMenu},        {"RAlt", VirtualKey::kMenu},
++    {"Esc", VirtualKey::kEscape},       {"Enter", VirtualKey::kReturn},
++    {"PgUp", VirtualKey::kPrior},       {"PgDn", VirtualKey::kNext},
++    {"PageDn", VirtualKey::kNext},      {"Del", VirtualKey::kDelete},
++    {"Ins", VirtualKey::kInsert},
++};
++
+ VirtualKey ParseVirtualKey(std::string_view name) {
+   auto it = kKeyNames.find(std::string(name));
+-  return (it != kKeyNames.end()) ? it->second : VirtualKey::kNone;
++  if (it != kKeyNames.end()) {
++    return it->second;
++  }
++  auto alias = kKeyAliases.find(std::string(name));
++  if (alias != kKeyAliases.end()) {
++    return alias->second;
++  }
++  // Any case: "space", "SHIFT", "pagedown".
++  auto same = [&](const std::string& key) {
++    return key.size() == name.size() &&
++           std::equal(key.begin(), key.end(), name.begin(), [](char a, char b) {
++             return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
++           });
++  };
++  for (const auto& [key, vk] : kKeyNames) {
++    if (same(key)) return vk;
++  }
++  for (const auto& [key, vk] : kKeyAliases) {
++    if (same(key)) return vk;
++  }
++  return VirtualKey::kNone;
+ }
+ 
+ std::string VirtualKeyToString(VirtualKey vk) {
+diff --git a/src/ui/overlay/debug_overlay.cpp b/src/ui/overlay/debug_overlay.cpp
+index 261025e..2169d1d 100644
+--- a/src/ui/overlay/debug_overlay.cpp
++++ b/src/ui/overlay/debug_overlay.cpp
+@@ -34,6 +34,9 @@ REXCVAR_DEFINE_STRING(debug_overlay_position, "top-left", "UI",
+                       "bottom-right")
+     .allowed({"top-left", "top-right", "bottom-left", "bottom-right"});
+ 
++REXCVAR_DEFINE_BOOL(show_build_stamp, false, "UI",
++                    "Show the SDK build stamp at the bottom of the screen");
++
+ namespace rex::ui {
+ 
+ namespace {
+@@ -393,6 +396,9 @@ void DebugOverlayDialog::OnDraw(ImGuiIO& io) {
+ #endif
+ 
+   // Build stamp watermark -- centered near bottom of screen
++  if (!REXCVAR_GET(show_build_stamp)) {
++    return;
++  }
+   auto text_size = ImGui::CalcTextSize(REXGLUE_BUILD_STAMP);
+   float watermark_padding = ImGui::GetStyle().WindowPadding.x * 2.0f;
+   float bottom_offset = io.DisplaySize.y * 0.03f;
 diff --git a/src/ui/rex_app.cpp b/src/ui/rex_app.cpp
 index 077827e..f473aad 100644
 --- a/src/ui/rex_app.cpp

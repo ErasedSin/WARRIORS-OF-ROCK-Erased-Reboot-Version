@@ -1,4 +1,4 @@
-﻿// re-wor launcher: edits the port's settings (re_wor.toml), writes patched game
+// re-wor launcher: edits the port's settings (re_wor.toml), writes patched game
 // scripts into the mods folder for graphics toggles, and starts the game.
 // Targets .NET Framework 4.x so the compiler that ships with Windows can build it.
 
@@ -251,6 +251,22 @@ namespace ReWor
             { "seal_text", new[] {
                 "Este projeto não inclui nenhum arquivo do jogo e o autor não distribui o jogo. Use apenas a sua própria cópia de Guitar Hero: Warriors of Rock para Xbox 360. Diga não à pirataria.",
                 "This project includes no game files and its author does not distribute the game. Use only your own copy of Guitar Hero: Warriors of Rock for Xbox 360. Say no to piracy." } },
+            { "subtitle_gh5", new[] { "Guitar Hero 5 no PC, na mesma base do Warriors of Rock", "Guitar Hero 5 on PC, on the same base as Warriors of Rock" } },
+            { "seal_text_gh5", new[] {
+                "Este projeto não inclui nenhum arquivo do jogo e o autor não distribui o jogo. Use apenas a sua própria cópia de Guitar Hero 5 para Xbox 360. Diga não à pirataria.",
+                "This project includes no game files and its author does not distribute the game. Use only your own copy of Guitar Hero 5 for Xbox 360. Say no to piracy." } },
+            { "gh5_missing", new[] {
+                "O Guitar Hero 5 não está instalado: falta a pasta gh5 com o Guitar Hero 5.exe ao lado do launcher.",
+                "Guitar Hero 5 is not installed: the gh5 folder with Guitar Hero 5.exe is missing next to the launcher." } },
+            { "gh5_game_note", new[] {
+                "Use a sua cópia do Guitar Hero 5 de Xbox 360: o default.xex dos arquivos extraídos, uma ISO ou um pacote GOD.",
+                "Use your Xbox 360 copy of Guitar Hero 5: default.xex from the extracted files, an ISO or a GOD package." } },
+            { "gh5_renderer", new[] { "Renderizador", "Renderer" } },
+            { "gh5_renderer_native", new[] { "Nativo (Vulkan, mais rápido)", "Native (Vulkan, faster)" } },
+            { "gh5_renderer_xenos", new[] { "Emulado (Xenos, como no Xbox 360)", "Emulated (Xenos, as on the Xbox 360)" } },
+            { "gh5_ultrawide", new[] { "Ultrawide (palco preenche 21:9, HUD centralizado)", "Ultrawide (the stage fills 21:9, centered HUD)" } },
+            { "gh5_grain", new[] { "Granulado de tela", "Film grain" } },
+            { "gh5_vignette", new[] { "Vinheta (bordas escuras)", "Vignette (dark edges)" } },
             { "tab_home", new[] { "INÍCIO", "HOME" } },
             { "fps_label", new[] { "Taxa de quadros (acima de 60 precisa de um PC forte e de um monitor rápido)", "Frame rate (above 60 needs a strong PC and a fast display)" } },
             { "fps_60", new[] { "60 FPS (como no console)", "60 FPS (as on the console)" } },
@@ -265,6 +281,98 @@ namespace ReWor
             { "home_folder_missing", new[] { "Falta escolher a pasta do jogo, na página JOGO.", "Choose the game folder first, on the GAME page." } },
             { "home_hint", new[] { "Vídeo, controles, microfone e o resto ficam nas páginas ao lado.", "Video, controls, microphone and the rest are on the pages at the side." } },
             { "home_version", new[] { "versão {0}", "version {0}" } },
+            { "home_support", new[] { "Apoie:", "Support:" } },
+            { "pick_title", new[] { "ESCOLHA O JOGO", "SELECT A GAME" } },
+            { "pick_ready", new[] { "Pronto para jogar", "Ready to play" } },
+            { "pick_missing", new[] { "Escolha a pasta do jogo", "Choose the game folder" } },
+            { "pick_profile", new[] { "Perfil:", "Profile:" } },
+            { "pick_hint", new[] { "← → e Enter, ou clique", "← → and Enter, or click" } },
+            { "rail_games", new[] { "Todos os jogos", "All games" } },
+            { "tab_controls", new[] { "CONTROLES", "CONTROLS" } },
+            { "audio_buffer", new[] { "Buffer de áudio (vale ao abrir o jogo)", "Audio buffer (applies when the game starts)" } },
+            { "audio_16", new[] { "16 (menos atraso)", "16 (less delay)" } },
+            { "audio_64", new[] { "64 (sem estalos em PC fraco)", "64 (no crackling on weak PCs)" } },
+            { "tilt_label", new[] { "Sensibilidade da inclinação (Star Power)", "Tilt sensitivity (Star Power)" } },
+            { "tilt_100", new[] { "Normal", "Normal" } },
+            { "tilt_150", new[] { "Mais sensível (1,5x)", "More sensitive (1.5x)" } },
+            { "tilt_200", new[] { "Bem sensível (2x)", "Very sensitive (2x)" } },
+            { "tilt_300", new[] { "Máxima (3x)", "Highest (3x)" } },
+            { "usb_title", new[] { "GUITARRA USB (WII, PS3, ADAPTADORES)", "USB GUITAR (WII, PS3, ADAPTERS)" } },
+            { "usb_none", new[] { "Nenhum controle USB genérico conectado", "No generic USB controller connected" } },
+            { "usb_setup", new[] { "CONFIGURAR", "SET UP" } },
+            { "usb_remove", new[] { "REMOVER", "REMOVE" } },
+            { "usb_ready", new[] { "Configurada como guitarra.", "Set up as a guitar." } },
+            { "usb_not_ready", new[] { "Ainda não configurada: o jogo vê um controle comum.", "Not set up yet: the game sees a regular controller." } },
+            { "usb_note", new[] {
+                "Como no Clone Hero: guitarras que o Windows mostra como \"USB Controller\" (Wii ou PS3 por adaptador) precisam que você ensine os botões uma vez. Clique em CONFIGURAR e aperte cada parte quando pedir.",
+                "As in Clone Hero: guitars Windows shows as \"USB Controller\" (Wii or PS3 through an adapter) need their buttons taught once. Click SET UP and press each part when asked." } },
+            { "wiz_title", new[] { "Configurar guitarra", "Guitar setup" } },
+            { "wiz_step", new[] { "Passo {0} de {1}", "Step {0} of {1}" } },
+            { "wiz_rest", new[] { "Solte todos os botões e deixe a guitarra deitada, parada.", "Let go of every button and hold the guitar flat and still." } },
+            { "wiz_press", new[] { "Aperte: {0}", "Press: {0}" } },
+            { "wiz_whammy", new[] { "Empurre a alavanca até o fim e solte.", "Push the whammy bar all the way and let go." } },
+            { "wiz_tilt", new[] { "Levante o braço da guitarra (como para o Star Power) e volte.", "Tilt the guitar's neck up (as for Star Power) and back." } },
+            { "wiz_release", new[] { "Pode soltar.", "You can let go." } },
+            { "wiz_skip", new[] { "PULAR", "SKIP" } },
+            { "wiz_cancel", new[] { "CANCELAR", "CANCEL" } },
+            { "wiz_done", new[] { "Pronto! Clique em SALVAR ou JOGAR.", "Done! Click SAVE or PLAY." } },
+            { "tab_profile", new[] { "PERFIL", "PROFILE" } },
+            { "ach_player", new[] { "Perfil", "Profile" } },
+            { "ach_summary", new[] { "{0} de {1} conquistas  ·  {2} de {3} G", "{0} of {1} achievements  ·  {2} of {3} G" } },
+            { "ach_missing", new[] {
+                "As conquistas aparecem aqui depois que o jogo abre uma vez com esta versão.",
+                "The achievements show up here once the game has started with this version." } },
+            { "ach_unlocked", new[] { "Desbloqueada em {0}", "Unlocked on {0}" } },
+            { "pad_mode", new[] { "Controle comum (Xbox, PlayStation...)", "Regular controller (Xbox, PlayStation...)" } },
+            { "pad_mode_mic", new[] { "Controle microfone: entra como controle comum (liga no menu debug)", "Microphone controller: joins as a regular controller (turn it on in the debug menu)" } },
+            { "pad_mode_guitar", new[] { "Controle emulando a guitarra", "Controller emulating the guitar" } },
+            { "pad_mode_note", new[] {
+                "Controle microfone: o jogo vê um controle comum, que fica com o vocal; para tocar com ele, ligue o menu debug na aba JOGO e use Enable Controller dentro do jogo. Controle emulando a guitarra: o jogo vê uma guitarra.",
+                "Microphone controller: the game sees a regular controller, which takes the vocals; to play with it, turn on the debug menu on the GAME page and use Enable Controller in the game. Controller emulating the guitar: the game sees a guitar." } },
+            { "gh5_pad_tap", new[] { "Controle comum como guitarra", "Regular controller as a guitar" } },
+            { "gh5_pad_layout", new[] { "Botões do controle comum", "Regular controller buttons" } },
+            { "gh5_layout_classic", new[] { "Clássico: A B Y X LB nos trastes", "Classic: A B Y X LB on the frets" } },
+            { "gh5_layout_triggers", new[] { "Com gatilhos: LT LB RB RT e A", "Triggers: LT LB RB RT and A" } },
+            { "layout_parsec", new[] { "Guitarra pelo Parsec (alavanca e inclinação da guitarra)", "Guitar through Parsec (the guitar's whammy and tilt)" } },
+            { "gh5_layout_custom", new[] { "Personalizado (do arquivo de opções)", "Custom (from the options file)" } },
+            { "gh5_controls_note", new[] {
+                "Guitarras e baterias de verdade funcionam como estão. Um controle comum toca guitarra: trastes nos botões, palhetada no direcional, alavanca no gatilho direito (no layout com gatilhos, no analógico direito) e Star Power no Back.",
+                "Real guitars and drum kits work as they are. A regular controller plays guitar: frets on the buttons, strum on the D-pad, whammy on the right trigger (in the triggers layout, the right stick) and Star Power on Back." } },
+            { "gh5_kb_dfjkl", new[] { "D F J K L (padrão do GH5)", "D F J K L (GH5's default)" } },
+            { "gh5_kb_tap", new[] { "Palhetada automática no teclado", "Auto-strum on the keyboard" } },
+            { "gh5_kb_note", new[] {
+                "Nomes das teclas: letras, números, Up, Down, Left, Right, Space, Return, Backspace, Tab, Semicolon.",
+                "Key names: letters, numbers, Up, Down, Left, Right, Space, Return, Backspace, Tab, Semicolon." } },
+            { "gh5_singer", new[] { "Quem canta", "Who sings" } },
+            { "gh5_singer_none", new[] { "Ninguém (só instrumentos)", "Nobody (instruments only)" } },
+            { "gh5_singer_keyboard", new[] { "Quem joga no teclado", "Whoever plays on the keyboard" } },
+            { "gh5_mic_none", new[] { "Nenhum", "None" } },
+            { "gh5_mic_gain", new[] { "Ganho: {0} dB", "Gain: {0} dB" } },
+            { "gh5_mic_note", new[] {
+                "O microfone ainda não funciona nesta versão do GH5: aqui dá só para testar o nível. Ele chega numa próxima atualização, como no Warriors of Rock.",
+                "The microphone does not work in this version of GH5 yet: here you can only test its level. It comes in a later update, as in Warriors of Rock." } },
+            { "gh5_aa", new[] { "Antisserrilhado", "Antialiasing" } },
+            { "gh5_aa_off", new[] { "Desligado", "Off" } },
+            { "gh5_res", new[] { "Resolução interna", "Internal resolution" } },
+            { "gh5_res_auto", new[] { "Automática (a da tela)", "Automatic (the screen's)" } },
+            { "gh5_res_720", new[] { "720p (a mais leve)", "720p (the lightest)" } },
+            { "gh5_scaling", new[] { "Ampliação da imagem", "Upscaling" } },
+            { "gh5_shadows", new[] { "Qualidade das sombras", "Shadow quality" } },
+            { "gh5_shadows_normal", new[] { "Normal", "Normal" } },
+            { "gh5_shadows_high", new[] { "Alta (2x)", "High (2x)" } },
+            { "gh5_shadows_ultra", new[] { "Muito alta (4x)", "Very high (4x)" } },
+            { "gh5_native_note", new[] {
+                "Resolução interna abaixo de 100% deixa a placa de vídeo mais leve, como no Warriors of Rock.",
+                "An internal resolution below 100% is lighter on the graphics card, as in Warriors of Rock." } },
+            { "gh5_audio_exclusive", new[] { "Áudio de baixa latência (modo exclusivo do Windows)", "Low latency audio (Windows exclusive mode)" } },
+            { "gh5_show_fps", new[] { "Mostrar o FPS no canto (F2 liga e desliga)", "Show the FPS in the corner (F2 toggles it)" } },
+            { "gh5_dlc_installing", new[] { "Instalando DLC: {0}", "Installing DLC: {0}" } },
+            { "gh5_gfx_note", new[] {
+                "Os quatro efeitos são desligados direto no jogo, sem mexer nos seus arquivos.",
+                "The four effects are turned off inside the game, without touching your files." } },
+            { "gh5_dlc_note", new[] {
+                "DLC: coloque os pacotes do Xbox 360 do GH5 (arquivos CON ou LIVE) na PASTA DE DLC. O jogo instala os novos quando abre.",
+                "DLC: put your GH5 Xbox 360 packages (CON or LIVE files) in the DLC FOLDER. The game installs new ones when it starts." } },
             { "home_fullscreen", new[] { "Tela cheia", "Fullscreen" } },
             { "home_window", new[] { "Janela", "Window" } },
             { "home_online_on", new[] { "Ligado", "On" } },
@@ -382,9 +490,16 @@ namespace ReWor
             { "debug_menu", new[] { "Menu debug do jogo (item DEBUG MENU no menu principal, abaixo de OPTIONS)", "Game debug menu (a DEBUG MENU item in the main menu, below OPTIONS)" } },
             { "skip_intro", new[] { "Pular o vídeo de abertura", "Skip the opening video" } },
             { "game_note", new[] {
-                "Use os arquivos extraídos da sua cópia do jogo: o default.xex e a pasta data. Eles ficam onde estão; o launcher só guarda o caminho.",
-                "Use the files extracted from your copy of the game: default.xex and the data folder. They stay where they are; the launcher only stores the path." } },
-            { "folder_dialog", new[] { "Escolha a pasta com os arquivos do jogo (default.xex e a pasta data).", "Choose the folder with the game files (default.xex and the data folder)." } },
+                "Use a sua cópia do jogo: o default.xex dos arquivos extraídos (eles ficam onde estão), uma ISO ou um pacote GOD (o launcher instala os arquivos numa pasta).",
+                "Use your copy of the game: default.xex from the extracted files (they stay where they are), an ISO or a GOD package (the launcher installs the files to a folder)." } },
+            { "folder_dialog", new[] { "Escolha o default.xex, a ISO ou o arquivo do GOD do jogo", "Choose the game's default.xex, ISO or GOD file" } },
+            { "source_filter", new[] { "default.xex, ISO ou GOD", "default.xex, ISO or GOD" } },
+            { "bad_source", new[] {
+                "Esse arquivo não é o default.xex, uma ISO de Xbox 360 nem um pacote GOD. No GOD, escolha o arquivo sem extensão que fica ao lado da pasta .data.",
+                "That file is not default.xex, an Xbox 360 ISO or a GOD package. For GOD, choose the file without an extension next to the .data folder." } },
+            { "install_dialog", new[] { "Escolha onde instalar os arquivos do jogo (cerca de 8 GB).", "Choose where to install the game files (about 8 GB)." } },
+            { "installing", new[] { "Instalando os arquivos do jogo da sua cópia...", "Installing the game files from your copy..." } },
+            { "install_failed", new[] { "Não deu para instalar os arquivos do jogo.", "The game files could not be installed." } },
             { "bad_folder", new[] { "Essa pasta não tem o default.xex e a pasta data do jogo.", "That folder does not have the game's default.xex and data folder." } },
             { "res_label", new[] { "Resolução interna do jogo", "Game internal resolution" } },
             { "res_720", new[] { "1280x720 (HD, padrão do Xbox 360)", "1280x720 (HD, Xbox 360 default)" } },
@@ -586,6 +701,45 @@ namespace ReWor
             return list;
         }
 
+        // A generic controller's raw state (winmm), axes from -1 to 1 in winmm's order X Y Z R U V.
+        public class JoyReading
+        {
+            public readonly float[] Axes = new float[6];
+            public readonly bool[] Has = new bool[6];
+            public uint Buttons;
+            public int Pov = -1;
+        }
+
+        public static JoyReading ReadJoy(uint id)
+        {
+            var info = new JoyInfoEx { Size = (uint)Marshal.SizeOf(typeof(JoyInfoEx)), Flags = 0xFF };
+            if (joyGetPosEx(id, ref info) != 0) return null;
+            var caps = new JoyCaps();
+            if (joyGetDevCapsW((UIntPtr)id, ref caps, (uint)Marshal.SizeOf(typeof(JoyCaps))) != 0) return null;
+            var r = new JoyReading { Buttons = info.Buttons, Pov = info.Pov == 0xFFFF || info.Pov == 0xFFFFFFFF ? -1 : (int)info.Pov };
+            uint[] v = { info.X, info.Y, info.Z, info.R, info.U, info.V };
+            uint[] lo = { caps.XMin, caps.YMin, caps.ZMin, caps.RMin, caps.UMin, caps.VMin };
+            uint[] hi = { caps.XMax, caps.YMax, caps.ZMax, caps.RMax, caps.UMax, caps.VMax };
+            bool[] has = { true, true, (caps.Caps & 1) != 0, (caps.Caps & 2) != 0, (caps.Caps & 4) != 0, (caps.Caps & 8) != 0 };
+            for (int i = 0; i < 6; i++)
+            {
+                r.Has[i] = has[i] && hi[i] > lo[i];
+                r.Axes[i] = r.Has[i] ? ((float)v[i] - lo[i]) * 2f / (hi[i] - lo[i]) - 1f : 0f;
+            }
+            return r;
+        }
+
+        // SDL's number for winmm axis i. SDL numbers a HID controller's axes in usage order (X Y Z Rx Ry Rz);
+        // winmm's are X Y Z R U V, R being Rz, U Rx and V Ry.
+        public static int SdlAxis(JoyReading r, int winmm)
+        {
+            int[] usage = { 0, 1, 2, 5, 3, 4 };
+            int index = 0;
+            for (int i = 0; i < 6; i++)
+                if (r.Has[i] && usage[i] < usage[winmm]) index++;
+            return index;
+        }
+
         // Marks the devices with a button pressed. keyboardToo: the launcher has
         // the focus, so a key pressed is meant for it.
         public static void Poll(List<InputDevice> devices, bool keyboardToo)
@@ -739,6 +893,437 @@ namespace ReWor
         }
     }
 
+    // Reads the game files out of a disc image (XISO / XDVDFS) or a Games on Demand
+    // package (an STFS header with a .data folder of SVOD fragments) and copies them
+    // to a folder, so the launcher can install the game from what the player has.
+    static class XboxImage
+    {
+        const int Sector = 0x800;
+        static readonly byte[] Magic = Encoding.ASCII.GetBytes("MICROSOFT*XBOX*MEDIA");
+        static readonly long[] IsoPartitions = { 0, 0xFD90000, 0x2080000, 0x18300000 };
+
+        public class Entry
+        {
+            public string Path;
+            public long Location;
+            public long Length;
+        }
+
+        public enum Kind { None, Iso, God }
+
+        public static Kind Detect(string file)
+        {
+            try
+            {
+                if (Directory.Exists(file + ".data")) return GodHeader(file) != null ? Kind.God : Kind.None;
+                using (var fs = File.OpenRead(file))
+                    return IsoPartition(fs) >= 0 ? Kind.Iso : Kind.None;
+            }
+            catch (IOException) { return Kind.None; }
+            catch (UnauthorizedAccessException) { return Kind.None; }
+        }
+
+        static bool MagicAt(Stream s, long offset)
+        {
+            if (offset + Magic.Length > s.Length) return false;
+            var buf = new byte[Magic.Length];
+            s.Position = offset;
+            if (s.Read(buf, 0, buf.Length) != buf.Length) return false;
+            for (int i = 0; i < buf.Length; i++) if (buf[i] != Magic[i]) return false;
+            return true;
+        }
+
+        static long IsoPartition(Stream s)
+        {
+            foreach (long p in IsoPartitions)
+                if (MagicAt(s, p + 0x10000)) return p;
+            return -1;
+        }
+
+        static uint U32Le(byte[] b, int o) { return (uint)(b[o] | b[o + 1] << 8 | b[o + 2] << 16 | b[o + 3] << 24); }
+        static uint U32Be(byte[] b, int o) { return (uint)(b[o] << 24 | b[o + 1] << 16 | b[o + 2] << 8 | b[o + 3]); }
+        static ushort U16Le(byte[] b, int o) { return (ushort)(b[o] | b[o + 1] << 8); }
+
+        // Directory entries are a binary tree: left, right, data sector, size, attributes,
+        // name length, name; each one is 4-byte aligned. readAt(sector, offset, n) reads
+        // n bytes at that offset from the start of a directory's first sector.
+        static void ReadTree(Func<long, long, int, byte[]> readAt, long sector, long ordinal, string prefix, List<Entry> list, int depth)
+        {
+            if (depth > 64) throw new InvalidDataException("directory tree too deep");
+            byte[] raw = readAt(sector, ordinal * 4, 0xE);
+            ushort left = U16Le(raw, 0), right = U16Le(raw, 2);
+            if (left == 0xFFFF && right == 0xFFFF) return;
+            uint data = U32Le(raw, 4), length = U32Le(raw, 8);
+            byte attr = raw[12], nameLen = raw[13];
+            string name = Encoding.GetEncoding(28591).GetString(readAt(sector, ordinal * 4 + 0xE, nameLen));
+            if (name.IndexOfAny(new[] { '/', '\\', ':' }) >= 0 || name == "." || name == "..")
+                throw new InvalidDataException("bad file name in image: " + name);
+            if (left != 0) ReadTree(readAt, sector, left, prefix, list, depth + 1);
+            string path = prefix + name;
+            if ((attr & 0x10) != 0)
+            {
+                if (length != 0) ReadTree(readAt, data, 0, path + "\\", list, depth + 1);
+            }
+            else list.Add(new Entry { Path = path, Location = data, Length = length });
+            if (right != 0) ReadTree(readAt, sector, right, prefix, list, depth + 1);
+        }
+
+        class God
+        {
+            public int StartDataBlock;
+            public long Base;
+            public long MagicOffset;
+            public bool Egdf;
+            public string[] Fragments;
+        }
+
+        static God GodHeader(string headerPath)
+        {
+            var hdr = new byte[0x3B0];
+            using (var fs = File.OpenRead(headerPath))
+                if (fs.Read(hdr, 0, hdr.Length) != hdr.Length) return null;
+            string sig = Encoding.ASCII.GetString(hdr, 0, 4);
+            if (sig != "CON " && sig != "LIVE" && sig != "PIRS") return null;
+            if (U32Be(hdr, 0x3A9) != 1) return null;
+            var god = new God
+            {
+                StartDataBlock = hdr[0x395] | hdr[0x396] << 8 | hdr[0x397] << 16,
+                Egdf = (hdr[0x391] & 0x40) != 0,
+                Fragments = Directory.GetFiles(headerPath + ".data", "Data*"),
+            };
+            Array.Sort(god.Fragments, StringComparer.OrdinalIgnoreCase);
+            if (god.Fragments.Length == 0) return null;
+            using (var first = File.OpenRead(god.Fragments[0]))
+            {
+                if (god.Egdf && MagicAt(first, 0x2000)) { god.Base = 0; god.MagicOffset = 0x2000; }
+                else if (MagicAt(first, 0x12000)) { god.Base = 0x10000; god.MagicOffset = 0x12000; }
+                else if (MagicAt(first, 0xD000)) { god.Base = 0xB000; god.MagicOffset = 0xD000; }
+                else return null;
+            }
+            return god;
+        }
+
+        // Where an SVOD block lives: which fragment and at what offset, skipping the hash blocks.
+        static void GodBlock(God god, long block, out int file, out long offset)
+        {
+            const long BlocksPerL0 = 0x198, HashesPerL1 = 0xA1C4, BlocksPerFile = 0x14388, MaxFile = 0xA290000;
+            long trueBlock = block - god.StartDataBlock * 2L;
+            if (god.Egdf) trueBlock += 2;
+            long fileBlock = trueBlock % BlocksPerFile;
+            file = (int)(trueBlock / BlocksPerFile);
+            long l0 = fileBlock / BlocksPerL0 + 1;
+            long off = l0 * 0x1000;
+            long l1 = l0 / HashesPerL1 + 1;
+            off += l1 * 0x1000;
+            if (god.Base == 0xB000) off += god.Base;
+            offset = fileBlock * Sector + off;
+            if (offset >= MaxFile)
+            {
+                file++;
+                offset = offset % MaxFile + 0x2000;
+            }
+        }
+
+        // Copies every file to dest. progress gets (bytes done, bytes total).
+        public static void Extract(string source, string dest, Action<long, long> progress)
+        {
+            var list = new List<Entry>();
+            Kind kind = Detect(source);
+            if (kind == Kind.Iso)
+            {
+                using (var fs = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 20))
+                {
+                    long part = IsoPartition(fs);
+                    Func<long, long, int, byte[]> readAt = (sector, offset, n) =>
+                    {
+                        var b = new byte[n];
+                        fs.Position = part + sector * Sector + offset;
+                        if (fs.Read(b, 0, n) != n) throw new EndOfStreamException();
+                        return b;
+                    };
+                    byte[] root = readAt(0x20, 0x14, 8);
+                    ReadTree(readAt, U32Le(root, 0), 0, "", list, 0);
+                    long total = Total(list), done = 0;
+                    var buf = new byte[1 << 20];
+                    foreach (var e in list)
+                    {
+                        using (var output = Create(dest, e.Path))
+                        {
+                            fs.Position = part + e.Location * Sector;
+                            long left = e.Length;
+                            while (left > 0)
+                            {
+                                int n = fs.Read(buf, 0, (int)Math.Min(buf.Length, left));
+                                if (n <= 0) throw new EndOfStreamException(e.Path);
+                                output.Write(buf, 0, n);
+                                left -= n;
+                                done += n;
+                                progress(done, total);
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+            if (kind != Kind.God) throw new InvalidDataException("not an Xbox 360 disc image or Games on Demand package");
+            God god = GodHeader(source);
+            var files = new FileStream[god.Fragments.Length];
+            try
+            {
+                for (int i = 0; i < files.Length; i++)
+                    files[i] = new FileStream(god.Fragments[i], FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16);
+                Func<long, long, int, byte[]> readAt = (dirBlock, offset, n) =>
+                {
+                    int fi; long addr;
+                    GodBlock(god, dirBlock + offset / Sector, out fi, out addr);
+                    var b = new byte[n];
+                    files[fi].Position = addr + offset % Sector;
+                    if (files[fi].Read(b, 0, n) != n) throw new EndOfStreamException();
+                    return b;
+                };
+                var rootBuf = new byte[8];
+                files[0].Position = god.MagicOffset + 0x14;
+                files[0].Read(rootBuf, 0, 8);
+                ReadTree(readAt, U32Le(rootBuf, 0), 0, "", list, 0);
+                long total = Total(list), done = 0;
+                var block = new byte[Sector];
+                foreach (var e in list)
+                {
+                    using (var output = Create(dest, e.Path))
+                    {
+                        long left = e.Length, b = e.Location;
+                        while (left > 0)
+                        {
+                            int fi; long addr;
+                            GodBlock(god, b, out fi, out addr);
+                            int n = (int)Math.Min(Sector, left);
+                            files[fi].Position = addr;
+                            if (files[fi].Read(block, 0, n) != n) throw new EndOfStreamException(e.Path);
+                            output.Write(block, 0, n);
+                            left -= n;
+                            done += n;
+                            b++;
+                            if ((b & 0x3FF) == 0) progress(done, total);
+                        }
+                    }
+                }
+                progress(total, total);
+            }
+            finally
+            {
+                foreach (var f in files) if (f != null) f.Dispose();
+            }
+        }
+
+        static long Total(List<Entry> list)
+        {
+            long t = 0;
+            foreach (var e in list) t += e.Length;
+            return t;
+        }
+
+        static FileStream Create(string dest, string relative)
+        {
+            string full = Path.GetFullPath(Path.Combine(dest, relative));
+            string root = Path.GetFullPath(dest).TrimEnd('\\') + "\\";
+            if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("file outside the install folder: " + relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(full));
+            return new FileStream(full, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 20);
+        }
+    }
+
+    // The Xbox dashboard art each game ships in its "nxeart" package (an STFS PIRS/LIVE/CON
+    // file next to default.xex): nxebg.jpg is the 1920x1080 background. Read from the
+    // player's own copy, so the launcher carries no game art.
+    static class NxeArt
+    {
+        public static Image Background(string gameFolder)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(gameFolder)) return null;
+                string path = Path.Combine(gameFolder, "nxeart");
+                if (!File.Exists(path) || new FileInfo(path).Length > 64L << 20) return null;
+                byte[] data = ReadFile(File.ReadAllBytes(path), "nxebg.jpg");
+                if (data == null) return null;
+                using (var stream = new MemoryStream(data))
+                using (var image = Image.FromStream(stream))
+                    return new Bitmap(image);
+            }
+            catch (Exception) { return null; }
+        }
+
+        static int Be32(byte[] b, int o) { return b[o] << 24 | b[o + 1] << 16 | b[o + 2] << 8 | b[o + 3]; }
+        static int Le24(byte[] b, int o) { return b[o] | b[o + 1] << 8 | b[o + 2] << 16; }
+
+        static byte[] ReadFile(byte[] b, string wanted)
+        {
+            string magic = Encoding.ASCII.GetString(b, 0, 4);
+            if (magic != "PIRS" && magic != "LIVE" && magic != "CON ") return null;
+            long baseOffset = ((long)Be32(b, 0x340) + 0xFFF) & ~0xFFFL;
+            const int Vd = 0x379;
+            int shift = (b[Vd + 2] & 1) != 0 ? 0 : 1;
+            int tableBlocks = b[Vd + 3] | b[Vd + 4] << 8;
+            int tableStart = Le24(b, Vd + 5);
+            Func<int, long> blockOffset = delegate(int block)
+            {
+                long x = block;
+                foreach (int level in new[] { 0xAA, 0x70E4, 0x4AF768 })
+                {
+                    x += (long)((block + level) / level) << shift;
+                    if (block < level) break;
+                }
+                return baseOffset + (x << 12);
+            };
+            for (int t = 0; t < tableBlocks && t < 64; t++)
+            {
+                long table = blockOffset(tableStart + t);
+                for (int e = 0; e < 64; e++)
+                {
+                    long o = table + e * 0x40;
+                    if (o + 0x40 > b.Length) return null;
+                    int flags = b[o + 0x28];
+                    int length = flags & 0x3F;
+                    if (length == 0) continue;
+                    if (Encoding.ASCII.GetString(b, (int)o, length) != wanted) continue;
+                    // Only a file stored in consecutive blocks; the art always is.
+                    if ((flags & 0x40) == 0) return null;
+                    int block = Le24(b, (int)o + 0x2F);
+                    int size = Be32(b, (int)o + 0x34);
+                    if (size <= 0 || size > b.Length) return null;
+                    var result = new byte[size];
+                    for (int done = 0; done < size; done += 0x1000, block++)
+                    {
+                        long at = blockOffset(block);
+                        int count = Math.Min(0x1000, size - done);
+                        if (at + count > b.Length) return null;
+                        Buffer.BlockCopy(b, (int)at, result, done, count);
+                    }
+                    return result;
+                }
+            }
+            return null;
+        }
+    }
+
+    // The project's icons, a guitar pick each: black for the launcher (its rim red into
+    // blue), red with a 6 for Warriors of Rock, blue with a 5 for Guitar Hero 5. The rail
+    // draws them, and the .ico files are rendered from this same code.
+    static class PickIcon
+    {
+        public const int Launcher = 0, Wor = 1, Gh5 = 2;
+
+        static System.Drawing.Drawing2D.GraphicsPath Shape(RectangleF r)
+        {
+            Func<float, float, PointF> p = (x, y) => new PointF(r.X + r.Width * x / 256f, r.Y + r.Height * y / 256f);
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            path.AddBezier(p(128, 10), p(198, 10), p(250, 26), p(246, 82));
+            path.AddBezier(p(246, 82), p(240, 152), p(172, 222), p(128, 248));
+            path.AddBezier(p(128, 248), p(84, 222), p(16, 152), p(10, 82));
+            path.AddBezier(p(10, 82), p(6, 26), p(58, 10), p(128, 10));
+            path.CloseFigure();
+            return path;
+        }
+
+        public static void Draw(Graphics g, RectangleF r, int kind, FontFamily titleFamily)
+        {
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+            float u = r.Width / 256f;
+            Color top, bottom;
+            if (kind == Wor) { top = Color.FromArgb(240, 44, 70); bottom = Color.FromArgb(96, 6, 20); }
+            else if (kind == Gh5) { top = Color.FromArgb(64, 150, 255); bottom = Color.FromArgb(8, 34, 96); }
+            else { top = Color.FromArgb(40, 38, 48); bottom = Color.FromArgb(4, 4, 6); }
+            using (var path = Shape(r))
+            {
+                using (var fill = new System.Drawing.Drawing2D.LinearGradientBrush(r, top, bottom, 90f))
+                    g.FillPath(fill, path);
+                // A shine across the upper half.
+                using (var shine = Shape(new RectangleF(r.X + r.Width * 0.12f, r.Y + r.Height * 0.06f, r.Width * 0.76f, r.Height * 0.5f)))
+                using (var light = new System.Drawing.Drawing2D.LinearGradientBrush(r, Color.FromArgb(kind == Launcher ? 26 : 70, 255, 255, 255), Color.FromArgb(0, 255, 255, 255), 90f))
+                    g.FillPath(light, shine);
+                float rim = Math.Max(1.2f, 12f * u);
+                if (kind == Launcher)
+                {
+                    using (var edge = new System.Drawing.Drawing2D.LinearGradientBrush(r, Color.Black, Color.Black, 0f))
+                    {
+                        var blend = new System.Drawing.Drawing2D.ColorBlend(3);
+                        blend.Colors = new[] { Color.FromArgb(232, 36, 64), Color.FromArgb(150, 50, 230), Color.FromArgb(56, 140, 255) };
+                        blend.Positions = new[] { 0f, 0.5f, 1f };
+                        edge.InterpolationColors = blend;
+                        using (var pen = new Pen(edge, rim)) g.DrawPath(pen, path);
+                    }
+                }
+                else
+                {
+                    using (var pen = new Pen(Color.FromArgb(230, 10, 4, 8), rim)) g.DrawPath(pen, path);
+                    using (var pen = new Pen(Color.FromArgb(90, 255, 255, 255), Math.Max(0.8f, 3f * u)))
+                    using (var inner = Shape(new RectangleF(r.X + 14 * u, r.Y + 12 * u, r.Width - 28 * u, r.Height - 26 * u)))
+                        g.DrawPath(pen, inner);
+                }
+            }
+
+            string glyph = kind == Wor ? "6" : kind == Gh5 ? "5" : "E";
+            FontFamily family = kind == Launcher && titleFamily != null ? titleFamily : new FontFamily("Impact");
+            float size = (kind == Launcher ? 150f : 140f) * u;
+            using (var font = new Font(family, size, FontStyle.Regular, GraphicsUnit.Pixel))
+            using (var text = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                text.AddString(glyph, family, (int)FontStyle.Regular, size, PointF.Empty, StringFormat.GenericTypographic);
+                RectangleF b = text.GetBounds();
+                var move = new System.Drawing.Drawing2D.Matrix();
+                move.Translate(r.X + r.Width / 2f - (b.X + b.Width / 2f), r.Y + r.Height * 0.44f - (b.Y + b.Height / 2f));
+                text.Transform(move);
+                if (kind == Launcher)
+                {
+                    for (int k = 4; k >= 1; k--)
+                        using (var glow = new Pen(Color.FromArgb(40, 160, 70, 255), k * 7f * u) { LineJoin = System.Drawing.Drawing2D.LineJoin.Round })
+                            g.DrawPath(glow, text);
+                }
+                else
+                {
+                    using (var shadow = (System.Drawing.Drawing2D.GraphicsPath)text.Clone())
+                    using (var shift = new System.Drawing.Drawing2D.Matrix())
+                    {
+                        shift.Translate(5 * u, 6 * u);
+                        shadow.Transform(shift);
+                        using (var dark = new SolidBrush(Color.FromArgb(150, 0, 0, 0))) g.FillPath(dark, shadow);
+                    }
+                    using (var outline = new Pen(Color.FromArgb(220, 0, 0, 0), Math.Max(1f, 8f * u)) { LineJoin = System.Drawing.Drawing2D.LineJoin.Round })
+                        g.DrawPath(outline, text);
+                }
+                g.FillPath(Brushes.White, text);
+            }
+        }
+
+        // An .ico with PNG images at the usual sizes.
+        public static void Save(string path, int kind, FontFamily titleFamily)
+        {
+            int[] sizes = { 256, 128, 64, 48, 32, 24, 16 };
+            var images = new List<byte[]>();
+            foreach (int size in sizes)
+                using (var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                {
+                    using (var g = Graphics.FromImage(bmp)) Draw(g, new RectangleF(0.5f, 0.5f, size - 1f, size - 1f), kind, titleFamily);
+                    using (var ms = new MemoryStream()) { bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png); images.Add(ms.ToArray()); }
+                }
+            using (var w = new BinaryWriter(File.Create(path)))
+            {
+                w.Write((short)0); w.Write((short)1); w.Write((short)sizes.Length);
+                int offset = 6 + 16 * sizes.Length;
+                for (int i = 0; i < sizes.Length; i++)
+                {
+                    w.Write((byte)(sizes[i] >= 256 ? 0 : sizes[i])); w.Write((byte)(sizes[i] >= 256 ? 0 : sizes[i]));
+                    w.Write((byte)0); w.Write((byte)0); w.Write((short)1); w.Write((short)32);
+                    w.Write(images[i].Length); w.Write(offset);
+                    offset += images[i].Length;
+                }
+                foreach (byte[] image in images) w.Write(image);
+            }
+        }
+    }
+
     // A panel that paints without flicker.
     class Canvas : Panel
     {
@@ -747,22 +1332,78 @@ namespace ReWor
 
     class LauncherForm : Form
     {
-        const string GameExe = "Guitar Hero Warriors of Rock.exe";
+        static string GameExe { get { return activeGame == GameGh5 ? Gh5Exe : "Guitar Hero Warriors of Rock.exe"; } }
         const string ScriptsRel = @"data\compressed\PAK\qb.pab.xen";
         // The depth of field type's name is unknown, only its QBKey. Every
         // DOF_*_tod_manager preset (DOF_Off included) uses it.
         const uint DofFxType = 0xA503619Du;
         const string ConfigName = "re_wor.toml";
-        const string CvarPrefix = "rewor_";
+        // Each game's own options: rewor_* in Warriors of Rock, erased_* in Guitar Hero 5.
+        static string CvarPrefix { get { return activeGame == GameGh5 ? "erased_" : "rewor_"; } }
         const string LanguageFile = "launcher_language.txt";
-        const string Title1 = "ERASED";
-        const string Title2 = "REBOOT VERSION";
+        static string Title1 = "ERASED";
+        static string Title2 = "REBOOT VERSION";
         // A wide window: a sidebar with the logo and the pages, the page on the right.
-        const int W = 1000;
+        // At the far left, the rail with one tile per game (Warriors of Rock, Guitar Hero 5).
+        const int Rail = 76;
+        const int W = 1000 + Rail;
         const int H = 620;
         const int Side = 250;
-        const int ContentX = Side + 30;
-        const int PageW = W - Side - 60;
+        const int ContentX = Rail + Side + 30;
+        const int PageW = W - Rail - Side - 60;
+
+        const int GameWor = 0;
+        const int GameGh5 = 1;
+        const string ActiveGameFile = "launcher_game.txt";
+        const string Gh5Exe = "Guitar Hero 5.exe";
+        const string Gh5OptionsName = "gh5_options.toml";
+        static int activeGame = GameWor;
+        Settings gh5Settings;
+
+        // GH5 (Guitar Hero 5.exe, its DLLs and gh5_options.toml) lives in a "gh5" folder next to the launcher.
+        string Gh5Dir { get { return Path.Combine(root, "gh5"); } }
+
+        // The active game's folder: its exe, profile picture, mods, dlc and game_folder.txt. The launcher's own
+        // files (language, window, active game) stay in gameDir.
+        string PlayDir { get { return activeGame == GameGh5 ? Gh5Dir : gameDir; } }
+
+        // Both games use the same pages, each with its own settings file.
+        Settings settings { get { return activeGame == GameGh5 ? gh5Settings : worSettings; } }
+
+        static void ApplyTheme(int game)
+        {
+            activeGame = game;
+            if (game == GameGh5)
+            {
+                Red = Color.FromArgb(22, 96, 214);
+                RedBright = Color.FromArgb(56, 140, 255);
+                RedDark = Color.FromArgb(10, 40, 104);
+                Glow = Color.FromArgb(0, 36, 120);
+                Shade = Color.FromArgb(0, 18, 70);
+                NavSel = Color.FromArgb(8, 18, 38);
+                NavHover = Color.FromArgb(8, 14, 32);
+                SealBg = Color.FromArgb(6, 12, 28);
+                CardGlow = Color.FromArgb(12, 34, 92);
+                Led = Color.FromArgb(90, 170, 255);
+                Meter = Color.FromArgb(20, 70, 160);
+                Title2 = "GUITAR HERO 5";
+            }
+            else
+            {
+                Red = Color.FromArgb(200, 16, 46);
+                RedBright = Color.FromArgb(232, 36, 64);
+                RedDark = Color.FromArgb(110, 8, 24);
+                Glow = Color.FromArgb(120, 0, 18);
+                Shade = Color.FromArgb(90, 0, 14);
+                NavSel = Color.FromArgb(34, 8, 13);
+                NavHover = Color.FromArgb(30, 8, 12);
+                SealBg = Color.FromArgb(24, 6, 10);
+                CardGlow = Color.FromArgb(92, 12, 26);
+                Led = Color.FromArgb(255, 70, 90);
+                Meter = Color.FromArgb(150, 20, 40);
+                Title2 = "REBOOT VERSION";
+            }
+        }
 
         readonly string root = AppDomain.CurrentDomain.BaseDirectory;
 
@@ -772,7 +1413,7 @@ namespace ReWor
         readonly string gameDir = Directory.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "game"))
             ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "game")
             : AppDomain.CurrentDomain.BaseDirectory;
-        readonly Settings settings;
+        readonly Settings worSettings;
         readonly FontFamily titleFamily = TitleFont.Load();
 
         ComboBox resolution, drawScale, presentEffect, anisotropy, language, gpuApi, frameRate;
@@ -835,7 +1476,7 @@ namespace ReWor
         const int VideoPage = 2;
         const int MicPage = 6;
         const int OnlinePage = 7;
-        const string AppVersion = "1.2";
+        const string AppVersion = "2.0";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
         const bool OnlineTab = true;
@@ -866,9 +1507,17 @@ namespace ReWor
         static readonly Color Bg = Color.FromArgb(10, 10, 10);
         static readonly Color Panel = Color.FromArgb(22, 22, 22);
         static readonly Color Field = Color.FromArgb(32, 32, 32);
-        static readonly Color Red = Color.FromArgb(200, 16, 46);
-        static readonly Color RedBright = Color.FromArgb(232, 36, 64);
-        static readonly Color RedDark = Color.FromArgb(110, 8, 24);
+        static Color Red = Color.FromArgb(200, 16, 46);
+        static Color RedBright = Color.FromArgb(232, 36, 64);
+        static Color RedDark = Color.FromArgb(110, 8, 24);
+        static Color Glow = Color.FromArgb(120, 0, 18);
+        static Color Shade = Color.FromArgb(90, 0, 14);
+        static Color NavSel = Color.FromArgb(34, 8, 13);
+        static Color NavHover = Color.FromArgb(30, 8, 12);
+        static Color SealBg = Color.FromArgb(24, 6, 10);
+        static Color CardGlow = Color.FromArgb(92, 12, 26);
+        static Color Led = Color.FromArgb(255, 70, 90);
+        static Color Meter = Color.FromArgb(150, 20, 40);
         static readonly Color Text1 = Color.FromArgb(238, 238, 238);
         static readonly Color Text2 = Color.FromArgb(150, 150, 150);
 
@@ -877,7 +1526,7 @@ namespace ReWor
 
         public LauncherForm()
         {
-            settings = new Settings(Path.Combine(gameDir, ConfigName));
+            worSettings = new Settings(Path.Combine(gameDir, ConfigName));
             Strings.English = LoadLanguage();
 
             Text = "Erased Reboot Version - re-wor";
@@ -898,22 +1547,65 @@ namespace ReWor
             ForeColor = Text1;
             Font = new Font("Segoe UI", 9.5f);
             DoubleBuffered = true;
-            try { Icon = Icon.ExtractAssociatedIcon(Path.Combine(gameDir, GameExe)); } catch (Exception) { }
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch (Exception) { }
 
-            gameFolder = settings.Get(CvarPrefix + "game_folder", "").Replace('/', '\\');
-            if (!IsGameFolder(gameFolder)) gameFolder = NormalizeGameFolder(root);
+            gh5Settings = new Settings(Path.Combine(Gh5Dir, Gh5OptionsName));
+            ApplyTheme(LoadActiveGame());
+            LoadGameFolder();
 
             BuildUi();
             LoadSettings();
             ShowPage(IsGameFolder(gameFolder) ? HomePage : GamePage);
+            ShowGamePicker();
             Shown += delegate
             {
-                if (!IsGameFolder(gameFolder)) ChooseGameFolder();
+                if (picker == null && !IsGameFolder(gameFolder)) ChooseGameFolder();
                 autoUpdateCheck = true;
                 CheckForUpdate();
             };
             FormClosed += delegate { if (meter != null) { meter.Dispose(); meter = null; } };
             PlayIntro();
+        }
+
+        int LoadActiveGame()
+        {
+            try { return File.ReadAllText(Path.Combine(gameDir, ActiveGameFile)).Trim() == "gh5" ? GameGh5 : GameWor; }
+            catch (Exception) { return GameWor; }
+        }
+
+        void LoadGameFolder()
+        {
+            gameFolder = FolderOf(activeGame);
+        }
+
+        // The rail's tiles: the launcher keeps each game's settings in its own file and
+        // rebuilds its pages in that game's colors.
+        void SwitchGame(int game)
+        {
+            if (game == activeGame) return;
+            CollectSettings();
+            if (meter != null) { meter.Dispose(); meter = null; }
+            ApplyTheme(game);
+            try { File.WriteAllText(Path.Combine(gameDir, ActiveGameFile), game == GameGh5 ? "gh5" : "wor"); } catch (Exception) { }
+            LoadGameFolder();
+            RebuildUi(0);
+            if (!IsGameFolder(gameFolder)) ShowPage(GamePage);
+            Invalidate(true);
+        }
+
+        void RebuildUi(int page)
+        {
+            SuspendLayout();
+            var old = new List<Control>();
+            foreach (Control c in host.Controls) old.Add(c);
+            host.Controls.Clear();
+            foreach (Control c in old) c.Dispose();
+            navButtons.Clear();
+            pages.Clear();
+            BuildUi();
+            LoadSettings();
+            ShowPage(page < 0 || page >= pages.Count ? 0 : page);
+            ResumeLayout();
         }
 
         bool LoadLanguage()
@@ -937,18 +1629,7 @@ namespace ReWor
             if (meter != null) { meter.Dispose(); meter = null; }
             Strings.English = english;
             try { File.WriteAllText(Path.Combine(gameDir, LanguageFile), english ? "en" : "pt"); } catch (Exception) { }
-            int page = currentPage;
-            SuspendLayout();
-            var old = new List<Control>();
-            foreach (Control c in host.Controls) old.Add(c);
-            host.Controls.Clear();
-            foreach (Control c in old) c.Dispose();
-            navButtons.Clear();
-            pages.Clear();
-            BuildUi();
-            LoadSettings();
-            ShowPage(page < 0 ? 0 : page);
-            ResumeLayout();
+            RebuildUi(currentPage);
         }
 
         Label pageTitle;
@@ -1053,9 +1734,9 @@ namespace ReWor
             Rectangle all = ClientRectangle;
             if (all.Width <= 0 || all.Height <= 0) return;
             using (var glow = new System.Drawing.Drawing2D.LinearGradientBrush(
-                all, Color.FromArgb(0, 0, 0), Color.FromArgb(70, 120, 0, 18), 90f))
+                all, Color.FromArgb(0, 0, 0), Color.FromArgb(70, Glow), 90f))
                 g.FillRectangle(glow, all);
-            using (var stripe = new Pen(Color.FromArgb(22, 200, 16, 46), 2f))
+            using (var stripe = new Pen(Color.FromArgb(22, Red), 2f))
                 for (int x = -all.Height; x < all.Width; x += 22)
                     g.DrawLine(stripe, x, all.Height, x + all.Height, 0);
             Rectangle frame = host.Bounds;
@@ -1073,6 +1754,7 @@ namespace ReWor
 
         void BuildUi()
         {
+            host.Controls.Add(BuildRail());
             host.Controls.Add(BuildSidebar());
 
             pageTitle = new Label
@@ -1087,9 +1769,12 @@ namespace ReWor
             host.Controls.Add(BuildSeal());
 
             pageNames = PageNames();
+            var builtList = new List<Control>();
             var onlinePage = BuildOnlineTab();
-            var builtList = new List<Control> { BuildHomeTab(), BuildGameTab(), BuildVideoTab(), BuildGraphicsTab(), BuildPlayersTab(), BuildKeyboardTab(), BuildMicTab() };
+            builtList.AddRange(new[] { BuildHomeTab(), BuildGameTab(), BuildVideoTab(), BuildGraphicsTab(), BuildPlayersTab(), BuildKeyboardTab(), BuildMicTab() });
             if (OnlineTab) builtList.Add(onlinePage);
+            builtList.Add(BuildControlsTab());
+            builtList.Add(BuildProfileTab());
             builtList.Add(BuildUpdateTab());
             Control[] built = builtList.ToArray();
             for (int i = 0; i < built.Length; i++)
@@ -1125,21 +1810,646 @@ namespace ReWor
         {
             var names = new List<string> { Strings.T("tab_home"), Strings.T("tab_game"), Strings.T("tab_video"), Strings.T("tab_gfx"), Strings.T("tab_players"), Strings.T("tab_keyboard"), Strings.T("tab_mic") };
             if (OnlineTab) names.Add(Strings.T("tab_online"));
+            names.Add(Strings.T("tab_controls"));
+            names.Add(Strings.T("tab_profile"));
             names.Add(Strings.T("tab_update"));
             return names.ToArray();
+        }
+
+        // The game rail, as in a launcher for a series: a tile per game, the active one lit
+        // in its color with a bar at its side.
+        Control BuildRail()
+        {
+            var rail = new Canvas { Location = new Point(0, 0), Size = new Size(Rail, H), BackColor = Color.Black };
+            string[] names = { "Guitar Hero: Warriors of Rock", "Guitar Hero 5" };
+            Color[] colors = { Color.FromArgb(200, 16, 46), Color.FromArgb(22, 96, 214) };
+            for (int i = 0; i < 2; i++)
+            {
+                int game = i;
+                var tile = new Canvas
+                {
+                    Location = new Point(10, 20 + i * 74), Size = new Size(Rail - 20, Rail - 20),
+                    BackColor = Color.Black, Cursor = Cursors.Hand
+                };
+                tile.Paint += delegate(object s, PaintEventArgs e)
+                {
+                    var g = e.Graphics;
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                    bool on = game == activeGame;
+                    var r = new Rectangle(0, 0, tile.Width - 1, tile.Height - 1);
+                    Color c = colors[game];
+                    using (var fill = new SolidBrush(on ? Color.FromArgb(60, c) : Color.FromArgb(14, 14, 16)))
+                        g.FillRectangle(fill, r);
+                    PickIcon.Draw(g, new RectangleF(7, 6, tile.Width - 14, tile.Height - 14), game == GameWor ? PickIcon.Wor : PickIcon.Gh5, titleFamily);
+                    if (!on)
+                        using (var veil = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
+                            g.FillRectangle(veil, r);
+                    using (var border = new Pen(on ? Color.White : Color.FromArgb(90, c), on ? 2f : 1f))
+                        g.DrawRectangle(border, r);
+                };
+                tile.Click += delegate { SwitchGame(game); };
+                windowTips.SetToolTip(tile, names[game]);
+                rail.Controls.Add(tile);
+            }
+            // At the rail's foot, a grid that goes back to the game picker.
+            var all = new Canvas
+            {
+                Location = new Point(10, H - 20 - (Rail - 20)), Size = new Size(Rail - 20, Rail - 20),
+                BackColor = Color.Black, Cursor = Cursors.Hand
+            };
+            bool allHover = false;
+            all.MouseEnter += delegate { allHover = true; all.Invalidate(); };
+            all.MouseLeave += delegate { allHover = false; all.Invalidate(); };
+            all.Paint += delegate(object s, PaintEventArgs e)
+            {
+                var g = e.Graphics;
+                var r = new Rectangle(0, 0, all.Width - 1, all.Height - 1);
+                using (var fill = new SolidBrush(allHover ? Color.FromArgb(34, 34, 38) : Color.FromArgb(18, 18, 20)))
+                    g.FillRectangle(fill, r);
+                using (var border = new Pen(Color.FromArgb(allHover ? 160 : 70, 255, 255, 255)))
+                    g.DrawRectangle(border, r);
+                int cell = 9, gap = 4, side = cell * 2 + gap;
+                int x0 = (all.Width - side) / 2, y0 = (all.Height - side) / 2;
+                for (int i = 0; i < 4; i++)
+                {
+                    Color c = i == 0 || i == 3 ? GameColors[i == 0 ? 0 : 1] : Color.FromArgb(allHover ? 230 : 170, 255, 255, 255);
+                    using (var brush = new SolidBrush(c))
+                        g.FillRectangle(brush, x0 + (i % 2) * (cell + gap), y0 + (i / 2) * (cell + gap), cell, cell);
+                }
+            };
+            all.Click += delegate { ShowGamePicker(); };
+            windowTips.SetToolTip(all, Strings.T("rail_games"));
+            rail.Controls.Add(all);
+            rail.Paint += delegate(object s, PaintEventArgs e)
+            {
+                using (var bar = new SolidBrush(Red))
+                    e.Graphics.FillRectangle(bar, 0, 20 + activeGame * 74, 4, Rail - 20);
+                using (var line = new SolidBrush(Color.FromArgb(28, 28, 30)))
+                    e.Graphics.FillRectangle(line, Rail - 1, 0, 1, H);
+            };
+            return rail;
+        }
+
+        static readonly Color[] GameColors = { Color.FromArgb(200, 16, 46), Color.FromArgb(22, 96, 214) };
+        static readonly Color Clash = Color.FromArgb(140, 40, 220);
+        const int BaseCardW = 330, BaseCardH = 420, BaseCardGap = 48;
+        const int ParallaxMargin = 90;
+        Canvas picker;
+        Timer pickerTimer;
+        Image[] pickerSource;
+        Bitmap[] pickerArt, pickerBack;
+        Size pickerBuiltFor;
+        readonly float[] pickerLift = new float[2];
+        int pickerHover = -1, pickerFocus;
+        float pickerSide, pickerMouse, pickerFront;
+        DateTime pickerOpened;
+        readonly Random pickerRandom = new Random();
+        PointF[] pickerBolt, pickerBranch;
+        DateTime pickerBoltAt;
+        float[][] pickerSparks;
+
+        // Where a game's files are, or null: the folder saved for it, and for Warriors of Rock
+        // also the "assets" folder next to the launcher.
+        string FolderOf(int game)
+        {
+            string folder = game == GameGh5
+                ? gh5Settings.Get("erased_game_folder", gh5Settings.Get("game_data_root", ""))
+                : worSettings.Get("rewor_game_folder", "");
+            folder = folder.Replace('/', '\\');
+            if (IsGameFolder(folder)) return folder;
+            return game == GameWor ? NormalizeGameFolder(root) : null;
+        }
+
+        // The picker scales with the window: 1 in the 1076x620 window, more in fullscreen.
+        float PickerScale()
+        {
+            if (picker == null) return 1f;
+            float s = Math.Min(picker.Width / (float)W, picker.Height / (float)H);
+            return Math.Max(0.8f, Math.Min(1.45f, s));
+        }
+
+        Rectangle CardRect(int game)
+        {
+            float s = PickerScale();
+            int w = (int)(BaseCardW * s), h = (int)(BaseCardH * s), gap = (int)(BaseCardGap * s);
+            int x0 = (picker.Width - (w * 2 + gap)) / 2;
+            int y = (int)(picker.Height * 0.48f - h / 2f);
+            return new Rectangle(x0 + game * (w + gap), y, w, h);
+        }
+
+        // The game's dashboard art cut to the card, around the point that matters
+        // (Warriors of Rock's mountain, Guitar Hero 5's guitarist).
+        static Bitmap CoverArt(Image source, int width, int height, float focusX)
+        {
+            var card = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using (var g = Graphics.FromImage(card))
+            {
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                float scale = Math.Max((float)width / source.Width, (float)height / source.Height);
+                float w = source.Width * scale, h = source.Height * scale;
+                float x = Math.Max(width - w, Math.Min(0, width / 2f - w * focusX));
+                g.DrawImage(source, x, (height - h) / 2f, w, h);
+            }
+            return card;
+        }
+
+        // The far layer: the game's art, blurred and dark, tinted in its color.
+        static Bitmap BackArt(Image source, int width, int height, Color tint)
+        {
+            var back = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using (var g = Graphics.FromImage(back))
+            {
+                g.Clear(Color.Black);
+                if (source != null)
+                {
+                    using (var tiny = new Bitmap(Math.Max(1, width / 14), Math.Max(1, height / 14)))
+                    {
+                        using (var t = Graphics.FromImage(tiny))
+                        {
+                            t.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                            float scale = Math.Max((float)tiny.Width / source.Width, (float)tiny.Height / source.Height);
+                            t.DrawImage(source, (tiny.Width - source.Width * scale) / 2f, (tiny.Height - source.Height * scale) / 2f,
+                                source.Width * scale, source.Height * scale);
+                        }
+                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+                        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                        g.DrawImage(tiny, new Rectangle(0, 0, width, height));
+                    }
+                }
+                using (var dark = new SolidBrush(Color.FromArgb(170, tint.R / 6, tint.G / 6, tint.B / 6)))
+                    g.FillRectangle(dark, 0, 0, width, height);
+            }
+            return back;
+        }
+
+        void BuildPickerArt()
+        {
+            if (picker == null || picker.Width <= 0 || picker.Height <= 0) return;
+            if (pickerBuiltFor == picker.Size && pickerArt != null) return;
+            DisposePickerArt(false);
+            pickerBuiltFor = picker.Size;
+            Rectangle card = CardRect(0);
+            float[] focus = { 0.5f, 0.33f };
+            pickerArt = new Bitmap[2];
+            pickerBack = new Bitmap[2];
+            for (int i = 0; i < 2; i++)
+            {
+                if (pickerSource[i] != null) pickerArt[i] = CoverArt(pickerSource[i], card.Width, card.Height, focus[i]);
+                pickerBack[i] = BackArt(pickerSource[i], picker.Width + ParallaxMargin * 2, picker.Height, GameColors[i]);
+            }
+            pickerSparks = new float[70][];
+            for (int i = 0; i < pickerSparks.Length; i++) pickerSparks[i] = NewSpark(true);
+        }
+
+        // An ember: x, y, rise speed, size, drift.
+        float[] NewSpark(bool anywhere)
+        {
+            float w = picker.Width + ParallaxMargin * 2, h = picker.Height;
+            return new[]
+            {
+                (float)pickerRandom.NextDouble() * w - ParallaxMargin,
+                anywhere ? (float)pickerRandom.NextDouble() * h : h + 10,
+                0.6f + (float)pickerRandom.NextDouble() * 1.8f,
+                1.2f + (float)pickerRandom.NextDouble() * 2.6f,
+                (float)(pickerRandom.NextDouble() - 0.5) * 0.6f
+            };
+        }
+
+        void DisposePickerArt(bool sources)
+        {
+            foreach (Bitmap[] set in new[] { pickerArt, pickerBack })
+                if (set != null) foreach (Bitmap b in set) if (b != null) b.Dispose();
+            pickerArt = pickerBack = null;
+            if (sources && pickerSource != null)
+            {
+                foreach (Image img in pickerSource) if (img != null) img.Dispose();
+                pickerSource = null;
+            }
+        }
+
+        // The hub's first screen: one big card per game over the two colors at war,
+        // red against blue meeting in purple. The scene leans toward the chosen game.
+        void ShowGamePicker()
+        {
+            if (picker != null) return;
+            pickerSource = new[] { NxeArt.Background(FolderOf(GameWor)), NxeArt.Background(FolderOf(GameGh5)) };
+            pickerFocus = activeGame;
+            pickerHover = -1;
+            pickerSide = pickerFocus == GameWor ? 1f : -1f;
+            pickerFront = pickerSide;
+            pickerMouse = 0;
+            pickerLift[0] = pickerLift[1] = 0;
+            pickerOpened = DateTime.UtcNow;
+            pickerBuiltFor = Size.Empty;
+            picker = new Canvas { Dock = DockStyle.Fill, BackColor = Color.Black };
+            picker.Paint += PaintPicker;
+            picker.Resize += delegate { BuildPickerArt(); picker.Invalidate(); };
+            picker.MouseMove += delegate(object s, MouseEventArgs e)
+            {
+                pickerMouse = picker.Width > 0 ? (e.X / (float)picker.Width) * 2f - 1f : 0f;
+                int hit = -1;
+                for (int i = 0; i < 2; i++) if (CardRect(i).Contains(e.Location)) hit = i;
+                if (hit == pickerHover) return;
+                pickerHover = hit;
+                if (hit >= 0) pickerFocus = hit;
+                picker.Cursor = hit >= 0 ? Cursors.Hand : Cursors.Default;
+            };
+            picker.MouseLeave += delegate { pickerHover = -1; pickerMouse = 0; };
+            picker.MouseClick += delegate(object s, MouseEventArgs e)
+            {
+                for (int i = 0; i < 2; i++) if (CardRect(i).Contains(e.Location)) { PickGame(i); return; }
+            };
+            pickerTimer = new Timer { Interval = 30 };
+            pickerTimer.Tick += delegate { StepPicker(); };
+            Controls.Add(picker);
+            picker.BringToFront();
+            foreach (Control c in Controls) if (c.Tag as string == "window") c.BringToFront();
+            BuildPickerArt();
+            pickerTimer.Start();
+        }
+
+        void StepPicker()
+        {
+            if (picker == null) return;
+            float target = (pickerFocus == GameWor ? 1f : -1f);
+            pickerSide += (target - pickerSide) * 0.12f;
+            pickerFront += (target * 0.85f + pickerMouse * -0.15f - pickerFront) * 0.08f;
+            for (int i = 0; i < 2; i++) pickerLift[i] += ((i == pickerFocus ? 1f : 0f) - pickerLift[i]) * 0.22f;
+            if (pickerSparks != null)
+                for (int i = 0; i < pickerSparks.Length; i++)
+                {
+                    float[] p = pickerSparks[i];
+                    p[1] -= p[2];
+                    p[0] += p[4] + (float)Math.Sin((p[1] + i * 40) / 60f) * 0.3f;
+                    if (p[1] < -10) pickerSparks[i] = NewSpark(false);
+                }
+            if (pickerBolt == null || (DateTime.UtcNow - pickerBoltAt).TotalMilliseconds > 70 + pickerRandom.Next(120))
+                MakeBolt();
+            picker.Invalidate();
+        }
+
+        float FrontX()
+        {
+            // The front line: pushed toward the game not chosen.
+            return picker.Width * (0.5f + pickerFront * 0.17f);
+        }
+
+        void MakeBolt()
+        {
+            pickerBoltAt = DateTime.UtcNow;
+            int h = picker.Height, steps = 22;
+            pickerBolt = new PointF[steps + 1];
+            float x = 0;
+            for (int i = 0; i <= steps; i++)
+            {
+                x = Math.Max(-38, Math.Min(38, x + (float)(pickerRandom.NextDouble() - 0.5) * 30));
+                pickerBolt[i] = new PointF(x, h * i / (float)steps);
+            }
+            pickerBranch = null;
+            if (pickerRandom.Next(3) == 0)
+            {
+                int from = 4 + pickerRandom.Next(steps - 8);
+                int dir = pickerRandom.Next(2) == 0 ? -1 : 1;
+                pickerBranch = new PointF[7];
+                PointF at = pickerBolt[from];
+                for (int i = 0; i < pickerBranch.Length; i++)
+                {
+                    pickerBranch[i] = at;
+                    at = new PointF(at.X + dir * (14 + (float)pickerRandom.NextDouble() * 22), at.Y + 10 + (float)pickerRandom.NextDouble() * 22);
+                }
+            }
+        }
+
+        void ClosePicker()
+        {
+            if (picker == null) return;
+            pickerTimer.Stop();
+            pickerTimer.Dispose();
+            Controls.Remove(picker);
+            picker.Dispose();
+            picker = null;
+            DisposePickerArt(true);
+        }
+
+        void PickGame(int game)
+        {
+            ClosePicker();
+            if (game != activeGame) SwitchGame(game);
+            if (!IsGameFolder(gameFolder)) { ShowPage(GamePage); ChooseGameFolder(); }
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (picker != null)
+            {
+                if (keyData == Keys.Left || keyData == Keys.Right)
+                {
+                    pickerFocus = keyData == Keys.Left ? 0 : 1;
+                    pickerHover = -1;
+                    return true;
+                }
+                if (keyData == Keys.Enter || keyData == Keys.Space) { PickGame(pickerFocus); return true; }
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        // Words one by one, centered: the title font's space is very narrow.
+        void DrawTitleLine(Graphics g, string text, Font font, Color color, float centerX, float y)
+        {
+            float gap = font.SizeInPoints * 0.28f, width = -gap;
+            string[] words = text.Split(' ');
+            foreach (string word in words) width += g.MeasureString(word, font).Width + gap;
+            float x = centerX - width / 2f;
+            using (var shadow = new SolidBrush(Color.FromArgb(Math.Min(color.A, (byte)190), 0, 0, 0)))
+            using (var brush = new SolidBrush(color))
+                foreach (string word in words)
+                {
+                    g.DrawString(word, font, shadow, x + 3, y + 3);
+                    g.DrawString(word, font, brush, x, y);
+                    x += g.MeasureString(word, font).Width + gap;
+                }
+        }
+
+        void PaintPicker(object sender, PaintEventArgs e)
+        {
+            if (pickerBack == null) return;
+            var g = e.Graphics;
+            int cw = picker.Width, ch = picker.Height;
+            float s = PickerScale();
+            double t = Math.Min(1, (DateTime.UtcNow - pickerOpened).TotalMilliseconds / 500);
+            double ease = 1 - Math.Pow(1 - t, 3);
+            float side = pickerSide * 0.8f + pickerMouse * 0.2f;
+
+            // Far layer: the chosen game's art, fading into the other's as the choice moves.
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+            g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+            float mix = (1 - pickerSide) / 2f;
+            int backX = (int)(-ParallaxMargin + side * ParallaxMargin * 0.45f);
+            g.DrawImageUnscaled(pickerBack[mix < 0.5f ? GameWor : GameGh5], backX, 0);
+            float other = mix < 0.5f ? mix : 1 - mix;
+            if (other > 0.02f)
+            {
+                using (var fade = new System.Drawing.Imaging.ImageAttributes())
+                {
+                    var m = new System.Drawing.Imaging.ColorMatrix { Matrix33 = other * 2f };
+                    fade.SetColorMatrix(m);
+                    Bitmap b = pickerBack[mix < 0.5f ? GameGh5 : GameWor];
+                    g.DrawImage(b, new Rectangle(backX, 0, b.Width, b.Height), 0, 0, b.Width, b.Height, GraphicsUnit.Pixel, fade);
+                }
+            }
+
+            // The war: red from the left, blue from the right, purple where they meet.
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            float front = FrontX();
+            float spread = cw * 0.32f;
+            var all = new Rectangle(-2, 0, cw + 4, ch);
+            using (var war = new System.Drawing.Drawing2D.LinearGradientBrush(all, Color.Black, Color.Black, 0f))
+            {
+                var blend = new System.Drawing.Drawing2D.ColorBlend(5);
+                Color red = GameColors[0], blue = GameColors[1];
+                blend.Colors = new[]
+                {
+                    Color.FromArgb(200, red.R / 2, red.G / 2, red.B / 2),
+                    Color.FromArgb(150, red),
+                    Color.FromArgb(170, Clash),
+                    Color.FromArgb(150, blue),
+                    Color.FromArgb(200, blue.R / 2, blue.G / 2, blue.B / 2)
+                };
+                float f = Math.Max(0.12f, Math.Min(0.88f, front / cw));
+                float half = spread / cw / 2f;
+                blend.Positions = new[] { 0f, Math.Max(0.01f, f - half), f, Math.Min(0.99f, f + half), 1f };
+                war.InterpolationColors = blend;
+                g.FillRectangle(war, all);
+            }
+            using (var shade = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(0, 0, cw, ch),
+                Color.FromArgb(150, 0, 0, 0), Color.FromArgb(40, 0, 0, 0), 90f))
+            {
+                var blend = new System.Drawing.Drawing2D.Blend(3);
+                blend.Factors = new[] { 0.6f, 0f, 1f };
+                blend.Positions = new[] { 0f, 0.45f, 1f };
+                shade.Blend = blend;
+                g.FillRectangle(shade, 0, 0, cw, ch);
+            }
+
+            // Shards from the corners, red ones on the left and blue on the right, nearer than the art.
+            float shardX = side * 34 * s;
+            for (int i = 0; i < 2; i++)
+            {
+                float dir = i == 0 ? 1 : -1, edge = i == 0 ? 0 : cw;
+                PointF[][] shapes =
+                {
+                    new[] { new PointF(edge, 60 * s), new PointF(edge + dir * 240 * s, 0), new PointF(edge + dir * 300 * s, 0), new PointF(edge, 130 * s) },
+                    new[] { new PointF(edge, ch - 230 * s), new PointF(edge + dir * 190 * s, ch), new PointF(edge + dir * 110 * s, ch), new PointF(edge, ch - 170 * s) },
+                    new[] { new PointF(edge + dir * 60 * s, ch * 0.42f), new PointF(edge + dir * 150 * s, ch * 0.36f), new PointF(edge + dir * 110 * s, ch * 0.45f) },
+                };
+                using (var brush = new SolidBrush(Color.FromArgb(i == pickerFocus ? 200 : 120, GameColors[i])))
+                    foreach (PointF[] shape in shapes)
+                    {
+                        var moved = new PointF[shape.Length];
+                        for (int k = 0; k < shape.Length; k++) moved[k] = new PointF(shape[k].X + shardX, shape[k].Y);
+                        g.FillPolygon(brush, moved);
+                    }
+            }
+
+            // The clash: a purple glow band and lightning along the front line.
+            float bandX = front + side * 20 * s;
+            var band = new RectangleF(bandX - 160 * s, 0, 320 * s, ch);
+            using (var glow = new System.Drawing.Drawing2D.LinearGradientBrush(band, Color.Transparent, Color.Transparent, 0f))
+            {
+                var blend = new System.Drawing.Drawing2D.ColorBlend(3);
+                blend.Colors = new[] { Color.FromArgb(0, Clash), Color.FromArgb(110, 190, 120, 255), Color.FromArgb(0, Clash) };
+                blend.Positions = new[] { 0f, 0.5f, 1f };
+                glow.InterpolationColors = blend;
+                g.FillRectangle(glow, band);
+            }
+            if (pickerBolt != null)
+            {
+                foreach (PointF[] line in new[] { pickerBolt, pickerBranch })
+                {
+                    if (line == null) continue;
+                    var pts = new PointF[line.Length];
+                    for (int k = 0; k < line.Length; k++) pts[k] = new PointF(bandX + line[k].X * s, line[k].Y);
+                    using (var outer = new Pen(Color.FromArgb(50, 170, 90, 255), 12f * s))
+                    using (var mid = new Pen(Color.FromArgb(140, 200, 140, 255), 4f * s))
+                    using (var core = new Pen(Color.FromArgb(230, 245, 235, 255), 1.6f * s))
+                    {
+                        outer.LineJoin = mid.LineJoin = core.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
+                        g.DrawLines(outer, pts);
+                        g.DrawLines(mid, pts);
+                        g.DrawLines(core, pts);
+                    }
+                }
+            }
+
+            // Embers rising, in the color of the side they are on; the nearest layer behind the cards.
+            if (pickerSparks != null)
+            {
+                float sparkX = side * 60 * s;
+                foreach (float[] p in pickerSparks)
+                {
+                    float x = p[0] + sparkX;
+                    Color c = x < front ? Color.FromArgb(255, 110, 60) : Color.FromArgb(90, 170, 255);
+                    if (Math.Abs(x - front) < 60 * s) c = Color.FromArgb(210, 160, 255);
+                    int a = (int)(200 * Math.Min(1, p[1] / (ch * 0.6f)));
+                    using (var brush = new SolidBrush(Color.FromArgb(Math.Max(0, Math.Min(255, a)), c)))
+                        g.FillEllipse(brush, x, p[1], p[3] * s, p[3] * s);
+                }
+            }
+
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBilinear;
+            g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.Default;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+
+            using (var logo = new Font(titleFamily, 20f * s, FontStyle.Regular, GraphicsUnit.Point))
+            {
+                float gap = logo.SizeInPoints * 0.28f;
+                float first = g.MeasureString("ERASED", logo).Width;
+                float rebootW = g.MeasureString("REBOOT", logo).Width;
+                float second = rebootW + gap + g.MeasureString("VERSION", logo).Width;
+                float x = (cw - first - gap - second) / 2f, y = 26 * s;
+                g.DrawString("ERASED", logo, Brushes.White, x, y);
+                x += first + gap;
+                using (var grey = new SolidBrush(Color.FromArgb(185, 175, 200)))
+                {
+                    g.DrawString("REBOOT", logo, grey, x, y);
+                    g.DrawString("VERSION", logo, grey, x + rebootW + gap, y);
+                }
+            }
+
+            string[] small = { "GUITAR HERO", "GUITAR HERO" };
+            string[][] big = { new[] { "WARRIORS", "OF ROCK" }, new[] { "5" } };
+            float cardShift = -side * 14 * s;
+            int bottom = 0;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                // The chosen card is drawn last, over its neighbour.
+                int i = pass == 0 ? 1 - pickerFocus : pickerFocus;
+                double own = Math.Max(0, Math.Min(1, (t * 500 - i * 110) / 390));
+                own = 1 - Math.Pow(1 - own, 3);
+                int alpha = (int)(255 * own);
+                Rectangle baseRect = CardRect(i);
+                bottom = Math.Max(bottom, baseRect.Bottom);
+                if (alpha <= 0) continue;
+                float grow = 1f + 0.05f * pickerLift[i];
+                var r = new RectangleF(
+                    baseRect.X + cardShift - baseRect.Width * (grow - 1) / 2f,
+                    baseRect.Y + (float)((1 - own) * 36 * s) - pickerLift[i] * 12 * s - baseRect.Height * (grow - 1) / 2f,
+                    baseRect.Width * grow, baseRect.Height * grow);
+                bool on = i == pickerFocus;
+                Color color = GameColors[i];
+                Color bright = Color.FromArgb(Math.Min(255, color.R + 70), Math.Min(255, color.G + 70), Math.Min(255, color.B + 70));
+
+                for (int k = 1; k <= 14; k++)
+                {
+                    int a = (int)(alpha * 0.17 * pickerLift[i] * (1 - k / 15.0));
+                    if (a <= 0) continue;
+                    RectangleF halo = r;
+                    halo.Inflate(k * 2 * s, k * 2 * s);
+                    using (var pen = new Pen(Color.FromArgb(a, bright), 2f * s))
+                        g.DrawRectangle(pen, halo.X, halo.Y, halo.Width, halo.Height);
+                }
+
+                var state = g.Save();
+                g.SetClip(r);
+                if (pickerArt[i] != null)
+                {
+                    // Drawn plain and darkened with a veil: GDI+ leaves a seam across a scaled
+                    // image drawn through a color matrix.
+                    g.DrawImage(pickerArt[i], r);
+                    float dim = 0.55f + 0.45f * pickerLift[i];
+                    int veil = 255 - (int)(255 * dim * alpha / 255f);
+                    if (veil > 0)
+                        using (var dark = new SolidBrush(Color.FromArgb(veil, 0, 0, 0)))
+                            g.FillRectangle(dark, r);
+                }
+                else
+                {
+                    using (var fill = new System.Drawing.Drawing2D.LinearGradientBrush(r,
+                        Color.FromArgb(alpha, color), Color.FromArgb(alpha, color.R / 5, color.G / 5, color.B / 5), 90f))
+                        g.FillRectangle(fill, r);
+                    using (var stripe = new Pen(Color.FromArgb(alpha / 8, 255, 255, 255), 2f))
+                        for (float x = r.Left - r.Height; x < r.Right; x += 22)
+                            g.DrawLine(stripe, x, r.Bottom, x + r.Height, r.Top);
+                }
+                var lower = new RectangleF(r.X, r.Y + r.Height / 3f, r.Width, r.Height * 2f / 3f + 1);
+                // The brush a little taller than the fill: GDI+ wraps a gradient's last color onto its first row.
+                var lowerBrush = RectangleF.Inflate(lower, 0, 3);
+                using (var shade = new System.Drawing.Drawing2D.LinearGradientBrush(lowerBrush,
+                    Color.FromArgb(0, 0, 0, 0), Color.FromArgb(alpha * 235 / 255, color.R / 4, color.G / 4, color.B / 4), 90f))
+                    g.FillRectangle(shade, lower);
+                g.Restore(state);
+
+                using (var border = new Pen(Color.FromArgb(alpha, on ? Color.White : color), (on ? 4f : 3f) * s))
+                    g.DrawRectangle(border, r.X, r.Y, r.Width - 1, r.Height - 1);
+
+                float cx = r.X + r.Width / 2f;
+                string[] lines = big[i];
+                // The title font's 5 reads as an S: the number goes in Impact.
+                bool number = lines.Length == 1;
+                float k2 = s * grow;
+                using (var smallFont = new Font(titleFamily, 17f * k2, FontStyle.Regular, GraphicsUnit.Point))
+                using (var bigFont = number ? new Font("Impact", 92f * k2, FontStyle.Regular, GraphicsUnit.Point)
+                                            : new Font(titleFamily, 38f * k2, FontStyle.Regular, GraphicsUnit.Point))
+                {
+                    float lineH = g.MeasureString("A", bigFont).Height * (number ? 0.86f : 0.82f);
+                    float y = r.Bottom - 64 * k2 - lineH * lines.Length;
+                    DrawTitleLine(g, small[i], smallFont, Color.FromArgb(alpha * 220 / 255, 255, 255, 255), cx, y - 30 * k2);
+                    foreach (string line in lines)
+                    {
+                        DrawTitleLine(g, line, bigFont, Color.FromArgb(alpha, 255, 255, 255), cx, y);
+                        y += lineH;
+                    }
+                }
+
+                bool ready = pickerSource[i] != null || FolderOf(i) != null;
+                string note = Strings.T(ready ? "pick_ready" : "pick_missing");
+                using (var noteFont = new Font("Segoe UI", 9f * s, FontStyle.Bold))
+                {
+                    SizeF size = g.MeasureString(note, noteFont);
+                    var pill = new RectangleF(cx - size.Width / 2f - 12 * s, r.Bottom - 40 * k2, size.Width + 24 * s, 24 * s);
+                    using (var fill = new SolidBrush(Color.FromArgb(alpha * 200 / 255, ready ? Color.Black : color)))
+                        g.FillRectangle(fill, pill);
+                    using (var dot = new SolidBrush(Color.FromArgb(alpha, 80, 220, 120)))
+                    using (var text = new SolidBrush(Color.FromArgb(alpha, 235, 235, 235)))
+                    using (var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                    {
+                        if (ready) g.FillEllipse(dot, pill.X + 8 * s, pill.Y + pill.Height / 2f - 3 * s, 6 * s, 6 * s);
+                        g.DrawString(note, noteFont, text, new RectangleF(pill.X + (ready ? 6 * s : 0), pill.Y, pill.Width, pill.Height), format);
+                    }
+                }
+            }
+
+            using (var titleFont = new Font(titleFamily, 22f * s, FontStyle.Regular, GraphicsUnit.Point))
+                DrawTitleLine(g, Strings.T("pick_title"), titleFont, Color.FromArgb((int)(255 * ease), 255, 255, 255), cw / 2f, bottom + 22 * s);
+            using (var hint = new Font("Segoe UI", 9f * Math.Min(s, 1.3f)))
+            using (var grey = new SolidBrush(Color.FromArgb(190, 185, 200)))
+            using (var center = new StringFormat { Alignment = StringAlignment.Center })
+            {
+                g.DrawString(Strings.T("pick_hint"), hint, grey, new RectangleF(0, bottom + 66 * s, cw, 30 * s), center);
+                string name = settings.Get("online_name", "");
+                float footY = ch - 34 * Math.Min(s, 1.3f);
+                if (name.Length > 0)
+                {
+                    g.DrawString(Strings.T("pick_profile"), hint, grey, 24, footY);
+                    using (var bold = new Font(hint, FontStyle.Bold))
+                        g.DrawString(name, bold, Brushes.White, 24 + g.MeasureString(Strings.T("pick_profile"), hint).Width, footY);
+                }
+                g.DrawString("v" + AppVersion, hint, grey, cw - 24 - g.MeasureString("v" + AppVersion, hint).Width, footY);
+            }
         }
 
         // The sidebar: the logo in the title font, the pages, and the footer.
         Control BuildSidebar()
         {
-            var side = new Panel { Location = new Point(0, 0), Size = new Size(Side, H), BackColor = Color.FromArgb(6, 6, 7) };
+            var side = new Panel { Location = new Point(Rail, 0), Size = new Size(Side, H), BackColor = Color.FromArgb(6, 6, 7) };
             side.Paint += delegate(object s, PaintEventArgs e)
             {
                 var g = e.Graphics;
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 using (var glow = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    new Rectangle(0, 0, Side, 150), Color.FromArgb(90, 120, 0, 18), Color.FromArgb(0, 6, 6, 7), 90f))
+                    new Rectangle(0, 0, Side, 150), Color.FromArgb(90, Glow), Color.FromArgb(0, 6, 6, 7), 90f))
                     g.FillRectangle(glow, 0, 0, Side, 150);
                 using (var line = new System.Drawing.Drawing2D.LinearGradientBrush(
                     new Rectangle(Side - 3, 0, 3, H), RedBright, RedDark, 90f))
@@ -1147,7 +2457,7 @@ namespace ReWor
 
                 using (var big = new Font(titleFamily, 30f, FontStyle.Regular, GraphicsUnit.Point))
                 using (var small = new Font(titleFamily, 14f, FontStyle.Regular, GraphicsUnit.Point))
-                using (var shadow = new SolidBrush(Color.FromArgb(160, 90, 0, 14)))
+                using (var shadow = new SolidBrush(Color.FromArgb(160, Shade)))
                 using (var white = new SolidBrush(Color.White))
                 using (var red = new SolidBrush(Red))
                 {
@@ -1168,22 +2478,24 @@ namespace ReWor
             };
             side.Controls.Add(new Label
             {
-                Text = Strings.T("subtitle"), Location = new Point(24, 112), Size = new Size(Side - 40, 32),
+                Text = Strings.T(activeGame == GameGh5 ? "subtitle_gh5" : "subtitle"), Location = new Point(24, 112), Size = new Size(Side - 40, 32),
                 ForeColor = Text2, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8f)
             });
 
             string[] names = PageNames();
+            // Ten pages (Guitar Hero 5's) sit a little closer together to fit above the footer.
+            int step = names.Length > 10 ? 35 : names.Length > 9 ? 39 : 44;
             for (int i = 0; i < names.Length; i++)
             {
                 int index = i;
                 var nav = new Button
                 {
-                    Text = "   " + names[i], Location = new Point(16, 156 + i * 44), Size = new Size(Side - 35, 40),
+                    Text = "   " + names[i], Location = new Point(16, 156 + i * step), Size = new Size(Side - 35, step - 4),
                     FlatStyle = FlatStyle.Flat, ForeColor = Text2, BackColor = side.BackColor, Cursor = Cursors.Hand,
                     Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, TabStop = false
                 };
                 nav.FlatAppearance.BorderSize = 0;
-                nav.FlatAppearance.MouseOverBackColor = Color.FromArgb(30, 8, 12);
+                nav.FlatAppearance.MouseOverBackColor = NavHover;
                 nav.Paint += delegate(object s, PaintEventArgs e)
                 {
                     if (index != currentPage) return;
@@ -1222,12 +2534,12 @@ namespace ReWor
         // copy, drawn as a red shield badge next to the text.
         Control BuildSeal()
         {
-            var seal = new Panel { Location = new Point(ContentX, 70), Size = new Size(PageW, 60), BackColor = Color.FromArgb(24, 6, 10) };
+            var seal = new Panel { Location = new Point(ContentX, 70), Size = new Size(PageW, 60), BackColor = SealBg };
             seal.Paint += delegate(object s, PaintEventArgs e)
             {
                 var g = e.Graphics;
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                using (var border = new Pen(Color.FromArgb(110, 200, 16, 46), 1f)) g.DrawRectangle(border, 0, 0, seal.Width - 1, seal.Height - 1);
+                using (var border = new Pen(Color.FromArgb(110, Red), 1f)) g.DrawRectangle(border, 0, 0, seal.Width - 1, seal.Height - 1);
                 using (var accent = new SolidBrush(Red)) g.FillRectangle(accent, 0, 0, 4, seal.Height);
 
                 var shield = new System.Drawing.Drawing2D.GraphicsPath();
@@ -1256,7 +2568,7 @@ namespace ReWor
             });
             seal.Controls.Add(new Label
             {
-                Text = Strings.T("seal_text"), Location = new Point(58, 24), Size = new Size(seal.Width - 68, 34),
+                Text = Strings.T(activeGame == GameGh5 ? "seal_text_gh5" : "seal_text"), Location = new Point(58, 24), Size = new Size(seal.Width - 68, 34),
                 ForeColor = Text1, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8f)
             });
             return seal;
@@ -1284,12 +2596,13 @@ namespace ReWor
             {
                 pages[i].Visible = i == index;
                 navButtons[i].ForeColor = i == index ? Color.White : Text2;
-                navButtons[i].BackColor = i == index ? Color.FromArgb(34, 8, 13) : Color.FromArgb(6, 6, 7);
+                navButtons[i].BackColor = i == index ? NavSel : Color.FromArgb(6, 6, 7);
                 navButtons[i].Invalidate();
             }
             if (pageTitle != null && pageNames != null) pageTitle.Text = WithoutAccents(pageNames[index]);
             if (micDevice != null && (index == MicPage) != (meter != null)) RestartMicMeter();
             if (index == HomePage) ShowHome();
+            if (index == Array.IndexOf(pageNames, Strings.T("tab_profile"))) ShowProfile();
             // The home page has its own big PLAY button.
             if (bottomPlay != null) bottomPlay.Visible = index != HomePage;
             if (bottomSave != null) bottomSave.Visible = index != HomePage;
@@ -1329,6 +2642,7 @@ namespace ReWor
             dlc.Size = new Size(150, 34);
             dlc.Click += delegate { OpenDlcFolder(); };
             page.Controls.Add(dlc);
+            int half = (PageW - 48) / 2, right = 18 + half + 12;
             AddLabel(page, Strings.T("game_lang"), 144);
             language = AddCombo(page, 164,
                 new Choice("English", "1"),
@@ -1336,18 +2650,27 @@ namespace ReWor
                 new Choice("Français", "4"),
                 new Choice("Deutsch", "3"),
                 new Choice("Italiano", "6"));
+            language.Width = half;
+            page.Controls.Add(new Label { Text = Strings.T("audio_buffer"), Location = new Point(right, 144), AutoSize = true, ForeColor = Text1 });
+            audioBuffer = AddCombo(page, 164,
+                new Choice(Strings.T("audio_16"), "16"),
+                new Choice("32", "32"),
+                new Choice(Strings.T("audio_64"), "64"));
+            audioBuffer.Location = new Point(right, 164);
+            audioBuffer.Width = half;
             debugMenu = AddCheck(page, Strings.T("debug_menu"), 204);
             skipIntro = AddCheck(page, Strings.T("skip_intro"), 230);
-            AddNote(page, Strings.T("game_note"), 262);
-            AddNote(page, Strings.T("dlc_note"), 312);
+            AddNote(page, Strings.T(activeGame == GameGh5 ? "gh5_game_note" : "game_note"), 262);
+            AddNote(page, Strings.T(activeGame == GameGh5 ? "gh5_dlc_note" : "dlc_note"), 312);
             ShowGameFolder();
             return page;
         }
 
-        // The game installs what is in this folder when it starts (src/dlc.cpp, rewor_dlc_folder).
+        // The game installs what is in this folder when it starts (src/dlc.cpp, rewor_dlc_folder);
+        // for Guitar Hero 5 the launcher does, when PLAY is pressed (InstallGh5Dlc).
         void OpenDlcFolder()
         {
-            string folder = Path.Combine(gameDir, "dlc");
+            string folder = Path.Combine(activeGame == GameGh5 ? Gh5Dir : gameDir, "dlc");
             try
             {
                 Directory.CreateDirectory(folder);
@@ -1384,15 +2707,23 @@ namespace ReWor
             gameFolderLabel.Text = IsGameFolder(gameFolder) ? gameFolder : Strings.T("no_folder");
         }
 
+        // The player picks default.xex (files already extracted), a disc image (.iso) or the
+        // header file of a Games on Demand package; images and packages are installed to a folder.
         void ChooseGameFolder()
         {
-            using (var dialog = new FolderBrowserDialog())
+            string source;
+            using (var dialog = new OpenFileDialog())
             {
-                dialog.Description = Strings.T("folder_dialog");
-                dialog.ShowNewFolderButton = false;
-                if (IsGameFolder(gameFolder)) dialog.SelectedPath = gameFolder;
+                dialog.Title = Strings.T("folder_dialog");
+                dialog.Filter = Strings.T("source_filter") + "|*.*";
+                dialog.CheckFileExists = true;
+                if (IsGameFolder(gameFolder)) dialog.InitialDirectory = gameFolder;
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
-                string chosen = NormalizeGameFolder(dialog.SelectedPath);
+                source = dialog.FileName;
+            }
+            if (string.Equals(Path.GetFileName(source), "default.xex", StringComparison.OrdinalIgnoreCase))
+            {
+                string chosen = NormalizeGameFolder(Path.GetDirectoryName(source));
                 if (chosen == null)
                 {
                     MessageBox.Show(this, Strings.T("bad_folder"), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -1400,7 +2731,74 @@ namespace ReWor
                 }
                 gameFolder = chosen;
                 ShowGameFolder();
+                return;
             }
+            if (XboxImage.Detect(source) == XboxImage.Kind.None)
+            {
+                MessageBox.Show(this, Strings.T("bad_source"), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            string dest;
+            using (var dialog = new FolderBrowserDialog())
+            {
+                dialog.Description = Strings.T("install_dialog");
+                dialog.ShowNewFolderButton = true;
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                dest = Path.Combine(dialog.SelectedPath, activeGame == GameGh5 ? "Guitar Hero 5" : "Guitar Hero Warriors of Rock");
+            }
+            if (InstallFromImage(source, dest) && IsGameFolder(dest))
+            {
+                gameFolder = dest;
+                ShowGameFolder();
+            }
+        }
+
+        bool InstallFromImage(string source, string dest)
+        {
+            var form = new Form
+            {
+                Text = Text, FormBorderStyle = FormBorderStyle.FixedDialog, ControlBox = false,
+                StartPosition = FormStartPosition.CenterParent, ClientSize = new Size(440, 110),
+                BackColor = Bg, ForeColor = Text1, Font = Font, ShowInTaskbar = false,
+            };
+            var label = new Label { Text = Strings.T("installing"), Location = new Point(16, 14), Size = new Size(408, 22) };
+            var bar = new ProgressBar { Location = new Point(16, 44), Size = new Size(408, 22), Maximum = 1000 };
+            var detail = new Label { Location = new Point(16, 74), Size = new Size(408, 22), ForeColor = Text2 };
+            form.Controls.Add(label);
+            form.Controls.Add(bar);
+            form.Controls.Add(detail);
+            Exception error = null;
+            form.Shown += delegate
+            {
+                var worker = new System.Threading.Thread(() =>
+                {
+                    try
+                    {
+                        XboxImage.Extract(source, dest, (done, total) =>
+                        {
+                            int value = total > 0 ? (int)(done * 1000 / total) : 0;
+                            string text = string.Format("{0:0.0} / {1:0.0} GB", done / 1073741824.0, total / 1073741824.0);
+                            form.BeginInvoke((Action)delegate { bar.Value = Math.Min(1000, value); detail.Text = text; });
+                        });
+                    }
+                    catch (Exception e) { error = e; }
+                    form.BeginInvoke((Action)form.Close);
+                });
+                worker.IsBackground = true;
+                worker.Start();
+            };
+            form.ShowDialog(this);
+            if (error != null)
+            {
+                MessageBox.Show(this, Strings.T("install_failed") + "\n\n" + error.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (!IsGameFolder(dest))
+            {
+                MessageBox.Show(this, Strings.T("bad_folder"), Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            return true;
         }
 
         Control BuildVideoTab()
@@ -1708,7 +3106,7 @@ namespace ReWor
                     float glow = d.Glow;
                     int player = PlayerOf(d.Spec);
                     var card = new Rectangle(0, y, w - 1, h - 1);
-                    using (var fill = new SolidBrush(Mix(Field, Color.FromArgb(92, 12, 26), glow))) g.FillRectangle(fill, card);
+                    using (var fill = new SolidBrush(Mix(Field, CardGlow, glow))) g.FillRectangle(fill, card);
                     using (var border = new Pen(Mix(Color.FromArgb(48, 48, 48), RedBright, glow))) g.DrawRectangle(border, card);
                     using (var accent = new SolidBrush(player >= 0 ? Red : Color.FromArgb(58, 58, 58))) g.FillRectangle(accent, 0, y, 4, h);
 
@@ -1734,10 +3132,10 @@ namespace ReWor
                     var led = new Rectangle(w - 26, y + h / 2 - 6, 12, 12);
                     if (glow > 0)
                     {
-                        using (var halo = new SolidBrush(Color.FromArgb((int)(110 * glow), 232, 36, 64)))
+                        using (var halo = new SolidBrush(Color.FromArgb((int)(110 * glow), RedBright)))
                             g.FillEllipse(halo, led.X - 5, led.Y - 5, led.Width + 10, led.Height + 10);
                     }
-                    using (var dot = new SolidBrush(Mix(Color.FromArgb(70, 70, 70), Color.FromArgb(255, 70, 90), glow))) g.FillEllipse(dot, led);
+                    using (var dot = new SolidBrush(Mix(Color.FromArgb(70, 70, 70), Led, glow))) g.FillEllipse(dot, led);
                 }
             }
         }
@@ -1878,6 +3276,12 @@ namespace ReWor
             return page;
         }
 
+        // What the meter multiplies the input by: the volume in percent.
+        float MicGain()
+        {
+            return micVolume.Value / 100f;
+        }
+
         void UpdateMicLabels()
         {
             micVolumeLabel.Text = string.Format(Strings.T("mic_volume"), micVolume.Value);
@@ -1890,8 +3294,9 @@ namespace ReWor
             if (meter != null) { meter.Dispose(); meter = null; }
             micLevel = 0f;
             if (currentPage != MicPage) return;
+            string device = Value(micDevice);
             meter = new MicMeter();
-            if (!meter.Open(Value(micDevice)))
+            if (!meter.Open(device))
             {
                 meter = null;
                 micStatus.Text = Strings.T("mic_missing");
@@ -1905,7 +3310,7 @@ namespace ReWor
             float peak = meter.Peak();
             if (peak >= 0f)
             {
-                float level = Math.Min(1f, peak * micVolume.Value / 100f);
+                float level = Math.Min(1f, peak * MicGain());
                 // Rises at once, falls slowly, like a VU meter.
                 micLevel = Math.Max(level, micLevel * 0.82f);
                 micHeld = level >= micGate.Value / 100f && micGate.Value > 0 ? DateTime.Now : micHeld;
@@ -1928,7 +3333,7 @@ namespace ReWor
             if (filled > 0)
             {
                 using (var fill = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    new Rectangle(0, 0, w, h), open ? Color.FromArgb(150, 20, 40) : Color.FromArgb(70, 70, 70),
+                    new Rectangle(0, 0, w, h), open ? Meter : Color.FromArgb(70, 70, 70),
                     open ? RedBright : Color.FromArgb(110, 110, 110), 0f))
                     g.FillRectangle(fill, 0, 0, filled, h);
             }
@@ -2158,7 +3563,7 @@ namespace ReWor
                 box.Image = null;
                 if (old != null) old.Dispose();
             }
-            string path = Path.Combine(gameDir, PictureFile);
+            string path = Path.Combine(PlayDir, PictureFile);
             if (!File.Exists(path)) return;
             try
             {
@@ -2207,8 +3612,8 @@ namespace ReWor
                                 data[i + 3] = c.B;
                             }
                         }
-                        square.Save(Path.Combine(gameDir, PictureFile), System.Drawing.Imaging.ImageFormat.Png);
-                        File.WriteAllBytes(Path.Combine(gameDir, PictureData), data);
+                        square.Save(Path.Combine(PlayDir, PictureFile), System.Drawing.Imaging.ImageFormat.Png);
+                        File.WriteAllBytes(Path.Combine(PlayDir, PictureData), data);
                     }
                     ShowProfilePicture();
                 }
@@ -2223,8 +3628,8 @@ namespace ReWor
         {
             try
             {
-                File.Delete(Path.Combine(gameDir, PictureFile));
-                File.Delete(Path.Combine(gameDir, PictureData));
+                File.Delete(Path.Combine(PlayDir, PictureFile));
+                File.Delete(Path.Combine(PlayDir, PictureData));
             }
             catch (Exception) { }
             ShowProfilePicture();
@@ -2237,11 +3642,11 @@ namespace ReWor
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             using (var glow = new System.Drawing.Drawing2D.LinearGradientBrush(
-                area, Color.FromArgb(alpha * 110 / 255, 150, 0, 22), Color.FromArgb(0, 0, 0, 0), 90f))
+                area, Color.FromArgb(alpha * 110 / 255, Glow), Color.FromArgb(0, 0, 0, 0), 90f))
                 g.FillRectangle(glow, area);
             using (var big = new Font(titleFamily, size, FontStyle.Regular, GraphicsUnit.Point))
             using (var small = new Font(titleFamily, size * 0.45f, FontStyle.Regular, GraphicsUnit.Point))
-            using (var shadow = new SolidBrush(Color.FromArgb(alpha * 170 / 255, 90, 0, 14)))
+            using (var shadow = new SolidBrush(Color.FromArgb(alpha * 170 / 255, Shade)))
             using (var white = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255)))
             using (var red = new SolidBrush(Color.FromArgb(alpha, Red)))
             {
@@ -2276,7 +3681,7 @@ namespace ReWor
             {
                 DrawLogo(e.Graphics, hero.ClientRectangle, 40f, 255);
                 // Thin diagonal stripes on the sides and a red edge under the cover.
-                using (var stripe = new Pen(Color.FromArgb(40, 200, 16, 46), 2f))
+                using (var stripe = new Pen(Color.FromArgb(40, Red), 2f))
                     for (int x = -hero.Height; x < hero.Width; x += 14)
                     {
                         if (x > 150 && x < hero.Width - 150 - hero.Height) continue;
@@ -2323,6 +3728,24 @@ namespace ReWor
                 Text = string.Format(Strings.T("home_version"), AppVersion), Location = new Point(PageW - 24 - 250, 228),
                 Size = new Size(250, 20), ForeColor = Text2, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 8f)
             });
+            var support = new LinkLabel
+            {
+                Text = Strings.T("home_support") + " Ko-fi · LivePix", Location = new Point(PageW - 24 - 250, 228),
+                Size = new Size(150, 20), TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 8f),
+                ForeColor = Text2, LinkColor = RedBright, ActiveLinkColor = Color.White, VisitedLinkColor = RedBright,
+                LinkBehavior = LinkBehavior.HoverUnderline, BackColor = Color.Transparent
+            };
+            support.Links.Clear();
+            int prefix = Strings.T("home_support").Length + 1;
+            support.Links.Add(prefix, 5, "https://ko-fi.com/erasedsin");
+            support.Links.Add(prefix + 8, 7, "https://livepix.gg/erasedsin");
+            support.LinkClicked += delegate(object s, LinkLabelLinkClickedEventArgs e)
+            {
+                try { Process.Start(new ProcessStartInfo((string)e.Link.LinkData) { UseShellExecute = true }); }
+                catch (Exception) { }
+            };
+            page.Controls.Add(support);
+            support.BringToFront();
 
             // Three cards with how the game is set up; a click opens the page.
             int cardW = (PageW - 48 - 2 * 12) / 3;
@@ -2503,8 +3926,8 @@ namespace ReWor
             var page = NewPage();
             int y = 16;
 
-            motionBlur = AddCheck(page, Strings.T("motion_blur"), y); y += 28;
-            screenNoise = AddCheck(page, Strings.T("screen_noise"), y); y += 28;
+            motionBlur = AddCheck(page, Strings.T(activeGame == GameGh5 ? "gh5_vignette" : "motion_blur"), y); y += 28;
+            screenNoise = AddCheck(page, Strings.T(activeGame == GameGh5 ? "gh5_grain" : "screen_noise"), y); y += 28;
             depthOfField = AddCheck(page, Strings.T("dof"), y); y += 28;
             bloom = AddCheck(page, Strings.T("bloom"), y); y += 40;
 
@@ -2529,7 +3952,7 @@ namespace ReWor
 
             gamma16 = AddCheck(page, Strings.T("gamma16"), y); y += 36;
 
-            AddNote(page, Strings.T("gfx_note"), y);
+            AddNote(page, Strings.T(activeGame == GameGh5 ? "gh5_gfx_note" : "gfx_note"), y);
             return page;
         }
 
@@ -2672,6 +4095,439 @@ namespace ReWor
             return ((Choice)combo.SelectedItem).Value;
         }
 
+        // A regular controller (the SDK's gamepad_as_guitar): a controller, which the game gives the vocals, or a guitar
+        // with the buttons of the chosen layout (guitar_pad_*: green, red, yellow, blue, orange, whammy, Star Power).
+        static readonly string[] PadKeys = { "guitar_pad_green", "guitar_pad_red", "guitar_pad_yellow", "guitar_pad_blue",
+            "guitar_pad_orange", "guitar_pad_whammy", "guitar_pad_star_power" };
+        static readonly string[] PadClassic = { "A", "B", "Y", "X", "LB", "RT", "BACK|RB" };
+        static readonly string[] PadTriggers = { "LT", "LB", "RB", "RT", "A", "RS", "BACK|Y" };
+        // A real Xbox 360 guitar that reaches the game as a regular controller (Parsec's virtual controller):
+        // its own buttons, and the whammy bar and tilt axes passed as they come (the SDK's RX and RY).
+        static readonly string[] PadParsec = { "A", "B", "Y", "X", "LB", "RX", "BACK" };
+        ComboBox padMode, padLayout, tiltSensitivity, usbGuitar, audioBuffer;
+        Label usbStatus;
+        // guitar_hid_maps: "VVVV:PPPP|SDL mapping fields" per guitar, separated by ';' (the SDK's SDL driver).
+        string guitarMaps = "";
+
+        Control BuildControlsTab()
+        {
+            var page = NewPage();
+            int half = (PageW - 48) / 2, right = 18 + half + 12;
+            int y = 12;
+            AddLabel(page, Strings.T("pad_mode"), y);
+            padMode = AddCombo(page, y + 20,
+                new Choice(Strings.T("pad_mode_mic"), "mic"),
+                new Choice(Strings.T("pad_mode_guitar"), "guitar"));
+            y += 58;
+            AddLabel(page, Strings.T("gh5_pad_layout"), y);
+            padLayout = AddCombo(page, y + 20,
+                new Choice(Strings.T("gh5_layout_classic"), "classic"),
+                new Choice(Strings.T("gh5_layout_triggers"), "triggers"),
+                new Choice(Strings.T("layout_parsec"), "parsec"));
+            padLayout.Width = half;
+            padMode.SelectedIndexChanged += delegate { padLayout.Enabled = Value(padMode) == "guitar"; };
+            page.Controls.Add(new Label { Text = Strings.T("tilt_label"), Location = new Point(right, y), AutoSize = true, ForeColor = Text1 });
+            tiltSensitivity = AddCombo(page, y + 20,
+                new Choice(Strings.T("tilt_100"), "100"),
+                new Choice(Strings.T("tilt_150"), "150"),
+                new Choice(Strings.T("tilt_200"), "200"),
+                new Choice(Strings.T("tilt_300"), "300"));
+            tiltSensitivity.Location = new Point(right, y + 20);
+            tiltSensitivity.Width = half;
+            y += 58;
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("pad_mode_note"), Location = new Point(18, y), Size = new Size(PageW - 36, 50),
+                ForeColor = Text2, Font = new Font("Segoe UI", 8.5f)
+            });
+            y += 56;
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("usb_title"), Location = new Point(18, y), AutoSize = true,
+                ForeColor = RedBright, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
+            });
+            y += 22;
+            usbGuitar = new ComboBox
+            {
+                Location = new Point(18, y), Size = new Size(PageW - 36 - 2 * 118, 26), DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat, BackColor = Field, ForeColor = Text1
+            };
+            usbGuitar.DropDown += delegate { FillUsbGuitars(); };
+            usbGuitar.SelectedIndexChanged += delegate { ShowUsbStatus(); };
+            page.Controls.Add(usbGuitar);
+            var setup = MakeButton(Strings.T("usb_setup"), new Point(PageW - 18 - 2 * 112 - 6, y - 3), true);
+            setup.Size = new Size(112, 32);
+            setup.Click += delegate { SetUpUsbGuitar(); };
+            page.Controls.Add(setup);
+            var remove = MakeButton(Strings.T("usb_remove"), new Point(PageW - 18 - 112, y - 3), false);
+            remove.Size = new Size(112, 32);
+            remove.Click += delegate
+            {
+                string id = UsbGuitarId();
+                if (id == null) return;
+                guitarMaps = WithGuitarMap(guitarMaps, id, null);
+                ShowUsbStatus();
+            };
+            page.Controls.Add(remove);
+            y += 32;
+            usbStatus = new Label { Location = new Point(18, y), Size = new Size(PageW - 36, 20), ForeColor = Text1 };
+            page.Controls.Add(usbStatus);
+            y += 22;
+            page.Controls.Add(new Label
+            {
+                Text = Strings.T("usb_note"), Location = new Point(18, y), Size = new Size(PageW - 36, 52),
+                ForeColor = Text2, Font = new Font("Segoe UI", 8.5f)
+            });
+            FillUsbGuitars();
+            return page;
+        }
+
+        // The generic controllers (winmm, not XInput): value "VVVV:PPPP|joystick id".
+        void FillUsbGuitars()
+        {
+            string keep = usbGuitar.SelectedItem != null ? Value(usbGuitar) : null;
+            usbGuitar.Items.Clear();
+            foreach (var d in InputScan.Scan())
+            {
+                if (!d.IsJoy) continue;
+                string[] parts = d.Spec.Split(':');
+                if (parts.Length < 3) continue;
+                usbGuitar.Items.Add(new Choice(d.Title + "  (" + d.Detail + ")", parts[1] + ":" + parts[2] + "|" + d.JoyId));
+            }
+            if (usbGuitar.Items.Count == 0) usbGuitar.Items.Add(new Choice(Strings.T("usb_none"), ""));
+            if (keep != null) SelectChoice(usbGuitar, keep); else usbGuitar.SelectedIndex = 0;
+            ShowUsbStatus();
+        }
+
+        string UsbGuitarId()
+        {
+            if (usbGuitar == null || usbGuitar.SelectedItem == null || Value(usbGuitar) == "") return null;
+            return Value(usbGuitar).Split('|')[0];
+        }
+
+        void ShowUsbStatus()
+        {
+            if (usbStatus == null) return;
+            string id = UsbGuitarId();
+            if (id == null) { usbStatus.Text = ""; return; }
+            bool ready = GuitarMapOf(guitarMaps, id) != null;
+            usbStatus.Text = Strings.T(ready ? "usb_ready" : "usb_not_ready");
+            usbStatus.ForeColor = ready ? Led : Text2;
+        }
+
+        static string GuitarMapOf(string maps, string id)
+        {
+            foreach (string entry in (maps ?? "").Split(';'))
+            {
+                int bar = entry.IndexOf('|');
+                if (bar > 0 && entry.Substring(0, bar).Trim().Equals(id, StringComparison.OrdinalIgnoreCase)) return entry.Substring(bar + 1);
+            }
+            return null;
+        }
+
+        // The list with id's entry replaced by fields (or removed, fields null).
+        static string WithGuitarMap(string maps, string id, string fields)
+        {
+            var kept = new List<string>();
+            foreach (string entry in (maps ?? "").Split(';'))
+            {
+                int bar = entry.IndexOf('|');
+                if (bar <= 0) continue;
+                if (entry.Substring(0, bar).Trim().Equals(id, StringComparison.OrdinalIgnoreCase)) continue;
+                kept.Add(entry.Trim());
+            }
+            if (fields != null) kept.Add(id + "|" + fields);
+            return string.Join(";", kept.ToArray());
+        }
+
+        void SetUpUsbGuitar()
+        {
+            string id = UsbGuitarId();
+            if (id == null) { FillUsbGuitars(); return; }
+            uint joy = uint.Parse(Value(usbGuitar).Split('|')[1]);
+            using (var wizard = new GuitarSetup(joy, titleFamily))
+            {
+                if (wizard.ShowDialog(this) == DialogResult.OK && wizard.Fields != null)
+                {
+                    guitarMaps = WithGuitarMap(guitarMaps, id, wizard.Fields);
+                    ShowUsbStatus();
+                    status.Text = Strings.T("wiz_done");
+                }
+            }
+        }
+
+        ComboBox achPlayer;
+        Label achSummary;
+        Panel achScroll;
+        Canvas achList;
+        List<Achievement> achItems = new List<Achievement>();
+        readonly Dictionary<string, Image> achIcons = new Dictionary<string, Image>();
+
+        class Achievement
+        {
+            public uint Id, Score;
+            public string Icon, Title, Text;
+            public long Unlocked;
+        }
+
+        Control BuildProfileTab()
+        {
+            var page = NewPage();
+            AddLabel(page, Strings.T("ach_player"), 12);
+            achPlayer = AddCombo(page, 32);
+            achPlayer.Width = 260;
+            achPlayer.SelectedIndexChanged += delegate { LoadAchievements(); };
+            achSummary = new Label
+            {
+                Location = new Point(290, 34), Size = new Size(PageW - 290 - 18, 22), ForeColor = RedBright,
+                Font = new Font("Segoe UI", 10f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleRight
+            };
+            page.Controls.Add(achSummary);
+            achScroll = new Panel { Location = new Point(18, 70), Size = new Size(PageW - 36, 384 - 70 - 12), AutoScroll = true, BackColor = Panel };
+            achList = new Canvas { Location = new Point(0, 0), Size = new Size(achScroll.Width - SystemInformation.VerticalScrollBarWidth, 10), BackColor = Panel };
+            achList.Paint += PaintAchievements;
+            achScroll.Controls.Add(achList);
+            page.Controls.Add(achScroll);
+            return page;
+        }
+
+        void ShowProfile()
+        {
+            if (achPlayer == null || achPlayer.IsDisposed) return;
+            int keep = Math.Max(0, achPlayer.SelectedIndex);
+            achPlayer.Items.Clear();
+            for (int i = 0; i < 4; i++)
+            {
+                string name = i == 0 ? profileName.Text.Trim() : playerNames[i].Text.Trim();
+                if (name == "") name = i == 0 ? Strings.T("home_no_name") : string.Format(Strings.T("player_default_name"), i + 1);
+                achPlayer.Items.Add(new Choice("P" + (i + 1) + "  " + name, i.ToString()));
+            }
+            achPlayer.SelectedIndex = keep;
+        }
+
+        // Where the game keeps the achievements (the SDK's user data): Guitar Hero 5's userdata folder, Warriors of
+        // Rock's in Documents\re_wor unless it has one next to the game.
+        string AchievementsDir()
+        {
+            string local = Path.Combine(Path.Combine(PlayDir, "userdata"), "achievements");
+            if (activeGame == GameGh5 || Directory.Exists(local)) return local;
+            return Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "re_wor"), "achievements");
+        }
+
+        void LoadAchievements()
+        {
+            achItems = new List<Achievement>();
+            string dir = AchievementsDir();
+            string info = null;
+            try { if (Directory.Exists(dir)) foreach (string f in Directory.GetFiles(dir, "*.info.toml")) { info = f; break; } }
+            catch (Exception) { }
+            if (info == null)
+            {
+                achSummary.Text = "";
+                achList.Height = achScroll.Height - 4;
+                achList.Invalidate();
+                return;
+            }
+            string title = Path.GetFileName(info).Split('.')[0];
+            string[] codes = { "", "en", "ja", "de", "fr", "es", "it", "ko", "zh-Hant", "pt" };
+            int lang = settings.GetInt("user_language", 1);
+            string code = lang >= 1 && lang < codes.Length ? codes[lang] : "en";
+            try { achItems = ReadAchievementInfo(info, code); } catch (Exception) { achItems = new List<Achievement>(); }
+            int player = achPlayer.SelectedIndex < 0 ? 0 : achPlayer.SelectedIndex;
+            string xuid = (0xB13EBABEBABEBABEUL + (ulong)player).ToString("X16");
+            var unlocked = ReadUnlocks(Path.Combine(Path.Combine(dir, xuid), title + ".toml"));
+            uint got = 0, total = 0, gotScore = 0, totalScore = 0;
+            foreach (var a in achItems)
+            {
+                long when;
+                a.Unlocked = unlocked.TryGetValue(a.Id, out when) ? when : 0;
+                total++; totalScore += a.Score;
+                if (a.Unlocked != 0) { got++; gotScore += a.Score; }
+            }
+            // Unlocked first, the newest on top; then the rest in the game's order.
+            achItems.Sort((x, y) => x.Unlocked != 0 && y.Unlocked != 0 ? y.Unlocked.CompareTo(x.Unlocked) : (y.Unlocked != 0).CompareTo(x.Unlocked != 0));
+            achSummary.Text = string.Format(Strings.T("ach_summary"), got, total, gotScore, totalScore);
+            achList.Height = Math.Max(achScroll.Height - 4, achItems.Count * 58 + 4);
+            achScroll.AutoScrollPosition = new Point(0, 0);
+            achList.Invalidate();
+        }
+
+        static Dictionary<uint, long> ReadUnlocks(string path)
+        {
+            var result = new Dictionary<uint, long>();
+            if (!File.Exists(path)) return result;
+            uint current = 0;
+            bool inEntry = false;
+            foreach (string raw in File.ReadAllLines(path))
+            {
+                string line = raw.Trim();
+                if (line.StartsWith("[unlocked.") && line.EndsWith("]"))
+                {
+                    inEntry = uint.TryParse(line.Substring(10, line.Length - 11), out current);
+                    if (inEntry) result[current] = 1;
+                }
+                else if (inEntry && line.StartsWith("filetime"))
+                {
+                    long t;
+                    if (long.TryParse(line.Substring(line.IndexOf('=') + 1).Trim(), out t) && t > 0) result[current] = t;
+                }
+            }
+            return result;
+        }
+
+        // The SDK's <title>.info.toml: [[achievements]] with id, gamerscore and icon, and the texts in
+        // [achievements.label] and [achievements.description] by language.
+        static List<Achievement> ReadAchievementInfo(string path, string code)
+        {
+            var list = new List<Achievement>();
+            Achievement current = null;
+            string table = "";
+            var label = new Dictionary<string, string>();
+            var text = new Dictionary<string, string>();
+            Action finish = delegate
+            {
+                if (current == null) return;
+                current.Title = Pick(label, code);
+                current.Text = Pick(text, code);
+                list.Add(current);
+            };
+            foreach (string raw in File.ReadAllLines(path, Encoding.UTF8))
+            {
+                string line = raw.Trim();
+                if (line == "[[achievements]]")
+                {
+                    finish();
+                    current = new Achievement();
+                    label = new Dictionary<string, string>();
+                    text = new Dictionary<string, string>();
+                    table = "";
+                    continue;
+                }
+                if (line.StartsWith("[")) { table = line.Trim('[', ']'); continue; }
+                int eq = line.IndexOf('=');
+                if (current == null || eq <= 0 || line.StartsWith("#")) continue;
+                string key = line.Substring(0, eq).Trim().Trim('"');
+                string value = line.Substring(eq + 1).Trim();
+                if (table == "")
+                {
+                    uint n;
+                    if (key == "id" && uint.TryParse(value, out n)) current.Id = n;
+                    else if (key == "gamerscore" && uint.TryParse(value, out n)) current.Score = n;
+                    else if (key == "icon") current.Icon = TomlString(value);
+                }
+                else if (table == "achievements.label") label[key] = TomlString(value);
+                else if (table == "achievements.description") text[key] = TomlString(value);
+            }
+            finish();
+            return list;
+        }
+
+        static string Pick(Dictionary<string, string> texts, string code)
+        {
+            string t;
+            if (texts.TryGetValue(code, out t) || texts.TryGetValue("en", out t)) return t;
+            foreach (var pair in texts) return pair.Value;
+            return "";
+        }
+
+        static string TomlString(string value)
+        {
+            if (value.Length < 2 || value[0] != '"') return value;
+            var sb = new StringBuilder();
+            for (int i = 1; i < value.Length - 1; i++)
+            {
+                char c = value[i];
+                if (c != '\\' || i + 1 >= value.Length - 1) { sb.Append(c); continue; }
+                char e = value[++i];
+                if (e == 'n') sb.Append('\n');
+                else if (e == 't') sb.Append('\t');
+                else if (e == 'u' && i + 4 < value.Length) { sb.Append((char)Convert.ToInt32(value.Substring(i + 1, 4), 16)); i += 4; }
+                else sb.Append(e);
+            }
+            return sb.ToString();
+        }
+
+        Image AchievementIcon(string relative)
+        {
+            if (string.IsNullOrEmpty(relative)) return null;
+            string path = Path.Combine(AchievementsDir(), relative.Replace('/', '\\'));
+            Image image;
+            if (achIcons.TryGetValue(path, out image)) return image;
+            try { image = new Bitmap(new MemoryStream(File.ReadAllBytes(path))); } catch (Exception) { image = null; }
+            achIcons[path] = image;
+            return image;
+        }
+
+        void PaintAchievements(object sender, PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            if (achItems.Count == 0)
+            {
+                using (var brush = new SolidBrush(Text2))
+                    g.DrawString(Strings.T("ach_missing"), Font, brush, new RectangleF(8, 16, achList.Width - 16, 60));
+                return;
+            }
+            using (var titleFont = new Font("Segoe UI", 10f, FontStyle.Bold))
+            using (var textFont = new Font("Segoe UI", 8.5f))
+            using (var white = new SolidBrush(Color.White))
+            using (var gray = new SolidBrush(Text2))
+            using (var dim = new SolidBrush(Color.FromArgb(95, 95, 95)))
+            using (var accent = new SolidBrush(RedBright))
+            using (var row = new SolidBrush(Field))
+            using (var veil = new SolidBrush(Color.FromArgb(170, 22, 22, 22)))
+            using (var right = new StringFormat { Alignment = StringAlignment.Far })
+            {
+                for (int i = 0; i < achItems.Count; i++)
+                {
+                    var a = achItems[i];
+                    int y = 2 + i * 58;
+                    if (y + 58 < e.ClipRectangle.Top || y > e.ClipRectangle.Bottom) continue;
+                    bool got = a.Unlocked != 0;
+                    g.FillRectangle(row, 0, y, achList.Width - 4, 54);
+                    if (got) g.FillRectangle(accent, 0, y, 3, 54);
+                    var icon = AchievementIcon(a.Icon);
+                    if (icon != null)
+                    {
+                        g.DrawImage(icon, new Rectangle(10, y + 5, 44, 44));
+                        if (!got) g.FillRectangle(veil, 10, y + 5, 44, 44);
+                    }
+                    int textW = achList.Width - 64 - 90;
+                    g.DrawString(a.Title, titleFont, got ? white : gray, new RectangleF(64, y + 6, textW, 20));
+                    string line = a.Text;
+                    if (got && a.Unlocked > 1)
+                    {
+                        try { line = string.Format(Strings.T("ach_unlocked"), DateTime.FromFileTime(a.Unlocked).ToString("d")) + "  ·  " + a.Text; }
+                        catch (Exception) { }
+                    }
+                    g.DrawString(line, textFont, got ? gray : dim, new RectangleF(64, y + 26, textW, 28));
+                    g.DrawString(a.Score + " G", titleFont, got ? accent : dim, new RectangleF(achList.Width - 100, y + 16, 88, 22), right);
+                }
+            }
+        }
+
+        // The game knows keys by name with a capital letter (M, not m; Space, not space): each key of a list, as the
+        // player typed it, written that way.
+        static string KeyNames(string text)
+        {
+            var keys = new List<string>();
+            foreach (string part in text.Split(','))
+            {
+                string key = part.Trim();
+                if (key.Length == 0) continue;
+                var pieces = key.Split('+');
+                for (int i = 0; i < pieces.Length; i++)
+                {
+                    string piece = pieces[i].Trim();
+                    if (piece.Length > 0) piece = char.ToUpperInvariant(piece[0]) + piece.Substring(1);
+                    pieces[i] = piece;
+                }
+                keys.Add(string.Join("+", pieces));
+            }
+            return string.Join(",", keys.ToArray());
+        }
+
         void LoadSettings()
         {
             SelectChoice(resolution, settings.GetInt("video_mode_width", 1280) + "x" + settings.GetInt("video_mode_height", 720));
@@ -2683,19 +4539,20 @@ namespace ReWor
             vsync.Checked = settings.GetBool("present_vsync", false);
             {
                 double hz;
-                string rate = settings.Get("video_mode_refresh_rate", "60");
+                string rate = activeGame == GameGh5 ? settings.GetInt("gh5_frame_rate", 60).ToString()
+                    : settings.Get("video_mode_refresh_rate", "60");
                 if (!double.TryParse(rate, System.Globalization.NumberStyles.Float,
                         System.Globalization.CultureInfo.InvariantCulture, out hz)) hz = 60;
                 SelectChoice(frameRate, ((int)Math.Round(hz)).ToString());
                 if (frameRate.SelectedItem == null) frameRate.SelectedIndex = 0;
             }
-            gamma16.Checked = settings.GetBool("gamma_render_target_as_unorm16", true);
+            gamma16.Checked = settings.GetBool("gamma_render_target_as_unorm16", activeGame == GameWor);
             SelectChoice(gpuApi, settings.Get("gpu", "any"));
             if (gpuApi.SelectedItem == null) gpuApi.SelectedIndex = 0;
-            motionBlur.Checked = settings.GetBool(CvarPrefix + "motion_blur", true);
-            screenNoise.Checked = settings.GetBool(CvarPrefix + "screen_noise", true);
-            depthOfField.Checked = settings.GetBool(CvarPrefix + "dof", true);
-            bloom.Checked = settings.GetBool(CvarPrefix + "bloom", true);
+            motionBlur.Checked = settings.GetBool(FxKey(0), true);
+            screenNoise.Checked = settings.GetBool(FxKey(1), true);
+            depthOfField.Checked = settings.GetBool(FxKey(2), true);
+            bloom.Checked = settings.GetBool(FxKey(3), true);
             showFps.Checked = settings.GetBool(CvarPrefix + "show_fps", true);
             debugMenu.Checked = settings.GetBool(CvarPrefix + "debug_menu", false);
             skipIntro.Checked = settings.GetBool(CvarPrefix + "skip_intro", false);
@@ -2732,7 +4589,24 @@ namespace ReWor
             foreach (var part in KeyParts) kbFields[part[0]].Text = settings.Get(part[0], part[2]);
             applyingKbPreset = false;
             SelectChoice(kbPreset, MatchKbPreset());
+            SelectChoice(padMode, settings.GetBool("gamepad_as_guitar", false) ? "guitar" : "mic");
+            SelectChoice(padLayout, settings.Get("guitar_pad_green", "A") == "LT" ? "triggers"
+                : settings.Get("guitar_pad_whammy", "") == "RX" ? "parsec" : "classic");
+            padLayout.Enabled = Value(padMode) == "guitar";
+            SelectChoice(tiltSensitivity, settings.GetInt("guitar_tilt_sensitivity", 100).ToString());
+            SelectChoice(audioBuffer, settings.GetInt("audio_maxqframes", 64).ToString());
+            guitarMaps = settings.Get("guitar_hid_maps", "");
+            ShowUsbStatus();
             ShowGameFolder();
+        }
+
+        // The four screen effects of the GRAPHICS page: Warriors of Rock's motion blur, screen noise, depth of field
+        // and bloom (patched into its scripts), Guitar Hero 5's vignette, grain, depth of field and bloom.
+        static string FxKey(int index)
+        {
+            if (activeGame == GameGh5)
+                return new[] { "gh5_fx_vignette", "gh5_fx_grain", "gh5_fx_depth_of_field", "gh5_fx_bloom" }[index];
+            return CvarPrefix + new[] { "motion_blur", "screen_noise", "dof", "bloom" }[index];
         }
 
         // Copies the controls into the settings in memory, without saving them.
@@ -2748,6 +4622,8 @@ namespace ReWor
             settings.Remove("resolution");
             settings.Set("video_mode_width", int.Parse(res[0]));
             settings.Set("video_mode_height", int.Parse(res[1]));
+            // Guitar Hero 5 fills a screen wider than 16:9 (src/widescreen.cpp).
+            if (activeGame == GameGh5) settings.Set("gh5_ultrawide", int.Parse(res[0]) * 9 > int.Parse(res[1]) * 17);
             // Only written when below 100, so a game built on an SDK without the
             // option never sees it.
             if (Value(drawScale) == "100") settings.Remove("draw_resolution_percent");
@@ -2764,19 +4640,39 @@ namespace ReWor
             settings.Set("vsync", true);
             settings.Set("present_vsync", vsync.Checked);
             settings.SetNumber("video_mode_refresh_rate", Value(frameRate) + ".0");
+            // Guitar Hero 5 keeps the game in time above 60 FPS from its own setting (src/framerate.cpp).
+            if (activeGame == GameGh5) settings.Set("gh5_frame_rate", int.Parse(Value(frameRate)));
             settings.Set("gamma_render_target_as_unorm16", gamma16.Checked);
             settings.Set("gpu", Value(gpuApi));
-            settings.Set(CvarPrefix + "motion_blur", motionBlur.Checked);
-            settings.Set(CvarPrefix + "screen_noise", screenNoise.Checked);
-            settings.Set(CvarPrefix + "dof", depthOfField.Checked);
-            settings.Set(CvarPrefix + "bloom", bloom.Checked);
+            settings.Set(FxKey(0), motionBlur.Checked);
+            settings.Set(FxKey(1), screenNoise.Checked);
+            settings.Set(FxKey(2), depthOfField.Checked);
+            settings.Set(FxKey(3), bloom.Checked);
             settings.Set(CvarPrefix + "show_fps", showFps.Checked);
             settings.Set(CvarPrefix + "debug_menu", debugMenu.Checked);
             settings.Set(CvarPrefix + "skip_intro", skipIntro.Checked);
-            // A regular controller stays a controller: the game's own debug menu
-            // (Enable Controller) lets it play the guitar.
-            settings.Set("gamepad_as_guitar", false);
+            // A regular controller: a controller (the singer's; the game's own debug menu,
+            // Enable Controller, lets it play) or a guitar with the chosen buttons.
+            bool padGuitar = Value(padMode) == "guitar";
+            settings.Set("gamepad_as_guitar", padGuitar);
             settings.Remove("guitar_autostrum");
+            string[] layout = Value(padLayout) == "triggers" ? PadTriggers : Value(padLayout) == "parsec" ? PadParsec : PadClassic;
+            for (int i = 0; i < PadKeys.Length; i++)
+            {
+                if (padGuitar) settings.Set(PadKeys[i], layout[i]);
+                else settings.Remove(PadKeys[i]);
+            }
+            if (padGuitar && Value(padLayout) == "parsec") settings.Set("guitar_pad_tilt", "RY");
+            else settings.Remove("guitar_pad_tilt");
+            if (activeGame == GameGh5)
+            {
+                // Settings of an older Guitar Hero 5 build's SDK, which this one does not have.
+                foreach (string old in new[] { "native_x_renderer", "native_x_renderer_present_mode", "vblank_follows_display",
+                    "native_x_renderer_antialiasing", "native_x_renderer_resolution_scale", "native_x_renderer_scaling",
+                    "native_x_renderer_shadow_scale", "audio_wasapi_exclusive", "gamepad_tap_target", "gamepad_remap",
+                    "mnk_tap_target", "usb_microphone_1", "usb_microphone_1_gain", "gamepad_device_subtypes", "game_data_root" })
+                    settings.Remove(old);
+            }
             string name = profileName.Text.Trim().Replace("\"", "").Replace("\\", "");
             if (name == "") settings.Remove("online_name");
             else settings.Set("online_name", name);
@@ -2803,16 +4699,30 @@ namespace ReWor
                 else settings.Set(key, SavedSpec(i));
             }
             // Players on Automatic get XInput for Xbox controllers; the other
-            // controllers are read through SDL.
-            settings.Set("input_backend", "xinput");
+            // controllers are read through SDL. A controller as a guitar is SDL's.
+            settings.Set("input_backend", padGuitar ? "sdl" : "xinput");
+            if (Value(tiltSensitivity) == "100") settings.Remove("guitar_tilt_sensitivity");
+            else settings.Set("guitar_tilt_sensitivity", int.Parse(Value(tiltSensitivity)));
+            if (guitarMaps == "") settings.Remove("guitar_hid_maps");
+            else settings.Set("guitar_hid_maps", guitarMaps);
+            settings.Set("audio_maxqframes", int.Parse(Value(audioBuffer)));
             settings.Set(CvarPrefix + "mic_player", int.Parse(Value(micPlayer)));
             if (Value(micDevice) == "") settings.Remove(CvarPrefix + "mic_device");
             else settings.Set(CvarPrefix + "mic_device", Value(micDevice));
             settings.Set(CvarPrefix + "mic_volume", micVolume.Value);
             settings.Set(CvarPrefix + "mic_gate", micGate.Value);
             settings.Set("mnk_mode", kbEnabled.Checked);
-            foreach (var part in KeyParts) settings.Set(part[0], kbFields[part[0]].Text.Trim());
+            foreach (var part in KeyParts) settings.Set(part[0], KeyNames(kbFields[part[0]].Text));
             foreach (var clear in KeyClears) settings.Set(clear[0], clear[1]);
+            // Esc goes back in the game's menus (keybind_menu_back); a guitar that sends it (Start on a
+            // keyboard-mode guitar) needs it for its own button, so the menus go back with Backspace.
+            bool escUsed = false;
+            foreach (var part in KeyParts)
+                foreach (string key in settings.Get(part[0], "").Split(','))
+                    if (key.Trim().Equals("Escape", StringComparison.OrdinalIgnoreCase) || key.Trim().Equals("Esc", StringComparison.OrdinalIgnoreCase))
+                        escUsed = true;
+            if (escUsed) settings.Set("keybind_menu_back", "Backspace");
+            else settings.Remove("keybind_menu_back");
 
             // Defaults that help weak PCs, written once so the player can still
             // change them later in the F4 menu. A bigger audio buffer stops the
@@ -2831,6 +4741,11 @@ namespace ReWor
 
         bool Apply()
         {
+            if (activeGame == GameGh5 && !File.Exists(Path.Combine(Gh5Dir, Gh5Exe)))
+            {
+                MessageBox.Show(this, Strings.T("gh5_missing"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return false;
+            }
             if (!IsGameFolder(gameFolder))
             {
                 MessageBox.Show(this, Strings.T("need_folder"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -2847,7 +4762,7 @@ namespace ReWor
             {
                 CollectSettings();
                 settings.Save();
-                WriteScriptMod();
+                if (activeGame == GameWor) WriteScriptMod();
                 return true;
             }
             catch (Exception e)
@@ -2913,7 +4828,7 @@ namespace ReWor
 
         void Launch()
         {
-            string exe = Path.Combine(gameDir, GameExe);
+            string exe = Path.Combine(PlayDir, GameExe);
             if (!File.Exists(exe))
             {
                 MessageBox.Show(this, string.Format(Strings.T("missing_exe"), GameExe), Text,
@@ -2922,14 +4837,164 @@ namespace ReWor
             }
             var start = new ProcessStartInfo(exe)
             {
-                WorkingDirectory = gameDir,
+                WorkingDirectory = PlayDir,
                 UseShellExecute = false
             };
             // Read by the game at startup. A file keeps any character in the path
             // intact, which a command line argument would not.
-            File.WriteAllText(Path.Combine(gameDir, "game_folder.txt"), gameFolder, new UTF8Encoding(false));
+            File.WriteAllText(Path.Combine(PlayDir, "game_folder.txt"), gameFolder, new UTF8Encoding(false));
             Process.Start(start);
             Close();
+        }
+    }
+
+    // Teaches the launcher a generic USB guitar's buttons, one part at a time, the way Clone Hero sets one up: the
+    // result is an SDL mapping of the guitar onto an Xbox 360 guitar (the SDK's guitar_hid_maps).
+    sealed class GuitarSetup : Form
+    {
+        // SDL target, label key, kind: 0 a button (or a hat or an axis pushed), 1 an axis (whammy), 2 an axis or a
+        // button (tilt). The last two can be skipped.
+        static readonly string[][] Steps =
+        {
+            new[] { "a", "fret_green", "0" }, new[] { "b", "fret_red", "0" }, new[] { "y", "fret_yellow", "0" },
+            new[] { "x", "fret_blue", "0" }, new[] { "leftshoulder", "fret_orange", "0" },
+            new[] { "dpup", "strum_up", "0" }, new[] { "dpdown", "strum_down", "0" },
+            new[] { "start", "kb_start", "0" }, new[] { "back", "star_power", "0" },
+            new[] { "rightx", "whammy", "1" }, new[] { "righty", "tilt", "2" },
+        };
+
+        public string Fields;
+        readonly uint joy;
+        readonly Timer timer = new Timer { Interval = 25 };
+        readonly Label stepLabel, prompt;
+        readonly Button skip;
+        readonly List<string> fields = new List<string>();
+        InputScan.JoyReading rest;
+        int step = -1;
+        bool waitRelease;
+        DateTime restSince;
+
+        public GuitarSetup(uint joy, FontFamily titleFamily)
+        {
+            this.joy = joy;
+            Text = Strings.T("wiz_title");
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = MinimizeBox = false;
+            StartPosition = FormStartPosition.CenterParent;
+            ClientSize = new Size(480, 230);
+            BackColor = Color.FromArgb(18, 18, 18);
+            ForeColor = Color.White;
+            Font = new Font("Segoe UI", 10f);
+            stepLabel = new Label { Location = new Point(24, 18), Size = new Size(432, 22), ForeColor = Color.FromArgb(150, 150, 150) };
+            prompt = new Label { Location = new Point(24, 48), Size = new Size(432, 110), Font = new Font("Segoe UI", 16f, FontStyle.Bold) };
+            skip = new Button { Text = Strings.T("wiz_skip"), Location = new Point(232, 176), Size = new Size(110, 34), FlatStyle = FlatStyle.Flat, Visible = false };
+            var cancel = new Button { Text = Strings.T("wiz_cancel"), Location = new Point(352, 176), Size = new Size(110, 34), FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.Cancel };
+            skip.Click += delegate { Next(); };
+            Controls.AddRange(new Control[] { stepLabel, prompt, skip, cancel });
+            CancelButton = cancel;
+            timer.Tick += delegate { Poll(); };
+            Shown += delegate { restSince = DateTime.Now; ShowStep(); timer.Start(); };
+            FormClosed += delegate { timer.Stop(); timer.Dispose(); };
+        }
+
+        void ShowStep()
+        {
+            stepLabel.Text = string.Format(Strings.T("wiz_step"), Math.Max(1, step + 1), Steps.Length);
+            if (step < 0) { prompt.Text = Strings.T("wiz_rest"); skip.Visible = false; return; }
+            if (waitRelease) { prompt.Text = Strings.T("wiz_release"); return; }
+            string kind = Steps[step][2];
+            prompt.Text = kind == "1" ? Strings.T("wiz_whammy") : kind == "2" ? Strings.T("wiz_tilt")
+                : string.Format(Strings.T("wiz_press"), Strings.T(Steps[step][1]));
+            skip.Visible = kind != "0";
+        }
+
+        void Next()
+        {
+            step++;
+            waitRelease = false;
+            if (step >= Steps.Length)
+            {
+                timer.Stop();
+                Fields = string.Join(",", fields.ToArray()) + ",";
+                DialogResult = DialogResult.OK;
+                Close();
+                return;
+            }
+            ShowStep();
+        }
+
+        static int PovMask(int pov)
+        {
+            if (pov < 0) return 0;
+            int[] masks = { 1, 3, 2, 6, 4, 12, 8, 9 };
+            return masks[((pov + 2250) / 4500) % 8];
+        }
+
+        bool AtRest(InputScan.JoyReading r)
+        {
+            if ((r.Buttons & ~rest.Buttons) != 0 || PovMask(r.Pov) != PovMask(rest.Pov)) return false;
+            for (int i = 0; i < 6; i++) if (r.Has[i] && Math.Abs(r.Axes[i] - rest.Axes[i]) > 0.3f) return false;
+            return true;
+        }
+
+        void Poll()
+        {
+            var r = InputScan.ReadJoy(joy);
+            if (r == null) return;
+            if (step < 0)
+            {
+                // A second with nothing moving is the guitar at rest.
+                if (rest == null || !AtRest(r)) { rest = r; restSince = DateTime.Now; return; }
+                if ((DateTime.Now - restSince).TotalMilliseconds > 900) Next();
+                return;
+            }
+            if (waitRelease)
+            {
+                if (AtRest(r)) Next();
+                return;
+            }
+            string target = Steps[step][0], kind = Steps[step][2];
+            string source = null;
+            uint pressed = r.Buttons & ~rest.Buttons;
+            if (pressed != 0 && kind != "1")
+            {
+                int b = 0;
+                while ((pressed & (1u << b)) == 0) b++;
+                source = "b" + b;
+            }
+            else if (PovMask(r.Pov) != PovMask(rest.Pov) && r.Pov >= 0 && kind == "0")
+            {
+                int mask = PovMask(r.Pov);
+                // A diagonal counts as its vertical part (strum up and down).
+                if ((mask & 1) != 0) mask = 1; else if ((mask & 4) != 0) mask = 4;
+                source = "h0." + mask;
+            }
+            else
+            {
+                int best = -1;
+                float bestMove = 0.55f;
+                for (int i = 0; i < 6; i++)
+                {
+                    if (!r.Has[i]) continue;
+                    float move = Math.Abs(r.Axes[i] - rest.Axes[i]);
+                    if (move > bestMove) { bestMove = move; best = i; }
+                }
+                if (best >= 0)
+                {
+                    int a = InputScan.SdlAxis(r, best);
+                    bool up = r.Axes[best] > rest.Axes[best];
+                    float start = rest.Axes[best];
+                    if (kind == "0") source = (up ? "+a" : "-a") + a;
+                    // An axis that rests in the middle uses its half that moved; one at an end, all of it, turned
+                    // so that rest is the low end (the whammy at rest, the guitar flat).
+                    else if (Math.Abs(start) < 0.5f) source = (up ? "+a" : "-a") + a;
+                    else source = "a" + a + (start > 0 ? "~" : "");
+                }
+            }
+            if (source == null) return;
+            fields.Add(target + ":" + source);
+            waitRelease = true;
+            ShowStep();
         }
     }
 

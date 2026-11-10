@@ -4,7 +4,7 @@
 
 <h1 align="center">Erased Reboot Version</h1>
 
-<p align="center"><b>Guitar Hero: Warriors of Rock (Xbox 360), recompiled to run natively on PC.</b><br>
+<p align="center"><b>Guitar Hero: Warriors of Rock and Guitar Hero 5 (Xbox 360), recompiled to run natively on PC.</b><br>
 A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, made by Gaio Moreira (Erased).</p>
 
 > [!IMPORTANT]
@@ -16,6 +16,19 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 [Português](#português) · [What's new](#whats-new) · [How to play](#how-to-play) · [Building](#building-from-source) · [Credits](#credits)
 
 ## What's new
+
+**In 2.0: Warriors of Rock and Guitar Hero 5 in one launcher.**
+
+- 🎸 **Guitar Hero 5 (Xbox 360)**, recompiled on the same SDK as Warriors of Rock, with its own page in the launcher
+  (blue and black). It needs your own copy too (`default.xex` and `data` of the Xbox 360 game).
+- 🧭 **One launcher for both games:** the same tabs for each (home, game, video, graphics, players, keyboard,
+  microphone, online, controls, profile) and its own settings for each game.
+- 🏆 **Achievements for each profile**, and a PROFILE tab that lists them for every player.
+- 🎮 **Controls:** a regular controller plays as the singer's controller or as a guitar (your choice, in both games);
+  guitars that Windows only sees as a "USB controller" (Wii or PS3 guitars on an adapter) are set up button by button,
+  the way Clone Hero does; a guitar through **Parsec** keeps its whammy bar and tilt; adjustable tilt sensitivity.
+- ⌨️ **Keyboard-mode guitars** (Raspberry Pi Pico / Santroller): Shift and Ctrl work as strum keys, and Esc as Start.
+- 🔊 The audio buffer (16, 32 or 64 frames) in the GAME tab.
 
 **In 1.2:**
 
@@ -88,12 +101,18 @@ Windows, with Visual Studio 2022 Build Tools (C++), LLVM/Clang, CMake and Ninja.
    ```
 3. **The launcher** (C#, built with the compiler that comes with Windows):
    ```bat
-   %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /codepage:65001 /win32icon:app_icon.ico /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:"Erased Reboot Version.exe" launcher\ReWorLauncher.cs
+   %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /codepage:65001 /win32icon:launcher\launcher.ico /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:"Erased Reboot Version.exe" launcher\ReWorLauncher.cs
    ```
    The title font is not in this repository; without it, the launcher uses Impact.
 
 `src/sampler.cpp` (`rewor_sample_file`) shows where each thread spends its time, and `src/notcd.cpp`
 (`rewor_debug_scan`) lists the C functions the game's scripts can call: the tools used to find the fixes above.
+
+## Support
+
+Everything here is free and stays free. If you want to help, you can donate on [Ko-fi](https://ko-fi.com/erasedsin)
+or, from Brazil, by PIX on [LivePix](https://livepix.gg/erasedsin). Donations unlock nothing extra: they only help me
+keep working on it.
 
 ## Credits
 
@@ -137,6 +156,13 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
 
+**Novidades da 2.0:** o Guitar Hero 5 (Xbox 360) junto com o Warriors of Rock, num launcher só, com as mesmas abas
+para os dois; conquistas para cada perfil, com uma aba PERFIL que mostra todas; controle comum como controle do
+vocalista ou como guitarra, nos dois jogos; guitarras que o Windows vê só como "controle USB" (de Wii ou PS3 num
+adaptador) configuradas botão por botão, como no Clone Hero; guitarra pelo Parsec com alavanca e inclinação;
+sensibilidade da inclinação ajustável; guitarras em modo teclado (Raspberry Pi Pico / Santroller) com Shift e Ctrl
+na palheta; e o buffer de áudio na aba JOGO. Para o GH5 também é preciso a sua cópia do jogo.
+
 **Novidades da 1.2:** mais de 60 FPS (120, 144, 165 ou 240, sem acelerar as notas), Vulkan além do DirectX 12, menos
 uso de CPU e áudio mais estável, um perfil para cada jogador, sair do jogo pelo menu principal (B), online
 experimental, música sempre no tempo, pular o vídeo de abertura e um launcher novo em tela cheia que procura
@@ -149,6 +175,9 @@ uso de CPU, opções dentro do jogo (F5) e um launcher novo em português e ingl
 **Como jogar:** baixe o zip em [Releases](../../releases), extraia numa pasta qualquer, abra o
 **`Erased Reboot Version.exe`**, escolha a pasta do jogo e clique em **JOGAR**. PC fraco? Na aba VÍDEO, coloque a
 resolução interna em 75 % ou 50 %.
+
+**Apoie:** tudo aqui é e continua de graça. Se quiser ajudar, dá para doar pelo [LivePix](https://livepix.gg/erasedsin)
+(PIX) ou pelo [Ko-fi](https://ko-fi.com/erasedsin). Doação não libera nada a mais: é só apoio.
 
 **Créditos:** feito por mim, Gaio Moreira (Erased), com base no re-wor (ronniecloud), no re-gh2 (YoshiCrystal9), nas
 correções do TFujiwara, no ReXGlue SDK, no fork do SDK do iExplosiveRage, no GHVanHRecomp (ElGuslml) e no port do

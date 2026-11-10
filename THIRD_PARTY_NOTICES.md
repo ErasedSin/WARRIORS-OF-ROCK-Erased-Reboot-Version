@@ -2,9 +2,9 @@
 
 Code adapted from these projects keeps their license notices.
 
-## GHVanHRecomp (src/thread_waits.cpp, the auto-strum gate in the SDK patch)
+## GHVanHRecomp and GH5Recomp (src/thread_waits.cpp, the auto-strum gate in the SDK patch; the Guitar Hero 5 build in the release)
 
-https://github.com/ElGuslml/GHVanHRecomp
+https://github.com/ElGuslml/GHVanHRecomp, https://github.com/ElGuslml/GH5Recomp
 
 ```
 MIT License
