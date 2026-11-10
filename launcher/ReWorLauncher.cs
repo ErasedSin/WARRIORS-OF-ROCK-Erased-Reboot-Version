@@ -258,6 +258,9 @@ namespace ReWor
             { "gh5_missing", new[] {
                 "O Guitar Hero 5 não está instalado: falta a pasta gh5 com o Guitar Hero 5.exe ao lado do launcher.",
                 "Guitar Hero 5 is not installed: the gh5 folder with Guitar Hero 5.exe is missing next to the launcher." } },
+            { "gh5_missing_download", new[] {
+                "O Guitar Hero 5 não está instalado: falta a pasta gh5 ao lado do launcher (a atualização da versão 1.2 não a trazia).\n\nBaixar a versão mais nova agora? O launcher fecha, instala e abre de novo; as suas configurações ficam.",
+                "Guitar Hero 5 is not installed: the gh5 folder is missing next to the launcher (updating from version 1.2 did not bring it).\n\nDownload the latest version now? The launcher closes, installs it and opens again; your settings stay." } },
             { "gh5_game_note", new[] {
                 "Use a sua cópia do Guitar Hero 5 de Xbox 360: o default.xex dos arquivos extraídos, uma ISO ou um pacote GOD.",
                 "Use your Xbox 360 copy of Guitar Hero 5: default.xex from the extracted files, an ISO or a GOD package." } },
@@ -3534,11 +3537,20 @@ namespace ReWor
             sb.AppendLine("$exe = " + q(Application.ExecutablePath));
             sb.AppendLine("Wait-Process -Id " + Process.GetCurrentProcess().Id + " -ErrorAction SilentlyContinue");
             sb.AppendLine("Start-Sleep -Seconds 1");
-            sb.AppendLine("$keep = 're_wor.toml', 'game_folder.txt', 'launcher_language.txt', 'launcher_window.txt', 'profile_picture.png', 'profile_picture.bin'");
+            sb.AppendLine("$keep = 're_wor.toml', 'gh5.toml', 'gh5_options.toml', 'game_folder.txt', 'launcher_language.txt', 'launcher_window.txt', 'launcher_game.txt', 'profile_picture.png', 'profile_picture.bin'");
             sb.AppendLine("$gameSrc = Join-Path $src 'game'");
             sb.AppendLine("if (Test-Path -LiteralPath $gameSrc) {");
             sb.AppendLine("  Get-ChildItem -LiteralPath $gameSrc -Recurse -File | Where-Object { $keep -notcontains $_.Name } | ForEach-Object {");
             sb.AppendLine("    $dst = Join-Path $gameDir $_.FullName.Substring($gameSrc.Length + 1)");
+            sb.AppendLine("    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dst) | Out-Null");
+            sb.AppendLine("    Copy-Item -LiteralPath $_.FullName -Destination $dst -Force");
+            sb.AppendLine("  }");
+            sb.AppendLine("}");
+            // The other folders of the zip (gh5, the Guitar Hero 5 build) go next to the launcher.
+            sb.AppendLine("Get-ChildItem -LiteralPath $src -Directory | Where-Object { $_.Name -ne 'game' } | ForEach-Object {");
+            sb.AppendLine("  $dirSrc = $_.FullName; $dirDst = Join-Path $root $_.Name");
+            sb.AppendLine("  Get-ChildItem -LiteralPath $dirSrc -Recurse -File | Where-Object { $keep -notcontains $_.Name } | ForEach-Object {");
+            sb.AppendLine("    $dst = Join-Path $dirDst $_.FullName.Substring($dirSrc.Length + 1)");
             sb.AppendLine("    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $dst) | Out-Null");
             sb.AppendLine("    Copy-Item -LiteralPath $_.FullName -Destination $dst -Force");
             sb.AppendLine("  }");
@@ -4743,7 +4755,17 @@ namespace ReWor
         {
             if (activeGame == GameGh5 && !File.Exists(Path.Combine(Gh5Dir, Gh5Exe)))
             {
-                MessageBox.Show(this, Strings.T("gh5_missing"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // The latest release has it: the update check left its zip in updateUrl.
+                if (updateUrl != null)
+                {
+                    if (MessageBox.Show(this, Strings.T("gh5_missing_download"), Text, MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Question) == DialogResult.Yes)
+                    {
+                        ShowPage(pages.Count - 1);
+                        InstallUpdate();
+                    }
+                }
+                else MessageBox.Show(this, Strings.T("gh5_missing"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return false;
             }
             if (!IsGameFolder(gameFolder))
