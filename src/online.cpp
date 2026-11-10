@@ -182,6 +182,11 @@ void ReWorStartOnline() {
 
   g_xuid = MakeXuid(ip);
   g_online = true;
+  // The SDK logs every network and session call at warning level; the launcher
+  // sets log_level to "error", which would hide them. Only these two
+  // categories are raised, so the rest of the log stays quiet.
+  rex::SetCategoryLevel(rex::log::krnl(), spdlog::level::warn);
+  rex::SetCategoryLevel(rex::log::core(), spdlog::level::warn);
   REXLOG_WARN("[online] on: this PC {} ({}), xuid {:016X}", Ipv4Text(ip),
               host ? "joins " + Ipv4Text(host) : std::string("hosts"), g_xuid);
 }
@@ -191,6 +196,36 @@ void ReWorStartOnline() {
 REX_HOOK_RAW(__imp__NetDll_XNetGetEthernetLinkStatus) {
   (void)base;
   ctx.r3.u64 = g_online ? 0x0B : 0;
+}
+
+// XNetConnect(caller, address) and XNetGetConnectStatus(caller, address): the
+// SDK leaves both as stubs that return nothing, and the game waits for status
+// 2 (connected) before it talks to the other player. The direct mode has no
+// key exchange to wait for, so a peer is connected as soon as it is asked for.
+REX_HOOK_RAW(__imp__NetDll_XNetConnect) {
+  (void)base;
+  if (!g_online) return;
+  REXLOG_WARN("[online] XNetConnect {:08X}", ctx.r4.u32);
+  ctx.r3.u64 = 0;
+}
+REX_HOOK_RAW(__imp__NetDll_XNetGetConnectStatus) {
+  (void)base;
+  if (!g_online) return;
+  static int logged = 0;
+  if (logged < 10) {
+    ++logged;
+    REXLOG_WARN("[online] XNetGetConnectStatus {:08X} -> connected", ctx.r4.u32);
+  }
+  ctx.r3.u64 = 2;
+}
+
+// XNetQosListen(caller, session id, data, size, bits per second, flags): the
+// host announces its match with it. The SDK fails it outside its lobby mode.
+REX_HOOK_RAW(__imp__NetDll_XNetQosListen) {
+  (void)base;
+  REXLOG_WARN("[online] XNetQosListen data {:08X} size {} flags {:X}", ctx.r5.u32, ctx.r6.u32,
+              ctx.r8.u32);
+  ctx.r3.u64 = g_online ? 0 : 0x65B;
 }
 
 // XNetLogonGetTitleID(): the title Xbox LIVE is logged on with.

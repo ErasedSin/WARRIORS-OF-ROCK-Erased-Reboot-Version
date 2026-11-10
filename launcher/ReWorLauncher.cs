@@ -271,6 +271,9 @@ namespace ReWor
             { "online_note", new[] {
                 "Os dois PCs precisam estar na mesma rede ou na mesma VPN (Radmin VPN, ZeroTier, Hamachi). O anfitrião deixa o endereço vazio e entra primeiro em Online > procurar jogadores; o amigo põe o endereço do anfitrião e procura depois. O nome é o do perfil (aba JOGADORES). Experimental; o Windows pode pedir para liberar o firewall.",
                 "Both PCs must be on the same network or the same VPN (Radmin VPN, ZeroTier, Hamachi). The host leaves the address empty and goes into Online > find players first; the friend puts in the host's address and searches next. The name is the profile's (PLAYERS page). Experimental; Windows may ask to allow it through the firewall." } },
+            { "picture_hint", new[] { "Foto do perfil: clique para escolher uma imagem; clique direito para tirar.", "Profile picture: click to choose an image; right-click to remove it." } },
+            { "picture_filter", new[] { "Imagens|*.png;*.jpg;*.jpeg;*.bmp;*.gif", "Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif" } },
+            { "picture_failed", new[] { "Não deu para abrir essa imagem.", "That image could not be opened." } },
             { "profile_name", new[] { "Nome do perfil (aparece no jogo, até 15 letras)", "Profile name (shown in the game, up to 15 letters)" } },
             { "dev_auto", new[] { "Automático (o próximo livre)", "Automatic (the next free one)" } },
             { "dev_none", new[] { "Ninguém", "Nobody" } },
@@ -353,6 +356,7 @@ namespace ReWor
             { "no_folder", new[] { "Nenhuma pasta escolhida ainda.", "No folder selected yet." } },
             { "game_lang", new[] { "Idioma do jogo", "Game language" } },
             { "debug_menu", new[] { "Menu debug do jogo (item DEBUG MENU no menu principal, abaixo de OPTIONS)", "Game debug menu (a DEBUG MENU item in the main menu, below OPTIONS)" } },
+            { "skip_intro", new[] { "Pular o vídeo de abertura", "Skip the opening video" } },
             { "game_note", new[] {
                 "Use os arquivos extraídos da sua cópia do jogo: o default.xex e a pasta data. Eles ficam onde estão; o launcher só guarda o caminho.",
                 "Use the files extracted from your copy of the game: default.xex and the data folder. They stay where they are; the launcher only stores the path." } },
@@ -748,7 +752,7 @@ namespace ReWor
         readonly FontFamily titleFamily = TitleFont.Load();
 
         ComboBox resolution, drawScale, presentEffect, anisotropy, language;
-        CheckBox fullscreen, vsync, gamma16, motionBlur, screenNoise, depthOfField, bloom, showFps, debugMenu;
+        CheckBox fullscreen, vsync, gamma16, motionBlur, screenNoise, depthOfField, bloom, showFps, debugMenu, skipIntro;
 
         // keybind cvar (the keyboard's pad button it presses), label key, then the A S J K L and 1 2 3 4 5 presets.
         static readonly string[][] KeyParts =
@@ -774,6 +778,10 @@ namespace ReWor
         };
         CheckBox kbEnabled;
         TextBox profileName;
+        const int PictureSide = 64;
+        const string PictureFile = "profile_picture.png";
+        const string PictureData = "profile_picture.bin";
+        PictureBox profilePicture;
         CheckBox onlineEnabled;
         ComboBox onlineIp;
         TextBox onlineHost;
@@ -794,7 +802,7 @@ namespace ReWor
         const string AppVersion = "1.1";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
-        const bool OnlineTab = false;
+        const bool OnlineTab = true;
         const string ReleasesPage = "https://github.com/ErasedSin/WARRIORS-OF-ROCK-Erased-Reboot-Version/releases";
         const string LatestReleaseApi = "https://api.github.com/repos/ErasedSin/WARRIORS-OF-ROCK-Erased-Reboot-Version/releases/latest";
         ComboBox micDevice;
@@ -1152,8 +1160,9 @@ namespace ReWor
                 new Choice("Deutsch", "3"),
                 new Choice("Italiano", "6"));
             debugMenu = AddCheck(page, Strings.T("debug_menu"), 204);
-            AddNote(page, Strings.T("game_note"), 238);
-            AddNote(page, Strings.T("dlc_note"), 294);
+            skipIntro = AddCheck(page, Strings.T("skip_intro"), 230);
+            AddNote(page, Strings.T("game_note"), 262);
+            AddNote(page, Strings.T("dlc_note"), 312);
             ShowGameFolder();
             return page;
         }
@@ -1280,10 +1289,23 @@ namespace ReWor
             page.Controls.Add(new Label { Text = Strings.T("profile_name"), Location = new Point(RightX, 12), Size = new Size(ColumnW, 18), ForeColor = Text1, Font = new Font("Segoe UI", 8.5f) });
             profileName = new TextBox
             {
-                Location = new Point(RightX, 32), Size = new Size(ColumnW, 24), BorderStyle = BorderStyle.FixedSingle,
+                Location = new Point(RightX, 32), Size = new Size(ColumnW - 56, 24), BorderStyle = BorderStyle.FixedSingle,
                 BackColor = Field, ForeColor = Text1, MaxLength = 15
             };
             page.Controls.Add(profileName);
+            profilePicture = new PictureBox
+            {
+                Location = new Point(RightX + ColumnW - 48, 10), Size = new Size(48, 48), BackColor = Field,
+                BorderStyle = BorderStyle.FixedSingle, SizeMode = PictureBoxSizeMode.Zoom, Cursor = Cursors.Hand
+            };
+            profilePicture.MouseClick += delegate(object s, MouseEventArgs e)
+            {
+                if (e.Button == MouseButtons.Right) RemoveProfilePicture();
+                else ChooseProfilePicture();
+            };
+            new ToolTip().SetToolTip(profilePicture, Strings.T("picture_hint"));
+            page.Controls.Add(profilePicture);
+            ShowProfilePicture();
 
             page.Controls.Add(new Label
             {
@@ -1905,6 +1927,85 @@ namespace ReWor
             return sb.ToString();
         }
 
+        // The picture is kept next to the game twice: as a PNG for the launcher,
+        // and as 64 x 64 raw pixels (alpha, red, green, blue) for the game, which
+        // gives them to the profile's gamer picture (src/profile_picture.cpp).
+        void ShowProfilePicture()
+        {
+            Image old = profilePicture.Image;
+            profilePicture.Image = null;
+            if (old != null) old.Dispose();
+            string path = Path.Combine(gameDir, PictureFile);
+            if (!File.Exists(path)) return;
+            try
+            {
+                // From memory, so the file is not kept open.
+                using (var stream = new MemoryStream(File.ReadAllBytes(path)))
+                using (var loaded = Image.FromStream(stream))
+                    profilePicture.Image = new Bitmap(loaded);
+            }
+            catch (Exception) { }
+        }
+
+        void ChooseProfilePicture()
+        {
+            using (var dialog = new OpenFileDialog { Filter = Strings.T("picture_filter") })
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+                try
+                {
+                    using (var stream = new MemoryStream(File.ReadAllBytes(dialog.FileName)))
+                    using (var source = Image.FromStream(stream))
+                    using (var square = new Bitmap(PictureSide, PictureSide, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                    {
+                        // The middle square of the image, scaled to the picture's size.
+                        int side = Math.Min(source.Width, source.Height);
+                        var from = new Rectangle((source.Width - side) / 2, (source.Height - side) / 2, side, side);
+                        using (var g = Graphics.FromImage(square))
+                        {
+                            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                            g.Clear(Color.Black);
+                            g.DrawImage(source, new Rectangle(0, 0, PictureSide, PictureSide), from, GraphicsUnit.Pixel);
+                        }
+                        var data = new byte[PictureSide * PictureSide * 4];
+                        for (int y = 0; y < PictureSide; y++)
+                        {
+                            for (int x = 0; x < PictureSide; x++)
+                            {
+                                Color c = square.GetPixel(x, y);
+                                int i = (y * PictureSide + x) * 4;
+                                data[i] = 255;
+                                data[i + 1] = c.R;
+                                data[i + 2] = c.G;
+                                data[i + 3] = c.B;
+                            }
+                        }
+                        square.Save(Path.Combine(gameDir, PictureFile), System.Drawing.Imaging.ImageFormat.Png);
+                        File.WriteAllBytes(Path.Combine(gameDir, PictureData), data);
+                    }
+                    ShowProfilePicture();
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show(this, Strings.T("picture_failed"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        void RemoveProfilePicture()
+        {
+            Image old = profilePicture.Image;
+            profilePicture.Image = null;
+            if (old != null) old.Dispose();
+            try
+            {
+                File.Delete(Path.Combine(gameDir, PictureFile));
+                File.Delete(Path.Combine(gameDir, PictureData));
+            }
+            catch (Exception) { }
+        }
+
         Control BuildKeyboardTab()
         {
             var page = NewPage();
@@ -2140,6 +2241,7 @@ namespace ReWor
             bloom.Checked = settings.GetBool(CvarPrefix + "bloom", true);
             showFps.Checked = settings.GetBool(CvarPrefix + "show_fps", true);
             debugMenu.Checked = settings.GetBool(CvarPrefix + "debug_menu", false);
+            skipIntro.Checked = settings.GetBool(CvarPrefix + "skip_intro", false);
             profileName.Text = settings.Get("online_name", "");
             onlineEnabled.Checked = settings.GetBool(CvarPrefix + "online", false);
             SelectChoice(onlineIp, settings.Get(CvarPrefix + "online_ip", ""));
@@ -2209,6 +2311,7 @@ namespace ReWor
             settings.Set(CvarPrefix + "bloom", bloom.Checked);
             settings.Set(CvarPrefix + "show_fps", showFps.Checked);
             settings.Set(CvarPrefix + "debug_menu", debugMenu.Checked);
+            settings.Set(CvarPrefix + "skip_intro", skipIntro.Checked);
             // A regular controller stays a controller: the game's own debug menu
             // (Enable Controller) lets it play the guitar.
             settings.Set("gamepad_as_guitar", false);

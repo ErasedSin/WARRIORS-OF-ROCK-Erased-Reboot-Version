@@ -53,6 +53,9 @@ REXCVAR_DEFINE_BOOL(rewor_dof, true, "re-wor",
 REXCVAR_DEFINE_BOOL(rewor_bloom, true, "re-wor",
                     "Game bloom (applied by the launcher through the mods folder)")
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+REXCVAR_DEFINE_BOOL(rewor_skip_intro, false, "re-wor",
+                    "Skip the opening video and go straight to the game (src/intro.cpp)")
+    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 REXCVAR_DEFINE_BOOL(rewor_show_fps, true, "re-wor", "Show the FPS counter in the top-left corner (F2 toggles it)");
 REXCVAR_DEFINE_STRING(rewor_frame_log, "", "re-wor",
                       "CSV file that receives the time of every frame the game draws (empty = off). "

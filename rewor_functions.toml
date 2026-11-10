@@ -40,6 +40,20 @@ address = 0x825841B0
 name = "ReWorVblankWaitHook"
 registers = ["r3", "r11"]
 
+# The same wait further down the render thread's frame:
+# loc_825842F4: bl sub_8239FDD0; cmpld cr6,r3,r30; blt (loop)
+[[midasm_hook]]
+address = 0x825842F8
+name = "ReWorVblankWait2Hook"
+registers = ["r3", "r30"]
+
+# The main thread at the start of its frame, calling sub_825528E0 until it
+# returns 0: loc_8242C514: mr r3,r29; bl; cmplwi cr6,r3,0; bne (loop)
+[[midasm_hook]]
+address = 0x8242C51C
+name = "ReWorFrameWaitHook"
+registers = ["r3"]
+
 # A check of a D3D wait for the GPU whose condition is still false (entry of
 # sub_822D5D60, called by the library's six wait loops).
 [[midasm_hook]]
@@ -84,3 +98,19 @@ registers = ["r11"]
 address = 0x824FFBA0   # stb r11,30970(r31) (sub_824FFAB0)
 name = "ReWorDiscFlagStoreHook"
 registers = ["r11"]
+
+# The game's clock in time with the music (src/timer.cpp): the game replaces a
+# reported timer frequency of 50,000,000 Hz by the console's real 49,875,000,
+# and the SDK's timebase does run at 50,000,000, so the notes ran 0.25 % fast.
+[[midasm_hook]]
+address = 0x823A02D4   # cmplw cr6,r11,r7 (sub_823A0238): r7 = 50,000,000
+name = "ReWorTimerFrequencyHook"
+registers = ["r7"]
+
+# Skipping the opening video (src/intro.cpp): PlayMovie (sub_8251DE38) answers
+# "not started" for initial_boot_movie when rewor_skip_intro is on.
+[[midasm_hook]]
+address = 0x8251DE44   # mr r31,r3, after the prologue: r3 = the script's parameters
+name = "ReWorPlayMovieHook"
+registers = ["r3"]
+jump_address_on_true = 0x8251DEA0   # li r3,0 and the function's return

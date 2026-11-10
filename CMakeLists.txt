@@ -44,6 +44,9 @@ set(REWOR_SOURCES
     src/dlc.cpp
     src/mic.cpp
     src/online.cpp
+    src/timer.cpp
+    src/intro.cpp
+    src/profile_picture.cpp
 )
 
 if(WIN32)

@@ -56,6 +56,8 @@ struct WaitState {
 thread_local WaitState t_render_wait;
 thread_local WaitState t_vblank_wait;
 thread_local WaitState t_gpu_wait;
+thread_local WaitState t_frame_wait;
+thread_local WaitState t_vblank_wait2;
 
 // Sleeps about this long. A plain Sleep has the system timer's steps (up to
 // 15.6 ms), far too coarse for a frame of 16.7 ms, so it uses a high resolution
@@ -118,6 +120,24 @@ void ReWorRenderWaitHook(PPCRegister& r11, PPCRegister& r10) {
 void ReWorVblankWaitHook(PPCRegister& r3, PPCRegister& r11) {
   if (r3.u64 < r11.u64) {
     SpinOrSleep(t_vblank_wait);
+  }
+}
+
+// [[midasm_hook]] 0x825842F8 (sub_825840F0): before "cmpld cr6,r3,r30", the same
+// wait further down the function: r3 = the counter just read (sub_8239FDD0)
+// and r30 the value the render thread waits for.
+void ReWorVblankWait2Hook(PPCRegister& r3, PPCRegister& r30) {
+  if (r3.u64 < r30.u64) {
+    SpinOrSleep(t_vblank_wait2);
+  }
+}
+
+// [[midasm_hook]] 0x8242C51C (sub_8242C450, the main thread's frame): before
+// "cmplwi cr6,r3,0", r3 = what sub_825528E0 returned; the loop calls it again
+// until it returns 0.
+void ReWorFrameWaitHook(PPCRegister& r3) {
+  if (r3.u32 != 0) {
+    SpinOrSleep(t_frame_wait);
   }
 }
 
