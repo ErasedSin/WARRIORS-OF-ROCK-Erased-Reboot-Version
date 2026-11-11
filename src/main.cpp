@@ -461,8 +461,43 @@ class ReWorApp : public rex::ReXApp {
   // The launcher writes the chosen game folder to game_folder.txt as UTF-8.
   // A file instead of a command line argument keeps non-ASCII characters in
   // the path intact (the CLI goes through the ANSI code page on Windows).
+  // Saves, the shader cache and installed DLC (the SDK's user data) go in the
+  // userdata folder next to the game, so the game and its data can live on
+  // another drive, as Guitar Hero 5's do. Documents\re_wor, where earlier
+  // versions kept them, stays in use while there is no userdata folder, so
+  // nobody loses a save; moving Documents\re_wor there as userdata moves them.
+  // A user_data_root given on the command line or in re_wor.toml wins.
+  static void UseUserDataNextToGame(rex::PathConfig& paths) {
+    if (!rex::cvar::Query<std::string>("user_data_root").empty()) {
+      return;
+    }
+    const auto portable = rex::filesystem::GetExecutableFolder() / "userdata";
+    std::error_code ec;
+    if (!std::filesystem::is_directory(portable, ec)) {
+      if (!paths.user_data_root.empty() && std::filesystem::is_directory(paths.user_data_root, ec)) {
+        return;
+      }
+      std::filesystem::create_directories(portable, ec);
+      const auto probe = portable / ".write_test";
+      {
+        std::ofstream f(probe, std::ios::binary);
+        if (!f) {
+          std::filesystem::remove(portable, ec);
+          return;  // a folder the game cannot write to: Documents, as before
+        }
+      }
+      std::filesystem::remove(probe, ec);
+    }
+    const auto old_root = paths.user_data_root;
+    paths.user_data_root = portable;
+    if (paths.cache_root.empty() || paths.cache_root == old_root / "cache") {
+      paths.cache_root = portable / "cache";
+    }
+  }
+
   void OnConfigurePaths(rex::PathConfig& paths) override {
     config_path_ = paths.config_path;
+    UseUserDataNextToGame(paths);
     if (!paths.cache_root.empty()) {
       paths.cache_root /= cache_flavor();
     }

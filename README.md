@@ -27,6 +27,8 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 - 🎸 **The whammy bar works again** when the keyboard is on next to the guitar.
 - 🎮 Xbox 360 guitars and drums are always read through XInput; PS3 guitars set up button by button get the buttons
   you chose.
+- 💾 **Everything in one folder:** a new install keeps saves, the shader cache and installed DLC in `game\userdata`,
+  next to the game, so it can all live on another drive.
 
 **In 2.0: Warriors of Rock and Guitar Hero 5 in one launcher.**
 
@@ -79,13 +81,23 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 2. Open **`Erased Reboot Version.exe`** and choose the folder with your game files (`default.xex` and `data`).
 3. Pick your settings and press **PLAY**.
 
+**Another drive:** the zip can go on any drive. A new install keeps its saves, shader cache and installed DLC in
+`game\userdata`, next to the game. An install from before 2.1 keeps using `Documents\re_wor`; to bring it along, move
+that folder into `game` and rename it `userdata`.
+
 **Weak PC?** In the VIDEO tab, set the internal resolution to 75 % or 50 %. On a laptop, keep the charger plugged in
 and use the "High performance" power plan.
 
 **In game:** F1 SDK quick menu · F2 FPS · F4 every SDK setting · F5 Erased Reboot Version options · F11 fullscreen.
 
-**DLC and custom songs:** the DLC FOLDER button (GAME tab) opens `game\dlc`. For Onyx custom songs, also add the cache
-Onyx makes (*Other tools → GH:WoR cache*), built over all your packages, the official ones too.
+**DLC and custom songs:** pick the game in the launcher and press DLC FOLDER (GAME tab): it opens that game's `dlc`
+folder (`game\dlc` or `gh5\dlc`). Drop your Xbox 360 content packages there, subfolders are fine, and start the game:
+the first time, it installs them before the game begins, which can take a few minutes with a big pack while the window
+looks frozen. Guitar Hero 5 DLC goes in Guitar Hero 5's folder, and Warriors of Rock picks up what Guitar Hero 5
+installed on its own, with no extra space. A package for the wrong game is just left out. Installing keeps an
+extracted copy (in `game\userdata`, or `Documents\re_wor` on an older install), so the space doubles for a while: once the songs show up in the game, you can delete the packages
+from the `dlc` folder and the songs stay. For Onyx custom songs, also add the cache Onyx makes (*Other tools → GH:WoR
+cache*), built over all your packages, the official ones too.
 
 ## Building from source
 
@@ -170,7 +182,8 @@ extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga nã
 **Novidades da 2.1:** o DLC do Guitar Hero 5 no Warriors of Rock (cada pacote é instalado para o jogo dele, e o que o
 Guitar Hero 5 já instalou é compartilhado sem ocupar mais espaço); o fim do crash com os DLCs dos dois jogos na mesma
 pasta; a alavanca da guitarra funcionando com o teclado ligado; guitarras e baterias de Xbox 360 sempre por XInput; e
-os botões das guitarras de PS3 configuradas no assistente.
+os botões das guitarras de PS3 configuradas no assistente; e tudo numa pasta só, com os saves, o cache e os DLCs instalados
+em `game\userdata`.
 
 **Novidades da 2.0:** o Guitar Hero 5 (Xbox 360) junto com o Warriors of Rock, num launcher só, com as mesmas abas
 para os dois; conquistas para cada perfil, com uma aba PERFIL que mostra todas; controle comum como controle do
@@ -191,6 +204,19 @@ uso de CPU, opções dentro do jogo (F5) e um launcher novo em português e ingl
 **Como jogar:** baixe o zip em [Releases](../../releases), extraia numa pasta qualquer, abra o
 **`Erased Reboot Version.exe`**, escolha a pasta do jogo e clique em **JOGAR**. PC fraco? Na aba VÍDEO, coloque a
 resolução interna em 75 % ou 50 %.
+
+**Outro HD:** o zip pode ficar em qualquer HD. Uma instalação nova guarda os saves, o cache de shaders e os DLCs
+instalados em `game\userdata`, ao lado do jogo. Uma instalação de antes da 2.1 continua usando `Documentos\re_wor`;
+para levar junto, mova essa pasta para dentro de `game` e renomeie para `userdata`.
+
+**DLC e músicas customizadas:** escolha o jogo no launcher e clique em PASTA DE DLC (aba JOGO). Abre a pasta `dlc` daquele
+jogo (`game\dlc` ou `gh5\dlc`). Coloque ali os pacotes de DLC de Xbox 360, pode ser em subpastas, e abra o jogo: na
+primeira vez ele instala tudo antes de começar, o que pode levar alguns minutos com um pack grande, com a janela parecendo
+parada. DLC do Guitar Hero 5 vai na pasta do Guitar Hero 5, e o Warriors of Rock pega sozinho o que o Guitar Hero 5
+instalou, sem ocupar mais espaço. Pacote do jogo errado é só ignorado. A instalação guarda uma cópia extraída (em `game\userdata`, ou em `Documentos\re_wor` numa instalação antiga), então o
+espaço dobra por um tempo: depois que as músicas aparecerem no jogo, dá para apagar os pacotes da pasta `dlc`, e as
+músicas continuam. Para músicas customizadas do Onyx, coloque também o cache que o Onyx gera (*Other tools → GH:WoR
+cache*), feito sobre todos os seus pacotes, os oficiais também.
 
 **Apoie:** tudo aqui é e continua de graça. Se quiser ajudar, dá para doar pelo [LivePix](https://livepix.gg/erasedsin)
 (PIX) ou pelo [Ko-fi](https://ko-fi.com/erasedsin). Doação não libera nada a mais: é só apoio.
