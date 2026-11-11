@@ -395,7 +395,7 @@ index 0000000..73d0034
 +
 +}  // namespace rex::input
 diff --git a/include/rex/input/sdl/sdl_input_driver.h b/include/rex/input/sdl/sdl_input_driver.h
-index 1a0254d..d961033 100644
+index 1a0254d..b91d034 100644
 --- a/include/rex/input/sdl/sdl_input_driver.h
 +++ b/include/rex/input/sdl/sdl_input_driver.h
 @@ -65,6 +65,10 @@ class SDLInputDriver final : public InputDriver, public rex::ui::WindowListener
@@ -409,6 +409,18 @@ index 1a0254d..d961033 100644
      // Per pad rather than per guest user, so it survives reassignment.
      KeystrokeState keystroke;
    };
+@@ -108,4 +112,11 @@ class SDLInputDriver final : public InputDriver, public rex::ui::WindowListener
+   uint64_t next_device_id_ = 1;
+ };
+ 
++// Keeps SDL's HIDAPI drivers away from the guitars in guitar_hid_maps. SDL takes
++// some guitars for another controller (a PS3 guitar for a PS3 controller) and
++// numbers their buttons its own way; the launcher's guitar setup numbers them the
++// way Windows reports them, which is what SDL reads without HIDAPI. Call before
++// SDL opens gamepads.
++void IgnoreHidapiForMappedGuitars();
++
+ }  // namespace rex::input::sdl
 diff --git a/include/rex/memory/utils.h b/include/rex/memory/utils.h
 index 8ccb52c..0b4708c 100644
 --- a/include/rex/memory/utils.h
@@ -540,7 +552,7 @@ index 9b9cf9e..4334e6f 100644
    rex::thread::global_critical_region global_critical_region_;
  
 diff --git a/include/rex/system/xam/content_manager.h b/include/rex/system/xam/content_manager.h
-index 4ce01f9..0a8aa07 100644
+index 4ce01f9..dc0c9b6 100644
 --- a/include/rex/system/xam/content_manager.h
 +++ b/include/rex/system/xam/content_manager.h
 @@ -172,6 +172,7 @@ class ContentManager {
@@ -551,6 +563,20 @@ index 4ce01f9..0a8aa07 100644
    bool IsContentOpen(const XCONTENT_AGGREGATE_DATA& data) const;
    void CloseOpenedFilesFromContent(const std::string_view root_name);
  
+@@ -190,8 +191,11 @@ class ContentManager {
+ 
+   // Installs an STFS content package from an arbitrary host path.
+   // Extracts the package into root_path_/0000000000000000/{title_id}/00000002/{filename}/
+-  // and writes a .header file for XAM enumeration.
+-  X_RESULT InstallContent(const std::filesystem::path& package_path);
++  // and writes a .header file for XAM enumeration. title_id is the running title's by
++  // default; another one files the package under that title (content of a game whose
++  // id the running one lists as an alternate title, which XAM then enumerates too).
++  X_RESULT InstallContent(const std::filesystem::path& package_path,
++                          uint32_t title_id = kCurrentlyRunningTitleId);
+ 
+  private:
+   std::filesystem::path ResolvePackageRoot(uint64_t xuid, XContentType content_type,
 diff --git a/include/rex/system/xam/user_profile.h b/include/rex/system/xam/user_profile.h
 index 934d8cb..88089ed 100644
 --- a/include/rex/system/xam/user_profile.h
@@ -1727,10 +1753,10 @@ index 0000000..87de763
 +
 +}  // namespace rex::input
 diff --git a/src/input/input_system.cpp b/src/input/input_system.cpp
-index a0af71e..f788447 100644
+index a0af71e..cd04a95 100644
 --- a/src/input/input_system.cpp
 +++ b/src/input/input_system.cpp
-@@ -41,6 +41,10 @@ REXCVAR_DEFINE_DOUBLE(left_stick_deadzone_percentage, 0.0, "Input",
+@@ -41,10 +41,17 @@ REXCVAR_DEFINE_DOUBLE(left_stick_deadzone_percentage, 0.0, "Input",
  REXCVAR_DEFINE_DOUBLE(right_stick_deadzone_percentage, 0.0, "Input",
                        "Deadzone applied to the right stick, as a fraction of its range")
      .range(0.0, 1.0);
@@ -1741,7 +1767,14 @@ index a0af71e..f788447 100644
  namespace rex::input {
  
  namespace {
-@@ -297,6 +301,22 @@ X_RESULT InputSystem::GetState(uint32_t user_index, X_INPUT_STATE* out_state) {
+ 
++// How far above -32768 a guitar's whammy bar still counts as untouched.
++constexpr int kWhammyRest = 8000;
++
+ // Synthetic devices are parked past every physical ordinal so they cannot push
+ // a real pad off guest user 0. SlotAssignment routes them by their synthetic
+ // flag and never reads this value.
+@@ -297,6 +304,22 @@ X_RESULT InputSystem::GetState(uint32_t user_index, X_INPUT_STATE* out_state) {
  
    X_RESULT result = GetStateForUI(user_index, out_state);
  
@@ -1764,7 +1797,49 @@ index a0af71e..f788447 100644
    if (result == X_ERROR_SUCCESS && out_state && user_index < kMaxGuestUsers) {
      // The UI toggle combo is for the emulator, keep it from the guest.
      const uint16_t combo = ui_toggle_combo_.load(std::memory_order_relaxed);
-@@ -638,7 +658,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
+@@ -367,6 +390,11 @@ X_RESULT InputSystem::GetStateForUI(uint32_t user_index, X_INPUT_STATE* out_stat
+ 
+   X_INPUT_STATE merged = {};
+   bool any = false;
++  // A guitar's whammy bar (the right stick's X) rests at -32768: merged by the
++  // larger magnitude, a guitar at rest (the keyboard as a guitar, always there)
++  // would hide another one's bar. Among guitars the most pressed bar wins.
++  bool any_guitar = false;
++  int16_t guitar_whammy = INT16_MIN;
+   for (DeviceId id : ids) {
+     auto* driver = DriverForDevice(id);
+     const DeviceInfo* info = DeviceInfoFor(id);
+@@ -377,10 +405,19 @@ X_RESULT InputSystem::GetStateForUI(uint32_t user_index, X_INPUT_STATE* out_stat
+     if (driver->GetDeviceState(id, &state) != X_ERROR_SUCCESS) {
+       continue;
+     }
+-    active_devices_.Observe(user_index, id, state.gamepad);
++    const bool guitar = info && (info->subtype == XINPUT_DEVSUBTYPE_GUITAR ||
++                                 info->subtype == XINPUT_DEVSUBTYPE_GUITAR_ALTERNATE ||
++                                 info->subtype == XINPUT_DEVSUBTYPE_GUITAR_BASS);
++    X_INPUT_GAMEPAD touched = state.gamepad;  // a whammy bar at rest is not input
++    if (guitar) {
++      any_guitar = true;
++      guitar_whammy = std::max<int16_t>(guitar_whammy, state.gamepad.thumb_rx);
++      if (int16_t(touched.thumb_rx) < INT16_MIN + kWhammyRest) touched.thumb_rx = 0;
++    }
++    active_devices_.Observe(user_index, id, touched);
+     // What the player last touched: the keyboard or a controller (the NOP
+     // stand-in never gives input).
+-    if (info && !IsNeutral(state.gamepad) && (info->keyboard || !info->synthetic)) {
++    if (info && !IsNeutral(touched) && (info->keyboard || !info->synthetic)) {
+       last_input_keyboard_.store(info->keyboard, std::memory_order_relaxed);
+     }
+     if (!any) {
+@@ -390,6 +427,7 @@ X_RESULT InputSystem::GetStateForUI(uint32_t user_index, X_INPUT_STATE* out_stat
+       MergeInto(merged, state);
+     }
+   }
++  if (any_guitar) merged.gamepad.thumb_rx = guitar_whammy;
+ 
+   // A pads-only read sees part of the user: it doesn't decide whether the
+   // user is connected.
+@@ -638,7 +676,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
  
    if (!tool_mode) {
  #if REX_PLATFORM_WIN32
@@ -1773,7 +1848,7 @@ index a0af71e..f788447 100644
        auto xinput_driver = std::make_unique<xinput::XinputInputDriver>(nullptr, 0);
        if (xinput_driver->Setup() == X_STATUS_SUCCESS) {
          input->AddDriver(std::move(xinput_driver));
-@@ -646,7 +666,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
+@@ -646,7 +684,7 @@ std::unique_ptr<InputSystem> CreateDefaultInputSystem(bool tool_mode) {
      }
  #endif
  
@@ -1925,7 +2000,7 @@ index 796042e..9480e0f 100644
    return X_ERROR_SUCCESS;
  }
 diff --git a/src/input/sdl/sdl_input_driver.cpp b/src/input/sdl/sdl_input_driver.cpp
-index 0e4460c..0b66c22 100644
+index 0e4460c..7eb050e 100644
 --- a/src/input/sdl/sdl_input_driver.cpp
 +++ b/src/input/sdl/sdl_input_driver.cpp
 @@ -14,6 +14,8 @@
@@ -1999,7 +2074,7 @@ index 0e4460c..0b66c22 100644
  REXCVAR_DEFINE_BOOL(input_poll_on_read, true, "Input",
                      "Read the controllers at the moment the game asks for their state. Off = "
                      "the state of the last update the UI thread ran, which the game's previous "
-@@ -171,11 +217,265 @@ uint8_t SdlTypeToXInputSubType(SDL_JoystickType t, const char* name) {
+@@ -171,13 +217,290 @@ uint8_t SdlTypeToXInputSubType(SDL_JoystickType t, const char* name) {
    }
  }
  
@@ -2264,8 +2339,41 @@ index 0e4460c..0b66c22 100644
 +
  }  // namespace
  
++void IgnoreHidapiForMappedGuitars() {
++  std::string ignore;
++  const std::string maps = REXCVAR_GET(guitar_hid_maps);
++  size_t start = 0;
++  while (start < maps.size()) {
++    size_t end = maps.find(';', start);
++    if (end == std::string::npos) end = maps.size();
++    const std::string entry = maps.substr(start, end - start);
++    start = end + 1;
++    unsigned vendor = 0, product = 0;
++    if (std::sscanf(entry.c_str(), " %x:%x|", &vendor, &product) != 2) continue;
++    char id[16];
++    std::snprintf(id, sizeof(id), "0x%04x/0x%04x", vendor & 0xFFFF, product & 0xFFFF);
++    if (!ignore.empty()) ignore += ",";
++    ignore += id;
++  }
++  if (ignore.empty()) return;
++  const char* existing = SDL_GetHint(SDL_HINT_HIDAPI_IGNORE_DEVICES);
++  if (existing && *existing) ignore = std::string(existing) + "," + ignore;
++  SDL_SetHint(SDL_HINT_HIDAPI_IGNORE_DEVICES, ignore.c_str());
++  REXLOG_INFO("SDL: HIDAPI left off the guitars set up in guitar_hid_maps: {}", ignore);
++}
++
  SDLInputDriver::SDLInputDriver(rex::ui::Window* window, size_t window_z_order)
-@@ -324,6 +624,15 @@ void SDLInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
+     : InputDriver(window, window_z_order),
+       sdl_events_initialized_(false),
+@@ -202,6 +525,7 @@ void SDLInputDriver::OnWindowAvailable(rex::ui::Window* window) {
+     attached_window_ = window;
+     window->AddListener(this);
+     window->app_context().CallInUIThreadSynchronous([this]() {
++      IgnoreHidapiForMappedGuitars();
+       // Initialize SDL events subsystem
+       if (!SDL_InitSubSystem(SDL_INIT_EVENTS)) {
+         REXLOG_ERROR("SDL: Failed to init events subsystem: {}", SDL_GetError());
+@@ -324,6 +648,15 @@ void SDLInputDriver::EnumerateDevices(std::vector<DeviceInfo>& out) {
                       static_cast<int>(sizeof(guid_text)));
      info.guid = guid_text;
      info.subtype = GamepadSubType(controller.sdl);
@@ -2281,7 +2389,7 @@ index 0e4460c..0b66c22 100644
      info.gamepad_type = static_cast<uint8_t>(SDL_GetGamepadType(controller.sdl));
      info.synthetic = false;
      out.push_back(info);
-@@ -394,6 +703,18 @@ X_RESULT SDLInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
+@@ -394,6 +727,18 @@ X_RESULT SDLInputDriver::GetDeviceState(DeviceId id, X_INPUT_STATE* out_state) {
      controller->state_changed = false;
    }
    std::memcpy(out_state, &controller->state, sizeof(*out_state));
@@ -2300,7 +2408,7 @@ index 0e4460c..0b66c22 100644
    if (!is_active) {
      // Simulate an "untouched" controller. When we become active again the
      // pressed buttons aren't lost and will be visible again.
-@@ -634,6 +955,20 @@ void SDLInputDriver::OnJoystickDeviceAddedLocked(const SDL_Event& event) {
+@@ -634,6 +979,20 @@ void SDLInputDriver::OnJoystickDeviceAddedLocked(const SDL_Event& event) {
        "HasGamepadMapping({})",
        name ? name : "?", SDL_GetJoystickVendorForID(id), SDL_GetJoystickProductForID(id), guid_text,
        is_gamepad);
@@ -2321,7 +2429,7 @@ index 0e4460c..0b66c22 100644
    if (!is_gamepad) {
      if (REXCVAR_GET(hid_generic_mapping) && AddGenericMapping(id, name, guid_text)) {
        return;
-@@ -746,6 +1081,18 @@ void SDLInputDriver::OnControllerDeviceAddedLocked(const SDL_Event& event) {
+@@ -746,6 +1105,18 @@ void SDLInputDriver::OnControllerDeviceAddedLocked(const SDL_Event& event) {
    state.sdl = controller;
    state.id = AllocateDeviceId();
    state.state_changed = true;  // XInput starts with packet_number = 1
@@ -2340,7 +2448,7 @@ index 0e4460c..0b66c22 100644
    UpdateXCapabilities(state);
    controllers_.push_back(state);
  
-@@ -956,6 +1303,11 @@ void SDLInputDriver::UpdateXCapabilities(ControllerState& state) {
+@@ -956,6 +1327,11 @@ void SDLInputDriver::UpdateXCapabilities(ControllerState& state) {
    auto& c = state.caps;
    c.type = XINPUT_DEVTYPE_GAMEPAD;
    c.sub_type = GamepadSubType(state.sdl);
@@ -3343,7 +3451,7 @@ index 5fc45f1..8eafa24 100644
                  achievement_manager_.ListAchievements().size(),
                  [&] {
 diff --git a/src/system/xam/content_manager.cpp b/src/system/xam/content_manager.cpp
-index ff71f87..cec97f9 100644
+index ff71f87..817ab5b 100644
 --- a/src/system/xam/content_manager.cpp
 +++ b/src/system/xam/content_manager.cpp
 @@ -464,8 +464,12 @@ X_RESULT ContentManager::UnmountAndDeleteContent(uint64_t xuid,
@@ -3360,6 +3468,25 @@ index ff71f87..cec97f9 100644
  
    // Per-game per-profile data location:
    // content_root/title_id/profile/user_name
+@@ -611,7 +615,8 @@ static X_RESULT ExtractEntry(rex::filesystem::Entry* entry,
+   return X_ERROR_SUCCESS;
+ }
+ 
+-X_RESULT ContentManager::InstallContent(const std::filesystem::path& package_path) {
++X_RESULT ContentManager::InstallContent(const std::filesystem::path& package_path,
++                                        uint32_t title_id) {
+   if (!std::filesystem::exists(package_path)) {
+     return X_ERROR_FILE_NOT_FOUND;
+   }
+@@ -629,7 +634,7 @@ X_RESULT ContentManager::InstallContent(const std::filesystem::path& package_pat
+   XCONTENT_AGGREGATE_DATA content_data;
+   content_data.device_id = static_cast<uint32_t>(DummyDeviceId::HDD);
+   content_data.content_type = XContentType::kMarketplaceContent;
+-  content_data.title_id = kernel_state_->title_id();
++  content_data.title_id = title_id == kCurrentlyRunningTitleId ? kernel_state_->title_id() : title_id;
+   content_data.xuid = 0;
+   content_data.set_file_name(file_name);
+ 
 diff --git a/src/system/xam/user_profile.cpp b/src/system/xam/user_profile.cpp
 index f29f017..fc3681f 100644
 --- a/src/system/xam/user_profile.cpp
@@ -3555,6 +3682,28 @@ index 261025e..2169d1d 100644
    auto text_size = ImGui::CalcTextSize(REXGLUE_BUILD_STAMP);
    float watermark_padding = ImGui::GetStyle().WindowPadding.x * 2.0f;
    float bottom_offset = io.DisplaySize.y * 0.03f;
+diff --git a/src/ui/overlay/system_gamepads.cpp b/src/ui/overlay/system_gamepads.cpp
+index 0890b6a..a5840ce 100644
+--- a/src/ui/overlay/system_gamepads.cpp
++++ b/src/ui/overlay/system_gamepads.cpp
+@@ -15,6 +15,7 @@
+ 
+ #include <SDL3/SDL.h>
+ 
++#include <rex/input/sdl/sdl_input_driver.h>
+ #include <rex/logging.h>
+ #include <rex/ui/overlay/quick_menu.h>
+ 
+@@ -68,7 +69,8 @@ int16_t Axis(SDL_Gamepad* pad, SDL_GamepadAxis axis, bool invert) {
+ 
+ QuickMenuDialog::PadState ReadGamepadsBeforeGame() {
+   QuickMenuDialog::PadState state;
+-  static const bool initialized = SDL_InitSubSystem(SDL_INIT_GAMEPAD);
++  static const bool initialized = (rex::input::sdl::IgnoreHidapiForMappedGuitars(),
++                                   SDL_InitSubSystem(SDL_INIT_GAMEPAD));
+   if (!initialized) {
+     return state;
+   }
 diff --git a/src/ui/rex_app.cpp b/src/ui/rex_app.cpp
 index 077827e..f473aad 100644
 --- a/src/ui/rex_app.cpp

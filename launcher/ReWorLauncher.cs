@@ -1479,7 +1479,7 @@ namespace ReWor
         const int VideoPage = 2;
         const int MicPage = 6;
         const int OnlinePage = 7;
-        const string AppVersion = "2.0";
+        const string AppVersion = "2.1";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
         const bool OnlineTab = true;
@@ -3028,12 +3028,21 @@ namespace ReWor
         }
 
         // The reading box: a choice only for an XInput controller; the other
-        // devices have one way to be read, shown greyed.
+        // devices have one way to be read, shown greyed. An Xbox 360 guitar or
+        // drum kit is read through XInput only: SDL sees a gamepad and loses
+        // the instrument (the whammy bar, the tilt).
+        bool ReadingChoice(string spec)
+        {
+            if (!spec.StartsWith("xinput")) return false;
+            var d = DeviceFor(spec);
+            return d == null || d.Kind == "gamepad";
+        }
+
         void UpdateReading(int player)
         {
             string spec = PlayerSpec(player);
             var reading = playerReading[player];
-            bool choice = spec.StartsWith("xinput");
+            bool choice = ReadingChoice(spec);
             bool wasFilling = fillingDevices;
             fillingDevices = true;
             reading.Enabled = choice;
@@ -3044,7 +3053,7 @@ namespace ReWor
         string SavedSpec(int player)
         {
             string spec = PlayerSpec(player);
-            return spec.StartsWith("xinput") && readSdl[player] ? spec + ":sdl" : spec;
+            return ReadingChoice(spec) && readSdl[player] ? spec + ":sdl" : spec;
         }
 
         static string ShortDetail(InputDevice d)

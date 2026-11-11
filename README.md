@@ -17,6 +17,17 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 
 ## What's new
 
+**In 2.1: DLC and controller fixes.**
+
+- 📦 **Guitar Hero 5 DLC in Warriors of Rock:** each content package is installed under the game it was made for, so
+  Warriors of Rock reads the Guitar Hero 5 packages it lists (the disc imports of World Tour, Metallica and Smash Hits,
+  for example) and plays their songs. What Guitar Hero 5 already installed is shared with Warriors of Rock through
+  hard links, without taking any more space. Packages of a game that cannot read them are left out, which fixes the
+  crash with both games' DLC in one folder.
+- 🎸 **The whammy bar works again** when the keyboard is on next to the guitar.
+- 🎮 Xbox 360 guitars and drums are always read through XInput; PS3 guitars set up button by button get the buttons
+  you chose.
+
 **In 2.0: Warriors of Rock and Guitar Hero 5 in one launcher.**
 
 - 🎸 **Guitar Hero 5 (Xbox 360)**, recompiled on the same SDK as Warriors of Rock, with its own page in the launcher
@@ -155,6 +166,11 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
+
+**Novidades da 2.1:** o DLC do Guitar Hero 5 no Warriors of Rock (cada pacote é instalado para o jogo dele, e o que o
+Guitar Hero 5 já instalou é compartilhado sem ocupar mais espaço); o fim do crash com os DLCs dos dois jogos na mesma
+pasta; a alavanca da guitarra funcionando com o teclado ligado; guitarras e baterias de Xbox 360 sempre por XInput; e
+os botões das guitarras de PS3 configuradas no assistente.
 
 **Novidades da 2.0:** o Guitar Hero 5 (Xbox 360) junto com o Warriors of Rock, num launcher só, com as mesmas abas
 para os dois; conquistas para cada perfil, com uma aba PERFIL que mostra todas; controle comum como controle do
