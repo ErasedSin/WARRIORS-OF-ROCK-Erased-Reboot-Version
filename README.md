@@ -17,6 +17,9 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 
 ## What's new
 
+**In 2.2: everything in one folder.** A new install keeps saves, the shader cache and installed DLC in
+`game\userdata`, next to the game, so it can all live on another drive (see *Another drive* below).
+
 **In 2.1: DLC and controller fixes.**
 
 - 📦 **Guitar Hero 5 DLC in Warriors of Rock:** each content package is installed under the game it was made for, so
@@ -27,8 +30,6 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 - 🎸 **The whammy bar works again** when the keyboard is on next to the guitar.
 - 🎮 Xbox 360 guitars and drums are always read through XInput; PS3 guitars set up button by button get the buttons
   you chose.
-- 💾 **Everything in one folder:** a new install keeps saves, the shader cache and installed DLC in `game\userdata`,
-  next to the game, so it can all live on another drive.
 
 **In 2.0: Warriors of Rock and Guitar Hero 5 in one launcher.**
 
@@ -82,7 +83,7 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 3. Pick your settings and press **PLAY**.
 
 **Another drive:** the zip can go on any drive. A new install keeps its saves, shader cache and installed DLC in
-`game\userdata`, next to the game. An install from before 2.1 keeps using `Documents\re_wor`; to bring it along, move
+`game\userdata`, next to the game. An install from before 2.2 keeps using `Documents\re_wor`; to bring it along, move
 that folder into `game` and rename it `userdata`.
 
 **Weak PC?** In the VIDEO tab, set the internal resolution to 75 % or 50 %. On a laptop, keep the charger plugged in
@@ -179,11 +180,13 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
 
+**Novidades da 2.2:** tudo numa pasta só. Uma instalação nova guarda os saves, o cache de shaders e os DLCs instalados
+em `game\userdata`, ao lado do jogo, então tudo pode ficar em outro HD (veja *Outro HD* abaixo).
+
 **Novidades da 2.1:** o DLC do Guitar Hero 5 no Warriors of Rock (cada pacote é instalado para o jogo dele, e o que o
 Guitar Hero 5 já instalou é compartilhado sem ocupar mais espaço); o fim do crash com os DLCs dos dois jogos na mesma
 pasta; a alavanca da guitarra funcionando com o teclado ligado; guitarras e baterias de Xbox 360 sempre por XInput; e
-os botões das guitarras de PS3 configuradas no assistente; e tudo numa pasta só, com os saves, o cache e os DLCs instalados
-em `game\userdata`.
+os botões das guitarras de PS3 configuradas no assistente.
 
 **Novidades da 2.0:** o Guitar Hero 5 (Xbox 360) junto com o Warriors of Rock, num launcher só, com as mesmas abas
 para os dois; conquistas para cada perfil, com uma aba PERFIL que mostra todas; controle comum como controle do
@@ -206,7 +209,7 @@ uso de CPU, opções dentro do jogo (F5) e um launcher novo em português e ingl
 resolução interna em 75 % ou 50 %.
 
 **Outro HD:** o zip pode ficar em qualquer HD. Uma instalação nova guarda os saves, o cache de shaders e os DLCs
-instalados em `game\userdata`, ao lado do jogo. Uma instalação de antes da 2.1 continua usando `Documentos\re_wor`;
+instalados em `game\userdata`, ao lado do jogo. Uma instalação de antes da 2.2 continua usando `Documentos\re_wor`;
 para levar junto, mova essa pasta para dentro de `game` e renomeie para `userdata`.
 
 **DLC e músicas customizadas:** escolha o jogo no launcher e clique em PASTA DE DLC (aba JOGO). Abre a pasta `dlc` daquele
