@@ -1,0 +1,11 @@
+{
+    "$schema": "https://recomplauncher.com/schema/recomplauncher.json",
+    "format": 1,
+    "name": "Guitar Hero: Warriors of Rock - Erased Reboot Version",
+    "repo": "ErasedSin/WARRIORS-OF-ROCK-Erased-Reboot-Version",
+    "start": {
+        "program": [
+            "Erased Reboot Version.exe"
+        ]
+    }
+}
