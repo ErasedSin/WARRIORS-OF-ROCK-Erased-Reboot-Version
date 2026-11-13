@@ -1,4 +1,7 @@
 <p align="center">
+
+<a href="https://recomplauncher.com/game/warriors-of-rock-erased-reboot-version"><picture><source media="(prefers-color-scheme: dark)" srcset="https://recomplauncher.com/assets/press/launcher/badge-light.svg"><img alt="Get it on RecompLauncher" src="https://recomplauncher.com/assets/press/launcher/badge-dark.svg" height="48"></picture></a>
+
   <img src="launcher/art/banner.png" alt="Erased Reboot Version" width="100%">
 </p>
 
