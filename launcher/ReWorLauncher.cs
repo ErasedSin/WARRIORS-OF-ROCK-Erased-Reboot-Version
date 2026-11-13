@@ -1479,7 +1479,7 @@ namespace ReWor
         const int VideoPage = 2;
         const int MicPage = 6;
         const int OnlinePage = 7;
-        const string AppVersion = "2.2";
+        const string AppVersion = "2.3";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
         const bool OnlineTab = true;
@@ -1568,6 +1568,40 @@ namespace ReWor
             };
             FormClosed += delegate { if (meter != null) { meter.Dispose(); meter = null; } };
             PlayIntro();
+        }
+
+        // The game folders and the game RecompLauncher passes on the command line. Returns the game's
+        // process when one was started, so the window isn't needed.
+        public Process ApplyCommandLine(string worFolder, string gh5Folder, string play)
+        {
+            SaveGameFolder(worSettings, "rewor_game_folder", worFolder);
+            SaveGameFolder(gh5Settings, "erased_game_folder", gh5Folder);
+            int game = play == "gh5" ? GameGh5 : play == "wor" ? GameWor : -1;
+            if (game < 0)
+            {
+                if (worFolder != null || gh5Folder != null) RefreshGameFolder();
+                return null;
+            }
+            if (game == activeGame) RefreshGameFolder();
+            else SwitchGame(game);
+            if (!IsGameFolder(gameFolder) || !Apply()) return null;
+            return StartGame();
+        }
+
+        static void SaveGameFolder(Settings target, string key, string folder)
+        {
+            if (string.IsNullOrEmpty(folder)) return;
+            string found = NormalizeGameFolder(folder.Trim().Trim('"'));
+            if (found == null) return;
+            target.Set(key, ToConfigPath(found));
+            try { target.Save(); } catch (Exception) { }
+        }
+
+        void RefreshGameFolder()
+        {
+            LoadGameFolder();
+            if (gameFolderLabel != null) ShowGameFolder();
+            if (IsGameFolder(gameFolder)) ShowPage(HomePage);
         }
 
         int LoadActiveGame()
@@ -4859,13 +4893,19 @@ namespace ReWor
 
         void Launch()
         {
+            if (StartGame() != null) Close();
+        }
+
+        Process StartGame()
+        {
             string exe = Path.Combine(PlayDir, GameExe);
             if (!File.Exists(exe))
             {
                 MessageBox.Show(this, string.Format(Strings.T("missing_exe"), GameExe), Text,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                return null;
             }
+            // The game inherits this process's environment, RecompLauncher's achievements session too.
             var start = new ProcessStartInfo(exe)
             {
                 WorkingDirectory = PlayDir,
@@ -4874,8 +4914,7 @@ namespace ReWor
             // Read by the game at startup. A file keeps any character in the path
             // intact, which a command line argument would not.
             File.WriteAllText(Path.Combine(PlayDir, "game_folder.txt"), gameFolder, new UTF8Encoding(false));
-            Process.Start(start);
-            Close();
+            return Process.Start(start);
         }
     }
 
@@ -5070,8 +5109,30 @@ namespace ReWor
             {
                 using (var form = new LauncherForm()) return form.ApplyScriptsOnly();
             }
-            Application.Run(new LauncherForm());
+            var launcher = new LauncherForm();
+            // RecompLauncher passes the player's copies and the game to play: with --play the
+            // game starts without this window, which only opens when something is missing. The
+            // launcher then waits for the game, so play time and crashes are the game's own.
+            Process game = launcher.ApplyCommandLine(Option(args, "--game"), Option(args, "--gh5-game"), Option(args, "--play"));
+            if (game != null)
+            {
+                launcher.Dispose();
+                game.WaitForExit();
+                return game.ExitCode;
+            }
+            Application.Run(launcher);
             return 0;
+        }
+
+        // "--name=value" or "--name value"; null when it isn't given.
+        static string Option(string[] args, string name)
+        {
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i].StartsWith(name + "=", StringComparison.Ordinal)) return args[i].Substring(name.Length + 1);
+                if (args[i] == name && i + 1 < args.Length) return args[i + 1];
+            }
+            return null;
         }
     }
 }

@@ -3,9 +3,184 @@
     "format": 1,
     "name": "Guitar Hero: Warriors of Rock - Erased Reboot Version",
     "repo": "ErasedSin/WARRIORS-OF-ROCK-Erased-Reboot-Version",
+    "game": {
+        "kind": "folder",
+        "label": "Your Guitar Hero: Warriors of Rock (Xbox 360) folder, with default.xex and the data folder.",
+        "check": { "file": "default.xex" }
+    },
+    "inputs": [
+        {
+            "id": "gh5",
+            "label": "Your Guitar Hero 5 (Xbox 360) folder, with default.xex and the data folder. Only for Guitar Hero 5.",
+            "optional": true,
+            "formats": [ { "type": "folder" } ]
+        }
+    ],
     "start": {
-        "program": [
-            "Erased Reboot Version.exe"
-        ]
-    }
+        "program": [ "Erased Reboot Version.exe" ],
+        "args": [ "--game={game}", "--gh5-game={input:gh5}" ]
+    },
+    "games": [
+        { "id": "wor", "name": "Guitar Hero: Warriors of Rock", "args": [ "--play=wor" ], "title_id": "41560883",
+          "saves": [
+              "{install}/game/userdata/B13EBABEBABEBABE/41560883",
+              "{install}/game/userdata/B13EBABEBABEBABF/41560883",
+              "{install}/game/userdata/B13EBABEBABEBAC0/41560883",
+              "{install}/game/userdata/B13EBABEBABEBAC1/41560883",
+              "{install}/game/userdata/achievements",
+              "{documents}/re_wor/B13EBABEBABEBABE/41560883",
+              "{documents}/re_wor/B13EBABEBABEBABF/41560883",
+              "{documents}/re_wor/B13EBABEBABEBAC0/41560883",
+              "{documents}/re_wor/B13EBABEBABEBAC1/41560883",
+              "{documents}/re_wor/achievements"
+          ] },
+        { "id": "gh5", "name": "Guitar Hero 5", "args": [ "--play=gh5" ], "title_id": "41560840", "inputs": [ "gh5" ],
+          "saves": [
+              "{install}/gh5/userdata/B13EBABEBABEBABE/41560840",
+              "{install}/gh5/userdata/B13EBABEBABEBABF/41560840",
+              "{install}/gh5/userdata/B13EBABEBABEBAC0/41560840",
+              "{install}/gh5/userdata/B13EBABEBABEBAC1/41560840",
+              "{install}/gh5/userdata/achievements"
+          ] }
+    ],
+    "config": [
+        { "id": "wor", "format": "toml", "file": [ { "path": "{install}/game/re_wor.toml" } ] },
+        { "id": "gh5", "format": "toml", "file": [ { "path": "{install}/gh5/gh5_options.toml" } ] }
+    ],
+    "settings": [
+        {
+            "id": "wor_fullscreen", "label": "Fullscreen", "group": "Warriors of Rock", "in": "wor",
+            "choices": [
+                { "label": "On", "set": { "fullscreen": "true" } },
+                { "label": "Off", "set": { "fullscreen": "false" } }
+            ],
+            "defaults": { "fullscreen": "true" }
+        },
+        {
+            "id": "wor_resolution", "label": "Resolution", "group": "Warriors of Rock", "in": "wor",
+            "help": "The window or screen size. 720p is the console's own.",
+            "choices": [
+                { "label": "1280x720", "set": { "video_mode_width": "1280", "video_mode_height": "720" } },
+                { "label": "1920x1080", "set": { "video_mode_width": "1920", "video_mode_height": "1080" } },
+                { "label": "2560x1080 (21:9)", "set": { "video_mode_width": "2560", "video_mode_height": "1080" } },
+                { "label": "3440x1440 (21:9)", "set": { "video_mode_width": "3440", "video_mode_height": "1440" } },
+                { "label": "848x480", "set": { "video_mode_width": "848", "video_mode_height": "480" } }
+            ],
+            "defaults": { "video_mode_width": "1280", "video_mode_height": "720" }
+        },
+        {
+            "id": "wor_scale", "label": "Render scale", "group": "Warriors of Rock", "in": "wor",
+            "help": "What the game draws at, before it's scaled to the screen. Lower is faster on weak PCs.",
+            "choices": [
+                { "label": "100%", "set": { "draw_resolution_percent": "100" } },
+                { "label": "75%", "set": { "draw_resolution_percent": "75" } },
+                { "label": "50%", "set": { "draw_resolution_percent": "50" } },
+                { "label": "33%", "set": { "draw_resolution_percent": "33" } }
+            ],
+            "defaults": { "draw_resolution_percent": "100" }
+        },
+        {
+            "id": "wor_fps", "label": "Frame rate", "group": "Warriors of Rock", "in": "wor",
+            "help": "Notes, audio and timing stay in step at any rate.",
+            "choices": [
+                { "label": "60 FPS", "set": { "video_mode_refresh_rate": "60.0" } },
+                { "label": "120 FPS", "set": { "video_mode_refresh_rate": "120.0" } },
+                { "label": "144 FPS", "set": { "video_mode_refresh_rate": "144.0" } },
+                { "label": "165 FPS", "set": { "video_mode_refresh_rate": "165.0" } },
+                { "label": "240 FPS", "set": { "video_mode_refresh_rate": "240.0" } }
+            ],
+            "defaults": { "video_mode_refresh_rate": "60.0" }
+        },
+        {
+            "id": "wor_vsync", "label": "V-Sync", "group": "Warriors of Rock", "in": "wor",
+            "help": "Waits for the monitor. Off keeps the frame rate steadier.",
+            "choices": [
+                { "label": "Off", "set": { "present_vsync": "false" } },
+                { "label": "On", "set": { "present_vsync": "true" } }
+            ],
+            "defaults": { "present_vsync": "false" }
+        },
+        {
+            "id": "wor_filter", "label": "Scaling filter", "group": "Warriors of Rock", "in": "wor",
+            "choices": [
+                { "label": "Bilinear", "set": { "present_effect": "\"bilinear\"" } },
+                { "label": "Sharpen (CAS)", "set": { "present_effect": "\"cas\"" } },
+                { "label": "FSR", "set": { "present_effect": "\"fsr\"" } }
+            ],
+            "defaults": { "present_effect": "\"bilinear\"" }
+        },
+        {
+            "id": "wor_show_fps", "label": "FPS counter", "group": "Warriors of Rock", "in": "wor",
+            "help": "F2 turns it on and off in the game.",
+            "choices": [
+                { "label": "On", "set": { "rewor_show_fps": "true" } },
+                { "label": "Off", "set": { "rewor_show_fps": "false" } }
+            ],
+            "defaults": { "rewor_show_fps": "true" }
+        },
+        {
+            "id": "wor_debug_menu", "label": "Debug menu", "group": "Warriors of Rock", "in": "wor", "advanced": true,
+            "help": "The developers' menu, under Options in the main menu.",
+            "choices": [
+                { "label": "Off", "set": { "rewor_debug_menu": "false" } },
+                { "label": "On", "set": { "rewor_debug_menu": "true" } }
+            ],
+            "defaults": { "rewor_debug_menu": "false" }
+        },
+        {
+            "id": "gh5_fullscreen", "label": "Fullscreen", "group": "Guitar Hero 5", "in": "gh5",
+            "choices": [
+                { "label": "On", "set": { "fullscreen": "true" } },
+                { "label": "Off", "set": { "fullscreen": "false" } }
+            ],
+            "defaults": { "fullscreen": "true" }
+        },
+        {
+            "id": "gh5_scale", "label": "Render scale", "group": "Guitar Hero 5", "in": "gh5",
+            "help": "What the game draws at, before it's scaled to the screen. Lower is faster on weak PCs.",
+            "choices": [
+                { "label": "100%", "set": { "draw_resolution_percent": "100" } },
+                { "label": "75%", "set": { "draw_resolution_percent": "75" } },
+                { "label": "50%", "set": { "draw_resolution_percent": "50" } },
+                { "label": "33%", "set": { "draw_resolution_percent": "33" } }
+            ],
+            "defaults": { "draw_resolution_percent": "100" }
+        },
+        {
+            "id": "gh5_fps", "label": "Frame rate", "group": "Guitar Hero 5", "in": "gh5",
+            "choices": [
+                { "label": "60 FPS", "set": { "gh5_frame_rate": "60" } },
+                { "label": "120 FPS", "set": { "gh5_frame_rate": "120" } },
+                { "label": "144 FPS", "set": { "gh5_frame_rate": "144" } },
+                { "label": "165 FPS", "set": { "gh5_frame_rate": "165" } },
+                { "label": "240 FPS", "set": { "gh5_frame_rate": "240" } }
+            ],
+            "defaults": { "gh5_frame_rate": "60" }
+        },
+        {
+            "id": "gh5_vsync", "label": "V-Sync", "group": "Guitar Hero 5", "in": "gh5",
+            "choices": [
+                { "label": "Off", "set": { "present_vsync": "false" } },
+                { "label": "On", "set": { "present_vsync": "true" } }
+            ],
+            "defaults": { "present_vsync": "false" }
+        },
+        {
+            "id": "gh5_show_fps", "label": "FPS counter", "group": "Guitar Hero 5", "in": "gh5",
+            "help": "F2 turns it on and off in the game.",
+            "choices": [
+                { "label": "On", "set": { "erased_show_fps": "true" } },
+                { "label": "Off", "set": { "erased_show_fps": "false" } }
+            ],
+            "defaults": { "erased_show_fps": "true" }
+        }
+    ],
+    "folders": {
+        "logs": [ { "path": "{install}/game" } ],
+        "dlc": [ { "path": "{install}/game/dlc" } ]
+    },
+    "actions": [
+        { "id": "open_dlc", "label": "Open the DLC folder", "help": "Put Xbox 360 DLC packages (LIVE, CON, PIRS) here.", "open": "dlc" }
+    ],
+    "exit_codes": { "0": "ok" }
 }

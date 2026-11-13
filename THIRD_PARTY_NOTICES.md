@@ -61,3 +61,9 @@ SOFTWARE.
 ## ReXGlue SDK
 
 https://github.com/rexglue/rexglue-sdk: BSD license, see its LICENSE. Portions derived from Xenia (https://xenia.jp), BSD.
+
+## RecompAchievements (thirdparty/rl_achievements in the SDK patch)
+
+https://github.com/elripalda/RecompAchievements by Ruben Ripalda: Recomp Achievements License 1.0, see
+`thirdparty/rl_achievements/LICENSE`. It bundles rcheevos (MIT) and cJSON (MIT), whose licenses are in
+`thirdparty/rl_achievements/third_party`. In the release, all three are in `game\licenses`.

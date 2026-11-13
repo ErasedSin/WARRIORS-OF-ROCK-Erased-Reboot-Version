@@ -20,6 +20,11 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 
 ## What's new
 
+**In 2.3: RecompLauncher.** Both games can be installed, set up and started from
+[RecompLauncher](https://recomplauncher.com/game/warriors-of-rock-erased-reboot-version), and their achievements
+show up there as you unlock them ([RecompAchievements](https://github.com/elripalda/RecompAchievements)). The
+launcher also takes `--game`, `--gh5-game` and `--play=wor|gh5` on the command line.
+
 **In 2.2: everything in one folder.** A new install keeps saves, the shader cache and installed DLC in
 `game\userdata`, next to the game, so it can all live on another drive (see *Another drive* below).
 
@@ -158,6 +163,8 @@ Made by **Gaio Moreira (Erased)**, on top of the work of:
   the controller-as-guitar buttons.
 - The WoR+ project (kernaltrap8), for what is known about the game's scripts.
 - [Onyx](https://github.com/mtolly/onyx) by mtolly, for custom songs.
+- [RecompLauncher](https://recomplauncher.com) and [RecompAchievements](https://github.com/elripalda/RecompAchievements)
+  by Ruben Ripalda: the RecompLauncher support and its achievements (with rcheevos and cJSON, MIT).
 - The title font: Nightmare Hero, by _n3o_.
 
 The licenses of the components are in `THIRD_PARTY_NOTICES.md` and, in the release, in `game\licenses`.
@@ -182,6 +189,10 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
+
+**Novidades da 2.3:** o RecompLauncher. Os dois jogos podem ser instalados, configurados e abertos pelo
+[RecompLauncher](https://recomplauncher.com/game/warriors-of-rock-erased-reboot-version), e as conquistas aparecem
+lá na hora em que você desbloqueia (RecompAchievements, do Ruben Ripalda).
 
 **Novidades da 2.2:** tudo numa pasta só. Uma instalação nova guarda os saves, o cache de shaders e os DLCs instalados
 em `game\userdata`, ao lado do jogo, então tudo pode ficar em outro HD (veja *Outro HD* abaixo).
@@ -228,5 +239,5 @@ cache*), feito sobre todos os seus pacotes, os oficiais também.
 (PIX) ou pelo [Ko-fi](https://ko-fi.com/erasedsin). Doação não libera nada a mais: é só apoio.
 
 **Créditos:** feito por mim, Gaio Moreira (Erased), com base no re-wor (ronniecloud), no re-gh2 (YoshiCrystal9), nas
-correções do TFujiwara, no ReXGlue SDK, no fork do SDK do iExplosiveRage, no GHVanHRecomp (ElGuslml) e no port do
-Piscacho. Usei IA como ajuda ao longo do caminho; as ideias, as decisões e os testes são meus.
+correções do TFujiwara, no ReXGlue SDK, no fork do SDK do iExplosiveRage, no GHVanHRecomp (ElGuslml), no port do
+Piscacho e no RecompLauncher/RecompAchievements (Ruben Ripalda). Usei IA como ajuda ao longo do caminho; as ideias, as decisões e os testes são meus.
