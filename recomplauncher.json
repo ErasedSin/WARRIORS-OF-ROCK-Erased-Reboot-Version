@@ -21,7 +21,7 @@
         "args": [ "--game={game}", "--gh5-game={input:gh5}" ]
     },
     "games": [
-        { "id": "wor", "name": "Guitar Hero: Warriors of Rock", "args": [ "--play=wor" ], "title_id": "41560883",
+        { "id": "wor", "name": "Guitar Hero: Warriors of Rock", "args": [ "--select=wor" ], "title_id": "41560883",
           "saves": [
               "{install}/game/userdata/B13EBABEBABEBABE/41560883",
               "{install}/game/userdata/B13EBABEBABEBABF/41560883",
@@ -34,7 +34,7 @@
               "{documents}/re_wor/B13EBABEBABEBAC1/41560883",
               "{documents}/re_wor/achievements"
           ] },
-        { "id": "gh5", "name": "Guitar Hero 5", "args": [ "--play=gh5" ], "title_id": "41560840", "inputs": [ "gh5" ],
+        { "id": "gh5", "name": "Guitar Hero 5", "args": [ "--select=gh5" ], "title_id": "41560840", "inputs": [ "gh5" ],
           "saves": [
               "{install}/gh5/userdata/B13EBABEBABEBABE/41560840",
               "{install}/gh5/userdata/B13EBABEBABEBABF/41560840",
@@ -110,6 +110,16 @@
             "defaults": { "present_effect": "\"bilinear\"" }
         },
         {
+            "id": "wor_api", "label": "Graphics API", "group": "Warriors of Rock", "in": "wor",
+            "help": "Vulkan runs better than DirectX 12 on most PCs. If the game closes or shows a black screen, use DirectX 12.",
+            "choices": [
+                { "label": "Automatic", "set": { "gpu": "\"any\"" } },
+                { "label": "Vulkan", "set": { "gpu": "\"vulkan\"" } },
+                { "label": "DirectX 12", "set": { "gpu": "\"d3d12\"" } }
+            ],
+            "defaults": { "gpu": "\"any\"" }
+        },
+        {
             "id": "wor_show_fps", "label": "FPS counter", "group": "Warriors of Rock", "in": "wor",
             "help": "F2 turns it on and off in the game.",
             "choices": [
@@ -156,6 +166,16 @@
                 { "label": "240 FPS", "set": { "gh5_frame_rate": "240" } }
             ],
             "defaults": { "gh5_frame_rate": "60" }
+        },
+        {
+            "id": "gh5_api", "label": "Graphics API", "group": "Guitar Hero 5", "in": "gh5",
+            "help": "Vulkan runs better than DirectX 12 on most PCs. If the game closes or shows a black screen, use DirectX 12.",
+            "choices": [
+                { "label": "Automatic", "set": { "gpu": "\"any\"" } },
+                { "label": "Vulkan", "set": { "gpu": "\"vulkan\"" } },
+                { "label": "DirectX 12", "set": { "gpu": "\"d3d12\"" } }
+            ],
+            "defaults": { "gpu": "\"any\"" }
         },
         {
             "id": "gh5_vsync", "label": "V-Sync", "group": "Guitar Hero 5", "in": "gh5",

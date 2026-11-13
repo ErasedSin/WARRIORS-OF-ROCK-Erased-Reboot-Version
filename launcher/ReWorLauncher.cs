@@ -611,9 +611,190 @@ namespace ReWor
         }
         [StructLayout(LayoutKind.Sequential)]
         struct JoyInfoEx { public uint Size, Flags, X, Y, Z, R, U, V, Buttons, ButtonNumber, Pov, Reserved1, Reserved2; }
-        [DllImport("winmm.dll")] static extern uint joyGetNumDevs();
-        [DllImport("winmm.dll", CharSet = CharSet.Unicode)] static extern uint joyGetDevCapsW(UIntPtr id, ref JoyCaps caps, uint size);
-        [DllImport("winmm.dll")] static extern uint joyGetPosEx(uint id, ref JoyInfoEx info);
+        [DllImport("kernel32.dll")] static extern IntPtr GetCurrentProcess();
+        [DllImport("kernel32.dll")] static extern bool TerminateProcess(IntPtr process, uint code);
+        [DllImport("winmm.dll", EntryPoint = "joyGetNumDevs")] static extern uint NativeJoyGetNumDevs();
+        [DllImport("winmm.dll", EntryPoint = "joyGetDevCapsW", CharSet = CharSet.Unicode)] static extern uint NativeJoyGetDevCaps(UIntPtr id, ref JoyCaps caps, uint size);
+        [DllImport("winmm.dll", EntryPoint = "joyGetPosEx")] static extern uint NativeJoyGetPosEx(uint id, ref JoyInfoEx info);
+
+        // On some PCs the winmm joystick calls corrupt the process heap (seen with virtual controllers such as
+        // Steam Input's or AMD Link's), which closed the launcher at random. They run in a helper copy of this
+        // exe instead (--joy-helper), which reports what it reads and is started again when it falls over.
+        const int MaxJoys = 16;
+        static readonly object joyLock = new object();
+        static Process joyHelper;
+        static DateTime joyHelperStart;
+        static readonly JoyInfoEx?[] joyPos = new JoyInfoEx?[MaxJoys];
+        static readonly JoyCaps?[] joyCaps = new JoyCaps?[MaxJoys];
+        static volatile bool joyReported;
+        static bool joyWaited;
+        static DateTime joyLastReport;
+
+        static void EnsureJoyHelper()
+        {
+            lock (joyLock)
+            {
+                // A helper stuck in a driver call stops reporting: it is left behind and another one started.
+                if (joyHelper != null && !joyHelper.HasExited && (DateTime.Now - joyLastReport).TotalSeconds < 3) return;
+                if (joyHelper != null && !joyHelper.HasExited) { try { joyHelper.Kill(); } catch (Exception) { } }
+                if (joyHelper != null && (DateTime.Now - joyHelperStart).TotalMilliseconds < 500) return;
+                joyHelperStart = DateTime.Now;
+                joyLastReport = DateTime.Now;
+                try
+                {
+                    var start = new ProcessStartInfo(Application.ExecutablePath, "--joy-helper " + Process.GetCurrentProcess().Id)
+                    {
+                        UseShellExecute = false, CreateNoWindow = true,
+                        RedirectStandardOutput = true
+                    };
+                    var helper = Process.Start(start);
+                    joyHelper = helper;
+                    AppDomain.CurrentDomain.ProcessExit += delegate { try { helper.Kill(); } catch (Exception) { } };
+                    new System.Threading.Thread(delegate () { ReadJoyHelper(helper); }) { IsBackground = true }.Start();
+                }
+                catch (Exception) { joyHelper = null; }
+            }
+            // Once, for the first report, so the controllers are there the first time a page lists them.
+            if (joyWaited) return;
+            joyWaited = true;
+            var until = DateTime.Now.AddMilliseconds(1500);
+            while (!joyReported && DateTime.Now < until) System.Threading.Thread.Sleep(20);
+        }
+
+        static void ReadJoyHelper(Process helper)
+        {
+            var pos = new JoyInfoEx?[MaxJoys];
+            var caps = new JoyCaps?[MaxJoys];
+            try
+            {
+                string line;
+                while ((line = helper.StandardOutput.ReadLine()) != null)
+                {
+                    if (line == "end")
+                    {
+                        lock (joyLock)
+                        {
+                            Array.Copy(pos, joyPos, MaxJoys);
+                            Array.Copy(caps, joyCaps, MaxJoys);
+                        }
+                        joyReported = true;
+                        joyLastReport = DateTime.Now;
+                        pos = new JoyInfoEx?[MaxJoys];
+                        caps = new JoyCaps?[MaxJoys];
+                        continue;
+                    }
+                    string[] f = line.Split('\t');
+                    uint id;
+                    if (f.Length < 32 || !uint.TryParse(f[0], out id) || id >= MaxJoys) continue;
+                    var n = new uint[30];
+                    for (int i = 0; i < 30; i++) uint.TryParse(f[i + 1], out n[i]);
+                    pos[id] = new JoyInfoEx
+                    {
+                        Size = n[0], Flags = n[1], X = n[2], Y = n[3], Z = n[4], R = n[5], U = n[6], V = n[7],
+                        Buttons = n[8], ButtonNumber = n[9], Pov = n[10], Reserved1 = n[11], Reserved2 = n[12]
+                    };
+                    caps[id] = new JoyCaps
+                    {
+                        Mid = (ushort)n[13], Pid = (ushort)n[14], Name = f[31],
+                        XMin = n[15], XMax = n[16], YMin = n[17], YMax = n[18], ZMin = n[19], ZMax = n[20],
+                        RMin = n[21], RMax = n[22], UMin = n[23], UMax = n[24], VMin = n[25], VMax = n[26],
+                        NumButtons = n[27], NumAxes = n[28], Caps = n[29]
+                    };
+                }
+            }
+            catch (Exception) { }
+            // Gone: nothing is reported until the next one starts.
+            lock (joyLock)
+            {
+                if (joyHelper != helper) return;
+                Array.Clear(joyPos, 0, MaxJoys);
+                Array.Clear(joyCaps, 0, MaxJoys);
+            }
+        }
+
+        static uint joyGetNumDevs()
+        {
+            EnsureJoyHelper();
+            return MaxJoys;
+        }
+
+        static uint joyGetPosEx(uint id, ref JoyInfoEx info)
+        {
+            EnsureJoyHelper();
+            lock (joyLock)
+            {
+                if (id >= MaxJoys || joyPos[id] == null) return 167;  // JOYERR_UNPLUGGED
+                info = joyPos[id].Value;
+                return 0;
+            }
+        }
+
+        static uint joyGetDevCapsW(UIntPtr id, ref JoyCaps caps, uint size)
+        {
+            uint i = (uint)id;
+            lock (joyLock)
+            {
+                if (i >= MaxJoys || joyCaps[i] == null) return 167;
+                caps = joyCaps[i].Value;
+                return 0;
+            }
+        }
+
+        // The helper: reads every joystick about a hundred times a second and writes one line for each connected
+        // one, then "end". It stops with the launcher (its process id comes after --joy-helper).
+        public static int RunJoyHelper(string launcherId)
+        {
+            int pid;
+            Process launcher = null;
+            try { if (int.TryParse(launcherId, out pid)) launcher = Process.GetProcessById(pid); } catch (Exception) { }
+            if (launcher == null) return 0;
+            new System.Threading.Thread(delegate ()
+            {
+                try { launcher.WaitForExit(); } catch (Exception) { }
+                // Straight to the kernel: with a damaged heap, a normal exit can hang.
+                TerminateProcess(GetCurrentProcess(), 0);
+            }) { IsBackground = true }.Start();
+            var output = new StreamWriter(Console.OpenStandardOutput()) { NewLine = "\n" };
+            var caps = new JoyCaps?[MaxJoys];
+            var capsRead = new DateTime[MaxJoys];
+            uint count = 0;
+            try { count = Math.Min(NativeJoyGetNumDevs(), (uint)MaxJoys); } catch (Exception) { }
+            var line = new StringBuilder();
+            try
+            {
+                while (true)
+                {
+                    for (uint id = 0; id < count; id++)
+                    {
+                        var info = new JoyInfoEx { Size = (uint)Marshal.SizeOf(typeof(JoyInfoEx)), Flags = 0xFF };
+                        if (NativeJoyGetPosEx(id, ref info) != 0) { caps[id] = null; continue; }
+                        if (caps[id] == null || (DateTime.Now - capsRead[id]).TotalSeconds > 2)
+                        {
+                            var c = new JoyCaps();
+                            caps[id] = NativeJoyGetDevCaps((UIntPtr)id, ref c, (uint)Marshal.SizeOf(typeof(JoyCaps))) == 0 ? c : (JoyCaps?)null;
+                            capsRead[id] = DateTime.Now;
+                        }
+                        if (caps[id] == null) continue;
+                        JoyCaps k = caps[id].Value;
+                        uint[] n =
+                        {
+                            info.Size, info.Flags, info.X, info.Y, info.Z, info.R, info.U, info.V, info.Buttons,
+                            info.ButtonNumber, info.Pov, info.Reserved1, info.Reserved2, k.Mid, k.Pid,
+                            k.XMin, k.XMax, k.YMin, k.YMax, k.ZMin, k.ZMax, k.RMin, k.RMax, k.UMin, k.UMax, k.VMin, k.VMax,
+                            k.NumButtons, k.NumAxes, k.Caps
+                        };
+                        line.Clear().Append(id);
+                        foreach (uint v in n) line.Append('\t').Append(v);
+                        line.Append('\t').Append((k.Name ?? "").Replace('\t', ' ').Replace('\n', ' ').Replace('\r', ' '));
+                        output.WriteLine(line.ToString());
+                    }
+                    output.WriteLine("end");
+                    output.Flush();
+                    System.Threading.Thread.Sleep(10);
+                }
+            }
+            catch (Exception) { return 0; }
+        }
         [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
 
         static bool xinputMissing;
@@ -1479,7 +1660,7 @@ namespace ReWor
         const int VideoPage = 2;
         const int MicPage = 6;
         const int OnlinePage = 7;
-        const string AppVersion = "2.3";
+        const string AppVersion = "2.4";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
         const bool OnlineTab = true;
@@ -1572,11 +1753,15 @@ namespace ReWor
 
         // The game folders and the game RecompLauncher passes on the command line. Returns the game's
         // process when one was started, so the window isn't needed.
-        public Process ApplyCommandLine(string worFolder, string gh5Folder, string play)
+        // With --select the window opens on that game and stays hidden while it runs, closing with it, so
+        // RecompLauncher sees the whole session. With --play the game starts without the window.
+        public Process ApplyCommandLine(string worFolder, string gh5Folder, string play, string select)
         {
             SaveGameFolder(worSettings, "rewor_game_folder", worFolder);
             SaveGameFolder(gh5Settings, "erased_game_folder", gh5Folder);
-            int game = play == "gh5" ? GameGh5 : play == "wor" ? GameWor : -1;
+            string chosen = play ?? select;
+            int game = chosen == "gh5" ? GameGh5 : chosen == "wor" ? GameWor : -1;
+            waitForGame = select != null;
             if (game < 0)
             {
                 if (worFolder != null || gh5Folder != null) RefreshGameFolder();
@@ -1584,9 +1769,12 @@ namespace ReWor
             }
             if (game == activeGame) RefreshGameFolder();
             else SwitchGame(game);
-            if (!IsGameFolder(gameFolder) || !Apply()) return null;
+            if (play == null || !IsGameFolder(gameFolder) || !Apply()) return null;
             return StartGame();
         }
+
+        bool waitForGame;
+        public int GameExitCode;
 
         static void SaveGameFolder(Settings target, string key, string folder)
         {
@@ -4893,7 +5081,19 @@ namespace ReWor
 
         void Launch()
         {
-            if (StartGame() != null) Close();
+            Process game = StartGame();
+            if (game == null) return;
+            if (!waitForGame) { Close(); return; }
+            Hide();
+            game.EnableRaisingEvents = true;
+            int closing = 0;
+            EventHandler done = delegate
+            {
+                if (System.Threading.Interlocked.Exchange(ref closing, 1) == 1) return;
+                BeginInvoke((Action)delegate { GameExitCode = game.ExitCode; Close(); });
+            };
+            game.Exited += done;
+            if (game.HasExited) done(game, EventArgs.Empty);
         }
 
         Process StartGame()
@@ -5105,6 +5305,7 @@ namespace ReWor
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            if (Array.IndexOf(args, "--joy-helper") >= 0) return InputScan.RunJoyHelper(Option(args, "--joy-helper"));
             if (Array.IndexOf(args, "--apply-scripts") >= 0)
             {
                 using (var form = new LauncherForm()) return form.ApplyScriptsOnly();
@@ -5113,7 +5314,7 @@ namespace ReWor
             // RecompLauncher passes the player's copies and the game to play: with --play the
             // game starts without this window, which only opens when something is missing. The
             // launcher then waits for the game, so play time and crashes are the game's own.
-            Process game = launcher.ApplyCommandLine(Option(args, "--game"), Option(args, "--gh5-game"), Option(args, "--play"));
+            Process game = launcher.ApplyCommandLine(Option(args, "--game"), Option(args, "--gh5-game"), Option(args, "--play"), Option(args, "--select"));
             if (game != null)
             {
                 launcher.Dispose();
@@ -5121,7 +5322,7 @@ namespace ReWor
                 return game.ExitCode;
             }
             Application.Run(launcher);
-            return 0;
+            return launcher.GameExitCode;
         }
 
         // "--name=value" or "--name value"; null when it isn't given.

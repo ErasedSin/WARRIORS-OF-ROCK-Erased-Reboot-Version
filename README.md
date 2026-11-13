@@ -20,6 +20,9 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 
 ## What's new
 
+**In 2.4:** RecompLauncher opens the Erased Reboot Version launcher on the game you picked, with your game folder
+already filled in, so every setting is there before you play. It also gets a Graphics API option (Vulkan or DirectX 12).
+
 **In 2.3: RecompLauncher.** Both games can be installed, set up and started from
 [RecompLauncher](https://recomplauncher.com/game/warriors-of-rock-erased-reboot-version), and their achievements
 show up there as you unlock them ([RecompAchievements](https://github.com/elripalda/RecompAchievements)). The
@@ -93,6 +96,10 @@ launcher also takes `--game`, `--gh5-game` and `--play=wor|gh5` on the command l
 **Another drive:** the zip can go on any drive. A new install keeps its saves, shader cache and installed DLC in
 `game\userdata`, next to the game. An install from before 2.2 keeps using `Documents\re_wor`; to bring it along, move
 that folder into `game` and rename it `userdata`.
+
+**Vulkan or DirectX 12?** Vulkan runs better than DirectX 12 on most PCs, going by players' reports: pick it under
+Graphics API (GRAPHICS tab). If the game closes or shows a black screen with Vulkan, as on some older AMD cards and
+drivers, go back to DirectX 12.
 
 **Weak PC?** In the VIDEO tab, set the internal resolution to 75 % or 50 %. On a laptop, keep the charger plugged in
 and use the "High performance" power plan.
@@ -190,6 +197,9 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
 
+**Novidades da 2.4:** o RecompLauncher abre o launcher do Erased Reboot Version no jogo escolhido, já com a pasta do
+jogo, para você configurar tudo antes de jogar. Ele também ganhou a opção de API gráfica (Vulkan ou DirectX 12).
+
 **Novidades da 2.3:** o RecompLauncher. Os dois jogos podem ser instalados, configurados e abertos pelo
 [RecompLauncher](https://recomplauncher.com/game/warriors-of-rock-erased-reboot-version), e as conquistas aparecem
 lá na hora em que você desbloqueia (RecompAchievements, do Ruben Ripalda).
@@ -221,6 +231,10 @@ uso de CPU, opções dentro do jogo (F5) e um launcher novo em português e ingl
 **Como jogar:** baixe o zip em [Releases](../../releases), extraia numa pasta qualquer, abra o
 **`Erased Reboot Version.exe`**, escolha a pasta do jogo e clique em **JOGAR**. PC fraco? Na aba VÍDEO, coloque a
 resolução interna em 75 % ou 50 %.
+
+**Vulkan ou DirectX 12?** Pelos relatos dos jogadores, o Vulkan roda melhor que o DirectX 12 na maioria dos PCs:
+escolha em API gráfica (aba GRÁFICOS). Se com o Vulkan o jogo fechar ou ficar com a tela preta, como em algumas
+placas e drivers AMD mais antigos, volte para o DirectX 12.
 
 **Outro HD:** o zip pode ficar em qualquer HD. Uma instalação nova guarda os saves, o cache de shaders e os DLCs
 instalados em `game\userdata`, ao lado do jogo. Uma instalação de antes da 2.2 continua usando `Documentos\re_wor`;
