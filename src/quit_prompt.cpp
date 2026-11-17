@@ -1,9 +1,11 @@
 // Quitting from the main menu.
 //
 // The game has no way out of its own: on the console the Guide button went to
-// the dashboard. In the main menu, B (the red fret) now asks whether to quit:
-// A (green) closes the game, B goes back. While the question is up the game
-// does not see the controllers.
+// the dashboard. In the main menu, B (the red fret) now asks whether to quit.
+// When the launcher started the game (it sets ERASED_LAUNCHER and waits,
+// hidden), A (green) goes back to it, Y (yellow) quits and B (red) stays;
+// otherwise A quits. While the question is up the game does not see the
+// controllers.
 //
 // Whether the main menu is on screen comes from the game's screen elements.
 // Its scripts create and destroy them (CreateScreenElement and
@@ -14,6 +16,8 @@
 // B itself.
 
 #include "quit_prompt.h"
+
+#include "options_menu.h"
 
 #include <rex/cvar.h>
 #include <rex/input/input.h>
@@ -26,6 +30,7 @@
 #include <imgui.h>
 
 #include <atomic>
+#include <cstdlib>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
@@ -48,6 +53,22 @@ constexpr uint32_t kDialogBoxElement = 0xCC5FECBC;  // dialog_box_container
 constexpr uint32_t kGuestLow = 0x40000000;
 
 std::atomic<bool> g_main_menu{false};
+rex::ui::Window* g_window = nullptr;
+
+std::filesystem::path ExeFolder() {
+#ifdef _WIN32
+  wchar_t exe[MAX_PATH] = {};
+  GetModuleFileNameW(nullptr, exe, MAX_PATH);
+  return std::filesystem::path(exe).parent_path();
+#else
+  return std::filesystem::current_path();
+#endif
+}
+
+void PushMenuFont(int kind) {
+  ImFont* font = MenuFont(kind);
+  ImGui::PushFont(font, font ? font->LegacySize : 0.0f);
+}
 
 uint32_t Load32(const uint8_t* base, uint32_t address) {
   uint32_t value;
@@ -85,7 +106,7 @@ bool UseEnglish() {
   GetModuleFileNameW(nullptr, exe, MAX_PATH);
   std::ifstream file(std::filesystem::path(exe).parent_path() / "launcher_language.txt");
   std::string saved;
-  if (file >> saved) return saved == "en";
+  if (file >> saved) return saved != "pt";
   return PRIMARYLANGID(GetUserDefaultUILanguage()) != LANG_PORTUGUESE;
 #else
   return true;
@@ -96,7 +117,7 @@ class QuitPromptDialog : public rex::ui::ImGuiDialog {
  public:
   QuitPromptDialog(rex::ui::ImGuiDrawer* drawer, std::function<rex::system::IInputSystem*()> input,
                    rex::ui::Window* window)
-      : ImGuiDialog(drawer), get_input_(std::move(input)), window_(window), english_(UseEnglish()) {}
+      : ImGuiDialog(drawer), get_input_(std::move(input)), english_(UseEnglish()) {}
 
   ~QuitPromptDialog() override {
     if (blocking_ && input_) input_->RemoveUIInputBlocker();
@@ -133,43 +154,84 @@ class QuitPromptDialog : public rex::ui::ImGuiDialog {
       return;
     }
 
-    bool quit = (pressed & rex::input::X_INPUT_GAMEPAD_A) != 0;
+    const bool launcher = LauncherWaiting();
+    bool to_launcher = launcher && (pressed & rex::input::X_INPUT_GAMEPAD_A) != 0;
+    bool quit = (pressed & (launcher ? rex::input::X_INPUT_GAMEPAD_Y : rex::input::X_INPUT_GAMEPAD_A)) != 0;
     bool back = (pressed & rex::input::X_INPUT_GAMEPAD_B) != 0;
 
-    const ImVec2 size(360.0f, 0.0f);
+    const float width = 440.0f;
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always,
                             ImVec2(0.5f, 0.5f));
-    ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.04f, 0.04f, 0.04f, 0.97f));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.78f, 0.06f, 0.18f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.43f, 0.03f, 0.09f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.78f, 0.06f, 0.18f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.91f, 0.14f, 0.25f, 1.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 16.0f));
+    ImGui::SetNextWindowSize(ImVec2(width, 0.0f), ImGuiCond_Always);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.047f, 0.047f, 0.055f, 0.98f));
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.16f, 0.16f, 0.18f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.11f, 0.11f, 0.12f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.17f, 0.17f, 0.19f, 1.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.78f, 0.06f, 0.18f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(28.0f, 26.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 2.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.0f, 8.0f));
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings |
                                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize;
     if (ImGui::Begin("##rewor_quit", nullptr, flags)) {
-      ImGui::SetWindowFontScale(1.3f);
+      ImDrawList* draw = ImGui::GetWindowDrawList();
+      const ImVec2 pos = ImGui::GetWindowPos();
+      draw->AddRectFilled(pos, ImVec2(pos.x + width, pos.y + 3), IM_COL32(232, 36, 64, 255));
+
+      PushMenuFont(2);
       ImGui::TextUnformatted(english_ ? "Quit the game?" : "Sair do jogo?");
-      ImGui::SetWindowFontScale(1.0f);
-      ImGui::Spacing();
-      ImGui::TextDisabled("%s", english_ ? "A (green): quit     B (red): back"
-                                         : "A (verde): sair     B (vermelho): voltar");
-      ImGui::Spacing();
-      const float button = (size.x - 40.0f - 8.0f) * 0.5f;
-      if (ImGui::Button(english_ ? "Quit" : "Sair", ImVec2(button, 32.0f))) quit = true;
-      ImGui::SameLine(0.0f, 8.0f);
-      if (ImGui::Button(english_ ? "Back" : "Voltar", ImVec2(button, 32.0f))) back = true;
+      ImGui::PopFont();
+      PushMenuFont(0);
+      ImGui::TextColored(ImVec4(0.55f, 0.55f, 0.58f, 1.0f), "%s",
+                         launcher ? (english_ ? "The launcher opens again, with your settings."
+                                              : "O launcher abre de novo, com as suas configurações.")
+                                  : (english_ ? "The game closes." : "O jogo fecha."));
+      ImGui::PopFont();
+      ImGui::Dummy(ImVec2(0, 6));
+
+      // One row per choice: the controller button in its fret's color, then the words.
+      PushMenuFont(1);
+      auto choice = [&](const char* id, const char* letter, ImU32 color, const char* text, bool primary) {
+        const float w = width - 56.0f;
+        if (primary) {
+          ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.78f, 0.06f, 0.18f, 1.0f));
+          ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.91f, 0.14f, 0.25f, 1.0f));
+        }
+        const ImVec2 at = ImGui::GetCursorScreenPos();
+        const bool clicked = ImGui::Button(id, ImVec2(w, 44.0f));
+        if (primary) ImGui::PopStyleColor(2);
+        const float cy = at.y + 22.0f;
+        draw->AddCircleFilled(ImVec2(at.x + 24.0f, cy), 11.0f, color, 20);
+        const ImVec2 ls = ImGui::CalcTextSize(letter);
+        draw->AddText(ImVec2(at.x + 24.0f - ls.x * 0.5f, cy - ls.y * 0.5f), IM_COL32(12, 12, 14, 255), letter);
+        const ImVec2 ts = ImGui::CalcTextSize(text);
+        draw->AddText(ImVec2(at.x + 48.0f, cy - ts.y * 0.5f), IM_COL32(240, 240, 242, 255), text);
+        return clicked;
+      };
+      const ImU32 green = IM_COL32(60, 200, 90, 255);
+      const ImU32 yellow = IM_COL32(240, 200, 40, 255);
+      const ImU32 red = IM_COL32(232, 52, 64, 255);
+      if (launcher) {
+        if (choice("##launcher", "A", green, english_ ? "Back to the launcher" : "Voltar ao launcher", true)) {
+          to_launcher = true;
+        }
+        if (choice("##quit", "Y", yellow, english_ ? "Quit the game" : "Sair do jogo", false)) quit = true;
+      } else if (choice("##quit", "A", green, english_ ? "Quit the game" : "Sair do jogo", true)) {
+        quit = true;
+      }
+      if (choice("##back", "B", red, english_ ? "Keep playing" : "Continuar jogando", false)) back = true;
+      ImGui::PopFont();
     }
     ImGui::End();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(5);
     ImGui::PopStyleColor(5);
 
-    if (quit) {
-      REXLOG_INFO("[quit] quitting from the main menu");
+    if (to_launcher || quit) {
+      REXLOG_INFO("[quit] quitting from the main menu{}", to_launcher ? ", back to the launcher" : "");
       open_ = false;
-      if (window_) window_->RequestClose();
+      QuitGame(to_launcher);
     } else if (back) {
       open_ = false;
     }
@@ -178,7 +240,6 @@ class QuitPromptDialog : public rex::ui::ImGuiDialog {
  private:
   std::function<rex::system::IInputSystem*()> get_input_;
   rex::input::InputSystem* input_ = nullptr;
-  rex::ui::Window* window_;
   bool english_;
   bool open_ = false;
   bool blocking_ = false;
@@ -203,5 +264,21 @@ void ReWorMainMenuHook() {
 std::unique_ptr<rex::ui::ImGuiDialog> CreateQuitPrompt(rex::ui::ImGuiDrawer* drawer,
                                                        std::function<rex::system::IInputSystem*()> input,
                                                        rex::ui::Window* window) {
+  g_window = window;
   return std::make_unique<QuitPromptDialog>(drawer, std::move(input), window);
+}
+
+bool LauncherWaiting() {
+  static const bool waiting = [] {
+    const char* value = std::getenv("ERASED_LAUNCHER");
+    return value && value[0] == '1';
+  }();
+  return waiting;
+}
+
+void QuitGame(bool to_launcher) {
+  if (to_launcher) {
+    std::ofstream(ExeFolder() / "return_to_launcher.txt") << "1\n";
+  }
+  if (g_window) g_window->RequestClose();
 }

@@ -240,9 +240,13 @@ namespace ReWor
 
     // Every user-facing string, in Portuguese and English. The launcher starts in
     // the Windows language and remembers the choice made with the PT/EN switch.
-    static class Strings
+    static partial class Strings
     {
-        public static bool English;
+        // The launcher's language: "pt" and "en" come from the table below, the others from
+        // Translations.cs, falling back to English where a text is missing.
+        public static readonly string[] Languages = { "pt", "en", "es", "fr", "de", "it" };
+        public static string Lang = "pt";
+        public static bool English { get { return Lang != "pt"; } }
 
         static readonly Dictionary<string, string[]> table = new Dictionary<string, string[]>
         {
@@ -273,7 +277,7 @@ namespace ReWor
             { "tab_home", new[] { "INÍCIO", "HOME" } },
             { "fps_label", new[] { "Taxa de quadros (acima de 60 precisa de um PC forte e de um monitor rápido)", "Frame rate (above 60 needs a strong PC and a fast display)" } },
             { "fps_60", new[] { "60 FPS (como no console)", "60 FPS (as on the console)" } },
-            { "gpu_label", new[] { "API gráfica (vale ao abrir o jogo)", "Graphics API (applies when the game starts)" } },
+            { "gpu_label", new[] { "API gráfica (no Vulkan não há resolução abaixo de 100%, DLSS nem FSR 3/4)", "Graphics API (Vulkan has no resolution below 100%, DLSS or FSR 3/4)" } },
             { "gpu_any", new[] { "Automática (DirectX 12)", "Automatic (DirectX 12)" } },
             { "win_minimize", new[] { "Minimizar", "Minimize" } },
             { "win_mode_window", new[] { "Abrir em janela (F11)", "Window mode (F11)" } },
@@ -291,6 +295,12 @@ namespace ReWor
             { "pick_profile", new[] { "Perfil:", "Profile:" } },
             { "pick_hint", new[] { "← → e Enter, ou clique", "← → and Enter, or click" } },
             { "rail_games", new[] { "Todos os jogos", "All games" } },
+            { "hint_select", new[] { "Escolher", "Select" } },
+            { "hint_back", new[] { "Voltar", "Back" } },
+            { "hint_tabs", new[] { "Abas", "Pages" } },
+            { "hint_games", new[] { "Jogos", "Games" } },
+            { "hint_pick", new[] { "Trocar de jogo", "Switch game" } },
+            { "hint_open", new[] { "Abrir", "Open" } },
             { "tab_controls", new[] { "CONTROLES", "CONTROLS" } },
             { "audio_buffer", new[] { "Buffer de áudio (vale ao abrir o jogo)", "Audio buffer (applies when the game starts)" } },
             { "audio_16", new[] { "16 (menos atraso)", "16 (less delay)" } },
@@ -437,6 +447,16 @@ namespace ReWor
                 "A device never goes to two players. Who sings on the PC microphone is picked on the MICROPHONE page. Applies when the game starts." } },
             { "tab_mic", new[] { "MICROFONE", "MICROPHONE" } },
             { "tab_update", new[] { "ATUALIZAR", "UPDATE" } },
+            { "tab_support", new[] { "APOIE", "SUPPORT" } },
+            { "support_title", new[] { "AJUDE ESTE PROJETO", "SUPPORT THIS PROJECT" } },
+            { "support_text", new[] { "O Erased Reboot Version é feito por uma pessoa só, de graça, nas horas vagas. Se ele te divertiu, qualquer valor ajuda a manter o projeto vivo: mais jogos, mais correções e mais horas de teste.", "Erased Reboot Version is made by one person, for free, in spare time. If it brought you some fun, any amount helps keep the project alive: more games, more fixes and more hours of testing." } },
+            { "support_livepix_title", new[] { "LIVEPIX", "LIVEPIX" } },
+            { "support_livepix_text", new[] { "Pix na hora, para quem está no Brasil. Você pode deixar uma mensagem junto.", "Instant Pix, for players in Brazil. You can leave a message with it." } },
+            { "support_livepix_button", new[] { "APOIAR NO LIVEPIX", "SUPPORT ON LIVEPIX" } },
+            { "support_kofi_title", new[] { "KO-FI", "KO-FI" } },
+            { "support_kofi_text", new[] { "Cartão ou PayPal, de qualquer país. Um café já faz diferença.", "Card or PayPal, from any country. A single coffee already makes a difference." } },
+            { "support_kofi_button", new[] { "APOIAR NO KO-FI", "SUPPORT ON KO-FI" } },
+            { "support_banner", new[] { "♥  AJUDE ESTE PROJETO  ·  LivePix e Ko-fi", "♥  SUPPORT THIS PROJECT  ·  LivePix and Ko-fi" } },
             { "mic_who", new[] { "Quem canta", "Who sings" } },
             { "mic_device", new[] { "Microfone", "Microphone" } },
             { "mic_default", new[] { "Padrão do Windows", "Windows default" } },
@@ -468,7 +488,10 @@ namespace ReWor
             { "update_note", new[] {
                 "A atualização troca o launcher e os arquivos do port. Suas configurações, a pasta do jogo, mods e DLC ficam como estão. Os arquivos do jogo nunca vêm junto.",
                 "The update replaces the launcher and the port's files. Your settings, game folder, mods and DLC stay as they are. The game's files never come with it." } },
-            { "kb_enabled", new[] { "Jogar no teclado (como guitarra)", "Play on the keyboard (as a guitar)" } },
+            { "kb_mode_label", new[] { "Teclado no jogo", "Keyboard in the game" } },
+            { "kb_mode_guitar", new[] { "Guitarra (trastes, palheta e alavanca nas teclas)", "Guitar (frets, strum and whammy on the keys)" } },
+            { "kb_mode_mic", new[] { "Microfone (controle do vocalista)", "Microphone (the singer's controller)" } },
+            { "kb_mode_off", new[] { "Desligado", "Off" } },
             { "kb_asjkl", new[] { "A S J K L + setas (estilo Clone Hero)", "A S J K L + arrows (Clone Hero style)" } },
             { "kb_numbers", new[] { "1 2 3 4 5 + setas", "1 2 3 4 5 + arrows" } },
             { "kb_start", new[] { "Start", "Start" } },
@@ -504,11 +527,13 @@ namespace ReWor
             { "installing", new[] { "Instalando os arquivos do jogo da sua cópia...", "Installing the game files from your copy..." } },
             { "install_failed", new[] { "Não deu para instalar os arquivos do jogo.", "The game files could not be installed." } },
             { "bad_folder", new[] { "Essa pasta não tem o default.xex e a pasta data do jogo.", "That folder does not have the game's default.xex and data folder." } },
-            { "res_label", new[] { "Resolução interna do jogo", "Game internal resolution" } },
+            { "res_label", new[] { "Resolução da tela", "Screen resolution" } },
             { "res_720", new[] { "1280x720 (HD, padrão do Xbox 360)", "1280x720 (HD, Xbox 360 default)" } },
             { "res_480w", new[] { "848x480 (SD widescreen, mais leve)", "848x480 (SD widescreen, lighter)" } },
             { "res_480", new[] { "640x480 (SD 4:3, o mais leve)", "640x480 (SD 4:3, lightest)" } },
             { "res_1080", new[] { "1920x1080 (Full HD)", "1920x1080 (Full HD)" } },
+            { "res_1440", new[] { "2560x1440 (QHD)", "2560x1440 (QHD)" } },
+            { "res_2160", new[] { "3840x2160 (4K, junto com 3x na resolução de desenho)", "3840x2160 (4K, pair it with the 3x render scale)" } },
             { "res_uw1080", new[] { "2560x1080 (ultrawide 21:9, experimental)", "2560x1080 (ultrawide 21:9, experimental)" } },
             { "res_uw1440", new[] { "3440x1440 (ultrawide 21:9, experimental)", "3440x1440 (ultrawide 21:9, experimental)" } },
             { "scale_label", new[] { "Resolução interna (abaixo de 720p deixa a GPU mais leve)", "Internal resolution (below 720p is lighter on the GPU)" } },
@@ -519,13 +544,23 @@ namespace ReWor
             { "present_label", new[] { "Ajuste da imagem na tela", "Image scaling" } },
             { "present_bilinear", new[] { "Bilinear (mais leve)", "Bilinear (lightest)" } },
             { "present_cas", new[] { "AMD CAS (nitidez)", "AMD CAS (sharpening)" } },
-            { "present_fsr", new[] { "AMD FSR (melhor em resolução baixa)", "AMD FSR (best at low resolution)" } },
+            { "present_fsr", new[] { "AMD FSR 1 (melhor quando a janela é maior que a imagem)", "AMD FSR 1 (best when the window is bigger than the picture)" } },
+            { "upscale_label", new[] { "Resolução de desenho (PC forte: mais nítido)", "Render resolution (strong PC: sharper)" } },
+            { "upscale_1", new[] { "1x (720p, como no console)", "1x (720p, as on the console)" } },
+            { "upscale_2", new[] { "2x (1440p)", "2x (1440p)" } },
+            { "upscale_3", new[] { "3x (4K)", "3x (4K)" } },
+            { "aa_label", new[] { "DLSS / FSR na cena (experimental)", "DLSS / FSR on the scene (experimental)" } },
+            { "aa_off", new[] { "Desligado", "Off" } },
+            { "aa_dlaa", new[] { "NVIDIA DLAA (anti-serrilhado, placas RTX)", "NVIDIA DLAA (anti-aliasing, RTX cards)" } },
+            { "aa_dlss", new[] { "NVIDIA DLSS Qualidade (com 2x ou 3x, placas RTX)", "NVIDIA DLSS Quality (with 2x or 3x, RTX cards)" } },
+            { "aa_fsr_native", new[] { "AMD FSR 3/4 anti-serrilhado", "AMD FSR 3/4 anti-aliasing" } },
+            { "aa_fsr", new[] { "AMD FSR 3/4 Qualidade (com 2x ou 3x)", "AMD FSR 3/4 Quality (with 2x or 3x)" } },
             { "fullscreen", new[] { "Tela cheia", "Fullscreen" } },
             { "vsync", new[] { "V-Sync (desligado = 60 FPS fixos sem esperar o monitor)", "V-Sync (off = a steady 60 FPS without waiting for the display)" } },
             { "show_fps", new[] { "Mostrar FPS no canto da tela (F2 liga e desliga no jogo)", "Show FPS in the corner (F2 toggles it in game)" } },
             { "video_note", new[] {
-                "Ultrawide é experimental: o jogo foi feito para 16:9 e pode esticar ou cortar a imagem.",
-                "Ultrawide is experimental: the game was made for 16:9 and may stretch or crop the image." } },
+                "Abaixo de 100% e o FSR 1 aliviam PCs fracos. Em PC forte, 2x ou 3x deixam a imagem nítida; DLSS e FSR 3/4 desenham abaixo disso e reconstroem a imagem. Ultrawide é experimental.",
+                "Below 100% and FSR 1 help weak PCs. On a strong PC, 2x or 3x make the picture sharp; DLSS and FSR 3/4 render below that and rebuild the picture. Ultrawide is experimental." } },
             { "motion_blur", new[] { "Desfoque de movimento (motion blur)", "Motion blur" } },
             { "screen_noise", new[] { "Granulado de tela (screen noise)", "Screen noise" } },
             { "dof", new[] { "Profundidade de campo (DOF, pesado)", "Depth of field (DOF, heavy)" } },
@@ -547,11 +582,19 @@ namespace ReWor
             { "missing_fx", new[] { "Opções não encontradas nos scripts: ", "Options not found in the game scripts: " } },
             { "scripts_missing", new[] { "Arquivo de scripts do jogo não encontrado.", "Game scripts file not found." } },
             { "footer", new[] { "Projeto de fãs, sem ligação com a Activision ou a Neversoft.", "Fan project, not affiliated with Activision or Neversoft." } },
+            { "motion", new[] { "Animações do launcher", "Launcher animations" } },
+            { "pad_help", new[] { "Controle: ↑↓ escolher · ←→ mudar · A ok · B voltar · LB RB abas · Start jogar",
+                                  "Controller: ↑↓ move · ←→ change · A ok · B back · LB RB pages · Start play" } },
+            { "lang_names", new[] { "Português|English|Español|Français|Deutsch|Italiano", "Português|English|Español|Français|Deutsch|Italiano" } },
         };
 
         public static string T(string key)
         {
-            return table[key][English ? 1 : 0];
+            if (Lang == "pt") return table[key][0];
+            Dictionary<string, string> other;
+            string text;
+            if (Lang != "en" && extra.TryGetValue(Lang, out other) && other.TryGetValue(key, out text)) return text;
+            return table[key][1];
         }
     }
 
@@ -597,6 +640,21 @@ namespace ReWor
             public uint Unknown2;
         }
         [DllImport("xinput1_4.dll")] static extern uint XInputGetState(uint user, out XState state);
+
+        public struct PadState { public ushort Buttons; public short LX, LY; }
+
+        // One XInput controller's buttons and left stick, for moving through the launcher.
+        public static bool ReadPad(uint user, out PadState pad)
+        {
+            pad = new PadState();
+            XState st;
+            try { if (XInputGetState(user, out st) != 0) return false; }
+            catch (Exception) { return false; }
+            pad.Buttons = st.Pad.Buttons;
+            pad.LX = st.Pad.LX;
+            pad.LY = st.Pad.LY;
+            return true;
+        }
         [DllImport("xinput1_4.dll", EntryPoint = "#108")] static extern uint XInputGetCapabilitiesEx(uint one, uint user, uint flags, out XCapsEx caps);
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -629,6 +687,17 @@ namespace ReWor
         static volatile bool joyReported;
         static bool joyWaited;
         static DateTime joyLastReport;
+
+        // While the game runs the launcher waits hidden, and the helper's reads would only cost CPU.
+        public static void StopJoyHelper()
+        {
+            lock (joyLock)
+            {
+                if (joyHelper != null && !joyHelper.HasExited) { try { joyHelper.Kill(); } catch (Exception) { } }
+                joyHelper = null;
+                joyHelperStart = DateTime.MinValue;
+            }
+        }
 
         static void EnsureJoyHelper()
         {
@@ -1527,14 +1596,21 @@ namespace ReWor
         const string LanguageFile = "launcher_language.txt";
         static string Title1 = "ERASED";
         static string Title2 = "REBOOT VERSION";
-        // A wide window: a sidebar with the logo and the pages, the page on the right.
-        // At the far left, the rail with one tile per game (Warriors of Rock, Guitar Hero 5).
+        // A wide window: at the top the logo, the languages and the pages as tabs (LB and RB turn
+        // them), the page below. At the far left, the rail with one tile per game.
         const int Rail = 76;
-        const int W = 1000 + Rail;
-        const int H = 620;
-        const int Side = 250;
-        const int ContentX = Rail + Side + 30;
-        const int PageW = W - Rail - Side - 60;
+        const int BaseW = 1000 + Rail;
+        static int W = BaseW;
+        const int H = 636;
+        // The launcher is laid out at 636 pixels high and drawn Ui times bigger: 1 in the window, the screen's height
+        // over 636 in fullscreen (1.7 on a 1080p screen). B turns a size on screen back into layout pixels.
+        static float Ui = 1f;
+        static int B(int px) { return (int)Math.Round(px / Ui); }
+        const int TopBar = 104;
+        const int TabsY = 60, TabsH = 40;
+        const int ContentX = Rail + 24;
+        static int PageW { get { return W - Rail - 48; } }
+        const int PageY = 172;
 
         const int GameWor = 0;
         const int GameGh5 = 1;
@@ -1600,7 +1676,7 @@ namespace ReWor
         readonly Settings worSettings;
         readonly FontFamily titleFamily = TitleFont.Load();
 
-        ComboBox resolution, drawScale, presentEffect, anisotropy, language, gpuApi, frameRate;
+        ComboBox resolution, drawScale, presentEffect, anisotropy, language, gpuApi, frameRate, renderScale, sceneUpscaler, kbMode;
         CheckBox fullscreen, vsync, gamma16, motionBlur, screenNoise, depthOfField, bloom, showFps, debugMenu, skipIntro;
 
         // keybind cvar (the keyboard's pad button it presses), label key, then the A S J K L and 1 2 3 4 5 presets.
@@ -1625,7 +1701,6 @@ namespace ReWor
             new[] { "keybind_lstick_left", "" }, new[] { "keybind_lstick_right", "" },
             new[] { "keybind_dpad_left", "Left" }, new[] { "keybind_dpad_right", "Right" },
         };
-        CheckBox kbEnabled;
         TextBox profileName;
         const int PictureSide = 64;
         const string PictureFile = "profile_picture.png";
@@ -1660,7 +1735,7 @@ namespace ReWor
         const int VideoPage = 2;
         const int MicPage = 6;
         const int OnlinePage = 7;
-        const string AppVersion = "2.4";
+        const string AppVersion = "2.5";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
         const bool OnlineTab = true;
@@ -1711,11 +1786,12 @@ namespace ReWor
         public LauncherForm()
         {
             worSettings = new Settings(Path.Combine(gameDir, ConfigName));
-            Strings.English = LoadLanguage();
+            Strings.Lang = LoadLanguage();
+            motion = LoadMotion();
 
             Text = "Erased Reboot Version - re-wor";
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(W, H);
+            ClientSize = new Size(BaseW, H);
             BackColor = Color.Black;
             host = new Canvas { Size = new Size(W, H), BackColor = Bg };
             Controls.Add(host);
@@ -1749,6 +1825,7 @@ namespace ReWor
             };
             FormClosed += delegate { if (meter != null) { meter.Dispose(); meter = null; } };
             PlayIntro();
+            StartPad();
         }
 
         // The game folders and the game RecompLauncher passes on the command line. Returns the game's
@@ -1827,33 +1904,42 @@ namespace ReWor
             foreach (Control c in old) c.Dispose();
             navButtons.Clear();
             pages.Clear();
+            padRing = null;
+            ringTarget = null;
+            padTarget = null;
+            pageCover = null;
+            navBar = null;
+            homePlay = null;
             BuildUi();
             LoadSettings();
             ShowPage(page < 0 || page >= pages.Count ? 0 : page);
             ResumeLayout();
         }
 
-        bool LoadLanguage()
+        string LoadLanguage()
         {
             try
             {
                 string saved = File.ReadAllText(Path.Combine(gameDir, LanguageFile)).Trim();
-                if (saved == "en") return true;
-                if (saved == "pt") return false;
+                if (Array.IndexOf(Strings.Languages, saved) >= 0) return saved;
             }
             catch (Exception) { }
-            return System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName != "pt";
+            string system = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+            return Array.IndexOf(Strings.Languages, system) >= 0 ? system : "en";
         }
+
+        // Kept for the scripts that render the pages: true is English, false Portuguese.
+        void SwitchLanguage(bool english) { SwitchLanguage(english ? "en" : "pt"); }
 
         // Rebuilds every control in the new language, keeping what the user has
         // picked so far (it is copied into the settings without saving them).
-        void SwitchLanguage(bool english)
+        void SwitchLanguage(string lang)
         {
-            if (english == Strings.English) return;
+            if (lang == Strings.Lang) return;
             CollectSettings();
             if (meter != null) { meter.Dispose(); meter = null; }
-            Strings.English = english;
-            try { File.WriteAllText(Path.Combine(gameDir, LanguageFile), english ? "en" : "pt"); } catch (Exception) { }
+            Strings.Lang = lang;
+            try { File.WriteAllText(Path.Combine(gameDir, LanguageFile), lang); } catch (Exception) { }
             RebuildUi(currentPage);
         }
 
@@ -1891,11 +1977,12 @@ namespace ReWor
                 FormBorderStyle = FormBorderStyle.FixedSingle;
                 MaximizeBox = false;
                 WindowState = FormWindowState.Normal;
-                ClientSize = new Size(W, H);
+                ClientSize = new Size(BaseW, H);
                 Rectangle area = Screen.FromControl(this).WorkingArea;
                 Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
             }
             ResumeLayout();
+            if (UpdateScale() && host.Controls.Count > 0) RebuildUi(currentPage);
             PlaceHost();
             if (windowModeButton != null)
             {
@@ -1908,10 +1995,52 @@ namespace ReWor
             Invalidate();
         }
 
+        // The scale for the window's size; true when it changed (the pages are then built again).
+        bool UpdateScale()
+        {
+            float ui = 1f;
+            int w = BaseW;
+            if (fullscreenWindow && ClientSize.Height > H)
+            {
+                ui = ClientSize.Height / (float)H;
+                w = Math.Max(BaseW, (int)(ClientSize.Width / ui));
+            }
+            bool changed = Math.Abs(ui - Ui) > 0.001f || w != W;
+            Ui = ui;
+            W = w;
+            return changed;
+        }
+
+        // After the pages are built at the base size: every control and font grows by Ui.
+        void ApplyUiScale()
+        {
+            host.Size = new Size(W, H);
+            if (Math.Abs(Ui - 1f) < 0.001f) { PlaceHost(); return; }
+            var own = new List<Control>();
+            FindOwnFonts(host, own);
+            host.Scale(new SizeF(Ui, Ui));
+            host.Font = new Font(Font.FontFamily, Font.Size * Ui, Font.Style, Font.Unit);
+            foreach (Control c in own) c.Font = new Font(c.Font.FontFamily, c.Font.Size * Ui, c.Font.Style, c.Font.Unit);
+            foreach (KeyValuePair<Button, float> g in glyphPads)
+                g.Key.Padding = new Padding((int)(g.Value * Ui), 0, 0, 0);
+            PlaceHost();
+        }
+
+        // The controls with a font of their own (the others take their parent's, scaled with it).
+        static void FindOwnFonts(Control parent, List<Control> own)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                // A font the control did not set is its parent's own object.
+                if (!ReferenceEquals(c.Font, parent.Font)) own.Add(c);
+                FindOwnFonts(c, own);
+            }
+        }
+
         void PlaceHost()
         {
             if (host == null) return;
-            host.Location = new Point(Math.Max(0, (ClientSize.Width - W) / 2), Math.Max(0, (ClientSize.Height - H) / 2));
+            host.Location = new Point(Math.Max(0, (ClientSize.Width - host.Width) / 2), Math.Max(0, (ClientSize.Height - host.Height) / 2));
             int x = ClientSize.Width - 8;
             foreach (Control c in Controls)
             {
@@ -1979,18 +2108,12 @@ namespace ReWor
 
         void BuildUi()
         {
+            host.Font = null;
+            host.Size = new Size(W, H);
+            glyphPads.Clear();
             host.Controls.Add(BuildRail());
-            host.Controls.Add(BuildSidebar());
-
-            pageTitle = new Label
-            {
-                Location = new Point(ContentX, 18), Size = new Size(PageW - 110, 44), ForeColor = Color.White,
-                BackColor = Bg, Font = new Font(titleFamily, 22f, FontStyle.Regular, GraphicsUnit.Point),
-                UseCompatibleTextRendering = true
-            };
-            host.Controls.Add(pageTitle);
-            host.Controls.Add(MakeLanguageButton("PT", W - 30 - 82, false));
-            host.Controls.Add(MakeLanguageButton("EN", W - 30 - 40, true));
+            host.Controls.Add(BuildTopBar());
+            pageTitle = null;
             host.Controls.Add(BuildSeal());
 
             pageNames = PageNames();
@@ -2000,11 +2123,12 @@ namespace ReWor
             if (OnlineTab) builtList.Add(onlinePage);
             builtList.Add(BuildControlsTab());
             builtList.Add(BuildProfileTab());
+            builtList.Add(BuildSupportTab());
             builtList.Add(BuildUpdateTab());
             Control[] built = builtList.ToArray();
             for (int i = 0; i < built.Length; i++)
             {
-                built[i].Location = new Point(ContentX, 142);
+                built[i].Location = new Point(ContentX, PageY);
                 built[i].Size = new Size(PageW, 384);
                 pages.Add(built[i]);
                 host.Controls.Add(built[i]);
@@ -2012,23 +2136,27 @@ namespace ReWor
 
             ShowProfilePicture();
 
-            status = new Label { Location = new Point(ContentX, 548), Size = new Size(PageW - 300, 40), ForeColor = Text2, TextAlign = ContentAlignment.MiddleLeft };
+            status = new Label { Location = new Point(ContentX, H - 82), Size = new Size(PageW - 330, 44), ForeColor = Text2, TextAlign = ContentAlignment.MiddleLeft };
             host.Controls.Add(status);
+            host.Controls.Add(BuildHints());
 
-            var save = MakeButton(Strings.T("save"), new Point(W - 30 - 160 - 12 - 120, 544), false);
-            save.Size = new Size(120, 48);
+            var save = MakeButton(Strings.T("save"), new Point(W - 24 - 160 - 12 - 140, H - 70), false);
+            save.Size = new Size(140, 48);
+            AddGlyph(save, "X");
             save.Click += delegate { if (Apply()) status.Text = Strings.T("saved"); };
             host.Controls.Add(save);
 
-            var play = MakeButton(Strings.T("play"), new Point(W - 30 - 160, 544), true);
+            var play = MakeButton(Strings.T("play"), new Point(W - 24 - 160, H - 70), true);
             play.Size = new Size(160, 48);
             play.Font = new Font("Segoe UI", 13f, FontStyle.Bold);
+            AddGlyph(play, "START");
             play.Click += delegate { if (Apply()) Launch(); };
             host.Controls.Add(play);
             AcceptButton = play;
             bottomPlay = play;
             bottomSave = save;
             if (currentPage == HomePage) play.Visible = save.Visible = false;
+            ApplyUiScale();
         }
 
         static string[] PageNames()
@@ -2037,6 +2165,7 @@ namespace ReWor
             if (OnlineTab) names.Add(Strings.T("tab_online"));
             names.Add(Strings.T("tab_controls"));
             names.Add(Strings.T("tab_profile"));
+            names.Add(Strings.T("tab_support"));
             names.Add(Strings.T("tab_update"));
             return names.ToArray();
         }
@@ -2059,14 +2188,16 @@ namespace ReWor
                 tile.Paint += delegate(object s, PaintEventArgs e)
                 {
                     var g = e.Graphics;
+                    g.ScaleTransform(Ui, Ui);
+                    int tw = B(tile.Width), th = B(tile.Height);
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                     bool on = game == activeGame;
-                    var r = new Rectangle(0, 0, tile.Width - 1, tile.Height - 1);
+                    var r = new Rectangle(0, 0, tw - 1, th - 1);
                     Color c = colors[game];
                     using (var fill = new SolidBrush(on ? Color.FromArgb(60, c) : Color.FromArgb(14, 14, 16)))
                         g.FillRectangle(fill, r);
-                    PickIcon.Draw(g, new RectangleF(7, 6, tile.Width - 14, tile.Height - 14), game == GameWor ? PickIcon.Wor : PickIcon.Gh5, titleFamily);
+                    PickIcon.Draw(g, new RectangleF(7, 6, tw - 14, th - 14), game == GameWor ? PickIcon.Wor : PickIcon.Gh5, titleFamily);
                     if (!on)
                         using (var veil = new SolidBrush(Color.FromArgb(120, 0, 0, 0)))
                             g.FillRectangle(veil, r);
@@ -2089,13 +2220,15 @@ namespace ReWor
             all.Paint += delegate(object s, PaintEventArgs e)
             {
                 var g = e.Graphics;
-                var r = new Rectangle(0, 0, all.Width - 1, all.Height - 1);
+                g.ScaleTransform(Ui, Ui);
+                int aw = B(all.Width), ah = B(all.Height);
+                var r = new Rectangle(0, 0, aw - 1, ah - 1);
                 using (var fill = new SolidBrush(allHover ? Color.FromArgb(34, 34, 38) : Color.FromArgb(18, 18, 20)))
                     g.FillRectangle(fill, r);
                 using (var border = new Pen(Color.FromArgb(allHover ? 160 : 70, 255, 255, 255)))
                     g.DrawRectangle(border, r);
                 int cell = 9, gap = 4, side = cell * 2 + gap;
-                int x0 = (all.Width - side) / 2, y0 = (all.Height - side) / 2;
+                int x0 = (aw - side) / 2, y0 = (ah - side) / 2;
                 for (int i = 0; i < 4; i++)
                 {
                     Color c = i == 0 || i == 3 ? GameColors[i == 0 ? 0 : 1] : Color.FromArgb(allHover ? 230 : 170, 255, 255, 255);
@@ -2108,6 +2241,7 @@ namespace ReWor
             rail.Controls.Add(all);
             rail.Paint += delegate(object s, PaintEventArgs e)
             {
+                e.Graphics.ScaleTransform(Ui, Ui);
                 using (var bar = new SolidBrush(Red))
                     e.Graphics.FillRectangle(bar, 0, 20 + activeGame * 74, 4, Rail - 20);
                 using (var line = new SolidBrush(Color.FromArgb(28, 28, 30)))
@@ -2132,7 +2266,26 @@ namespace ReWor
         readonly Random pickerRandom = new Random();
         PointF[] pickerBolt, pickerBranch;
         DateTime pickerBoltAt;
-        float[][] pickerSparks;
+        // Lightning in the sky behind the cards, in the color of the side it strikes.
+        sealed class Bolt
+        {
+            public PointF[] Main;
+            public List<PointF[]> Branches = new List<PointF[]>();
+            public DateTime Born;
+            public double Life;
+            public Color Color;
+            public float Width;
+        }
+        readonly List<Bolt> skyBolts = new List<Bolt>();
+        DateTime nextSkyBolt;
+
+        // The opening, played on the picker: a bolt strikes, ERASED REBOOT VERSION lights up in the
+        // flash, then the logo rises to the top and the two games come in under it.
+        bool pickerIntro;
+        DateTime introAt = DateTime.MinValue;
+        PointF[] introBolt;
+        List<PointF[]> introBranches;
+        const double StrikeMs = 260, FlashMs = 420, HoldMs = 1150, RiseMs = 700;
 
         // Where a game's files are, or null: the folder saved for it, and for Warriors of Rock
         // also the "assets" folder next to the launcher.
@@ -2223,22 +2376,77 @@ namespace ReWor
                 if (pickerSource[i] != null) pickerArt[i] = CoverArt(pickerSource[i], card.Width, card.Height, focus[i]);
                 pickerBack[i] = BackArt(pickerSource[i], picker.Width + ParallaxMargin * 2, picker.Height, GameColors[i]);
             }
-            pickerSparks = new float[70][];
-            for (int i = 0; i < pickerSparks.Length; i++) pickerSparks[i] = NewSpark(true);
+            skyBolts.Clear();
+            introBolt = null;
         }
 
-        // An ember: x, y, rise speed, size, drift.
-        float[] NewSpark(bool anywhere)
+        // A jagged line from one point to another: each step strays sideways, less near the ends.
+        PointF[] Zigzag(PointF from, PointF to, int steps, float stray)
         {
-            float w = picker.Width + ParallaxMargin * 2, h = picker.Height;
-            return new[]
+            var pts = new PointF[steps + 1];
+            float dx = to.X - from.X, dy = to.Y - from.Y;
+            float len = (float)Math.Sqrt(dx * dx + dy * dy);
+            float nx = len > 0 ? -dy / len : 0, ny = len > 0 ? dx / len : 0;
+            float off = 0;
+            for (int i = 0; i <= steps; i++)
             {
-                (float)pickerRandom.NextDouble() * w - ParallaxMargin,
-                anywhere ? (float)pickerRandom.NextDouble() * h : h + 10,
-                0.6f + (float)pickerRandom.NextDouble() * 1.8f,
-                1.2f + (float)pickerRandom.NextDouble() * 2.6f,
-                (float)(pickerRandom.NextDouble() - 0.5) * 0.6f
+                float t = i / (float)steps;
+                off += (float)(pickerRandom.NextDouble() - 0.5) * stray;
+                float k = (float)Math.Sin(t * Math.PI);
+                pts[i] = new PointF(from.X + dx * t + nx * off * k, from.Y + dy * t + ny * off * k);
+            }
+            return pts;
+        }
+
+        List<PointF[]> Branches(PointF[] main, int count, float reach)
+        {
+            var list = new List<PointF[]>();
+            for (int b = 0; b < count; b++)
+            {
+                int at = 2 + pickerRandom.Next(Math.Max(1, main.Length - 5));
+                float dir = pickerRandom.Next(2) == 0 ? -1 : 1;
+                PointF p = main[at];
+                var end = new PointF(p.X + dir * reach * (0.4f + (float)pickerRandom.NextDouble() * 0.6f),
+                                     p.Y + reach * (0.5f + (float)pickerRandom.NextDouble() * 0.7f));
+                list.Add(Zigzag(p, end, 6, reach * 0.35f));
+            }
+            return list;
+        }
+
+        void SpawnSkyBolt()
+        {
+            float w = picker.Width, h = picker.Height;
+            float x = (float)pickerRandom.NextDouble() * w;
+            float front = FrontX();
+            var bolt = new Bolt
+            {
+                Born = DateTime.UtcNow,
+                Life = 380 + pickerRandom.Next(320),
+                Width = 0.7f + (float)pickerRandom.NextDouble() * 0.6f,
+                Color = Math.Abs(x - front) < w * 0.08f ? Color.FromArgb(205, 150, 255)
+                      : x < front ? Color.FromArgb(255, 96, 110) : Color.FromArgb(110, 170, 255)
             };
+            var end = new PointF(x + (float)(pickerRandom.NextDouble() - 0.5) * w * 0.12f, h * (0.35f + (float)pickerRandom.NextDouble() * 0.6f));
+            bolt.Main = Zigzag(new PointF(x, -8), end, 16, h * 0.05f);
+            bolt.Branches = Branches(bolt.Main, 1 + pickerRandom.Next(3), h * 0.16f);
+            skyBolts.Add(bolt);
+        }
+
+        // A bolt in three strokes, a wide glow, a colored body and a white core.
+        static void DrawBolt(Graphics g, PointF[] pts, Color color, float width, int alpha, float dx)
+        {
+            if (pts == null || pts.Length < 2 || alpha <= 0) return;
+            var moved = new PointF[pts.Length];
+            for (int k = 0; k < pts.Length; k++) moved[k] = new PointF(pts[k].X + dx, pts[k].Y);
+            using (var outer = new Pen(Color.FromArgb(Math.Min(255, alpha * 45 / 255), color), 14f * width))
+            using (var mid = new Pen(Color.FromArgb(Math.Min(255, alpha * 150 / 255), color), 4.5f * width))
+            using (var core = new Pen(Color.FromArgb(alpha, 250, 245, 255), 1.6f * width))
+            {
+                outer.LineJoin = mid.LineJoin = core.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
+                g.DrawLines(outer, moved);
+                g.DrawLines(mid, moved);
+                g.DrawLines(core, moved);
+            }
         }
 
         void DisposePickerArt(bool sources)
@@ -2283,9 +2491,10 @@ namespace ReWor
             picker.MouseLeave += delegate { pickerHover = -1; pickerMouse = 0; };
             picker.MouseClick += delegate(object s, MouseEventArgs e)
             {
+                if (SkipIntro()) return;
                 for (int i = 0; i < 2; i++) if (CardRect(i).Contains(e.Location)) { PickGame(i); return; }
             };
-            pickerTimer = new Timer { Interval = 30 };
+            pickerTimer = new Timer { Interval = 20 };
             pickerTimer.Tick += delegate { StepPicker(); };
             Controls.Add(picker);
             picker.BringToFront();
@@ -2301,14 +2510,21 @@ namespace ReWor
             pickerSide += (target - pickerSide) * 0.12f;
             pickerFront += (target * 0.85f + pickerMouse * -0.15f - pickerFront) * 0.08f;
             for (int i = 0; i < 2; i++) pickerLift[i] += ((i == pickerFocus ? 1f : 0f) - pickerLift[i]) * 0.22f;
-            if (pickerSparks != null)
-                for (int i = 0; i < pickerSparks.Length; i++)
-                {
-                    float[] p = pickerSparks[i];
-                    p[1] -= p[2];
-                    p[0] += p[4] + (float)Math.Sin((p[1] + i * 40) / 60f) * 0.3f;
-                    if (p[1] < -10) pickerSparks[i] = NewSpark(false);
-                }
+            DateTime now = DateTime.UtcNow;
+            skyBolts.RemoveAll(b => (now - b.Born).TotalMilliseconds > b.Life);
+            if (now >= nextSkyBolt && picker.Width > 0)
+            {
+                SpawnSkyBolt();
+                // Now and then a second strike right after the first, as storms do.
+                nextSkyBolt = now.AddMilliseconds(pickerRandom.Next(4) == 0 ? 90 + pickerRandom.Next(120) : 450 + pickerRandom.Next(1100));
+            }
+            if (pickerIntro)
+            {
+                double e = introAt == DateTime.MinValue ? 0 : (now - introAt).TotalMilliseconds;
+                // The cards wait for the logo to start rising.
+                if (e < HoldMs) pickerOpened = now;
+                if (e >= HoldMs + RiseMs) pickerIntro = false;
+            }
             if (pickerBolt == null || (DateTime.UtcNow - pickerBoltAt).TotalMilliseconds > 70 + pickerRandom.Next(120))
                 MakeBolt();
             picker.Invalidate();
@@ -2368,6 +2584,7 @@ namespace ReWor
         {
             if (picker != null)
             {
+                if (pickerIntro && (keyData == Keys.Enter || keyData == Keys.Space || keyData == Keys.Escape)) { SkipIntro(); return true; }
                 if (keyData == Keys.Left || keyData == Keys.Right)
                 {
                     pickerFocus = keyData == Keys.Left ? 0 : 1;
@@ -2507,18 +2724,28 @@ namespace ReWor
                 }
             }
 
-            // Embers rising, in the color of the side they are on; the nearest layer behind the cards.
-            if (pickerSparks != null)
+            // Lightning across the sky, each bolt flickering out, with a faint flash around it.
             {
-                float sparkX = side * 60 * s;
-                foreach (float[] p in pickerSparks)
+                float boltX = side * 40 * s;
+                DateTime now = DateTime.UtcNow;
+                foreach (Bolt b in skyBolts)
                 {
-                    float x = p[0] + sparkX;
-                    Color c = x < front ? Color.FromArgb(255, 110, 60) : Color.FromArgb(90, 170, 255);
-                    if (Math.Abs(x - front) < 60 * s) c = Color.FromArgb(210, 160, 255);
-                    int a = (int)(200 * Math.Min(1, p[1] / (ch * 0.6f)));
-                    using (var brush = new SolidBrush(Color.FromArgb(Math.Max(0, Math.Min(255, a)), c)))
-                        g.FillEllipse(brush, x, p[1], p[3] * s, p[3] * s);
+                    double age = (now - b.Born).TotalMilliseconds / b.Life;
+                    if (age >= 1) continue;
+                    double flicker = ((now - b.Born).TotalMilliseconds % 80) < 45 ? 1 : 0.5;
+                    int a = (int)(255 * (1 - age) * flicker);
+                    float x = b.Main[0].X + boltX;
+                    var flash = new RectangleF(x - cw * 0.18f, 0, cw * 0.36f, ch);
+                    using (var glow = new System.Drawing.Drawing2D.LinearGradientBrush(flash, Color.Transparent, Color.Transparent, 0f))
+                    {
+                        var blend = new System.Drawing.Drawing2D.ColorBlend(3);
+                        blend.Colors = new[] { Color.FromArgb(0, b.Color), Color.FromArgb((int)(40 * (1 - age)), b.Color), Color.FromArgb(0, b.Color) };
+                        blend.Positions = new[] { 0f, 0.5f, 1f };
+                        glow.InterpolationColors = blend;
+                        g.FillRectangle(glow, flash);
+                    }
+                    DrawBolt(g, b.Main, b.Color, b.Width * s, a, boltX);
+                    foreach (PointF[] branch in b.Branches) DrawBolt(g, branch, b.Color, b.Width * s * 0.6f, a * 3 / 4, boltX);
                 }
             }
 
@@ -2526,21 +2753,7 @@ namespace ReWor
             g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.Default;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
-            using (var logo = new Font(titleFamily, 20f * s, FontStyle.Regular, GraphicsUnit.Point))
-            {
-                float gap = logo.SizeInPoints * 0.28f;
-                float first = g.MeasureString("ERASED", logo).Width;
-                float rebootW = g.MeasureString("REBOOT", logo).Width;
-                float second = rebootW + gap + g.MeasureString("VERSION", logo).Width;
-                float x = (cw - first - gap - second) / 2f, y = 26 * s;
-                g.DrawString("ERASED", logo, Brushes.White, x, y);
-                x += first + gap;
-                using (var grey = new SolidBrush(Color.FromArgb(185, 175, 200)))
-                {
-                    g.DrawString("REBOOT", logo, grey, x, y);
-                    g.DrawString("VERSION", logo, grey, x + rebootW + gap, y);
-                }
-            }
+            if (!pickerIntro) DrawPickerLogo(g, cw / 2f, 26 * s, 20f * s, 255);
 
             string[] small = { "GUITAR HERO", "GUITAR HERO" };
             string[][] big = { new[] { "WARRIORS", "OF ROCK" }, new[] { "5" } };
@@ -2651,7 +2864,11 @@ namespace ReWor
             using (var grey = new SolidBrush(Color.FromArgb(190, 185, 200)))
             using (var center = new StringFormat { Alignment = StringAlignment.Center })
             {
-                g.DrawString(Strings.T("pick_hint"), hint, grey, new RectangleF(0, bottom + 66 * s, cw, 30 * s), center);
+                var items = new List<string[]> { new[] { "DPAD", Strings.T("hint_pick") }, new[] { "A", Strings.T("hint_open") } };
+                if (IsGameFolder(gameFolder)) items.Add(new[] { "B", Strings.T("hint_back") });
+                float gh = 20f * Math.Min(s, 1.3f);
+                float hw = HintsWidth(g, gh, items.ToArray(), hint);
+                DrawHints(g, (cw - hw) / 2f, bottom + 66 * s, gh, items.ToArray(), Color.FromArgb(190, 185, 200), hint);
                 string name = settings.Get("online_name", "");
                 float footY = ch - 34 * Math.Min(s, 1.3f);
                 if (name.Length > 0)
@@ -2662,96 +2879,373 @@ namespace ReWor
                 }
                 g.DrawString("v" + AppVersion, hint, grey, cw - 24 - g.MeasureString("v" + AppVersion, hint).Width, footY);
             }
+            if (pickerIntro) PaintIntro(g, cw, ch, s);
         }
 
-        // The sidebar: the logo in the title font, the pages, and the footer.
-        Control BuildSidebar()
+        // ERASED in white, REBOOT VERSION in grey-violet, centered on cx.
+        void DrawPickerLogo(Graphics g, float cx, float y, float size, int alpha)
         {
-            var side = new Panel { Location = new Point(Rail, 0), Size = new Size(Side, H), BackColor = Color.FromArgb(6, 6, 7) };
-            side.Paint += delegate(object s, PaintEventArgs e)
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            using (var logo = new Font(titleFamily, Math.Max(4f, size), FontStyle.Regular, GraphicsUnit.Point))
+            using (var white = new SolidBrush(Color.FromArgb(alpha, 255, 255, 255)))
+            using (var grey = new SolidBrush(Color.FromArgb(alpha, 185, 175, 200)))
+            {
+                float gap = logo.SizeInPoints * 0.28f;
+                float first = g.MeasureString("ERASED", logo).Width;
+                float rebootW = g.MeasureString("REBOOT", logo).Width;
+                float second = rebootW + gap + g.MeasureString("VERSION", logo).Width;
+                float x = cx - (first + gap + second) / 2f;
+                g.DrawString("ERASED", logo, white, x, y);
+                x += first + gap;
+                g.DrawString("REBOOT", logo, grey, x, y);
+                g.DrawString("VERSION", logo, grey, x + rebootW + gap, y);
+            }
+        }
+
+        float LogoHeight(Graphics g, float size)
+        {
+            using (var logo = new Font(titleFamily, Math.Max(4f, size), FontStyle.Regular, GraphicsUnit.Point))
+                return g.MeasureString("ERASED", logo).Height;
+        }
+
+        void PaintIntro(Graphics g, int cw, int ch, float s)
+        {
+            double e = introAt == DateTime.MinValue ? 0 : (DateTime.UtcNow - introAt).TotalMilliseconds;
+            double rise = Ease((e - HoldMs) / RiseMs);
+            // Black over the scene until the logo starts rising, then the scene shows through.
+            int cover = (int)(255 * (1 - rise));
+            if (cover > 0)
+                using (var black = new SolidBrush(Color.FromArgb(cover, 0, 0, 0)))
+                    g.FillRectangle(black, 0, 0, cw, ch);
+
+            float bigSize = 50f * s;
+            using (var probe = new Font(titleFamily, bigSize, FontStyle.Regular, GraphicsUnit.Point))
+            {
+                float wide = g.MeasureString("ERASED REBOOT VERSION", probe).Width;
+                if (wide > cw * 0.86f) bigSize *= cw * 0.86f / wide;
+            }
+            float size = (float)(bigSize + (20f * s - bigSize) * rise);
+            float centerY = ch / 2f - LogoHeight(g, bigSize) / 2f;
+            float y = (float)(centerY + (26 * s - centerY) * rise);
+            float hitY = ch / 2f;
+
+            // The strike: the bolt grows from the top down to the logo.
+            if (introBolt == null)
+            {
+                float x0 = cw * (0.42f + (float)pickerRandom.NextDouble() * 0.16f);
+                introBolt = Zigzag(new PointF(x0, -10), new PointF(cw / 2f, hitY), 22, ch * 0.06f);
+                introBranches = Branches(introBolt, 3, ch * 0.14f);
+            }
+            if (e < StrikeMs + FlashMs + 300)
+            {
+                double grow = Math.Min(1, e / StrikeMs);
+                int shown = Math.Max(2, (int)Math.Ceiling(introBolt.Length * grow));
+                var part = new PointF[Math.Min(shown, introBolt.Length)];
+                Array.Copy(introBolt, part, part.Length);
+                double after = Math.Max(0, (e - StrikeMs) / (FlashMs + 300));
+                double flicker = e > StrikeMs && (e % 70) > 40 ? 0.45 : 1;
+                int a = (int)(255 * (1 - after) * flicker);
+                Color violet = Color.FromArgb(190, 130, 255);
+                DrawBolt(g, part, violet, 1.3f * s, a, 0);
+                if (grow >= 1)
+                    foreach (PointF[] branch in introBranches) DrawBolt(g, branch, violet, 0.8f * s, a * 3 / 4, 0);
+            }
+
+            if (e >= StrikeMs)
+            {
+                // A violet glow behind the words, strongest at the strike.
+                double glowK = Math.Max(0.35, 1 - (e - StrikeMs) / 900) * (1 - rise);
+                if (glowK > 0)
+                {
+                    var area = new RectangleF(cw / 2f - cw * 0.38f, y - ch * 0.12f, cw * 0.76f, LogoHeight(g, size) + ch * 0.24f);
+                    using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+                    {
+                        path.AddEllipse(area);
+                        using (var brush = new System.Drawing.Drawing2D.PathGradientBrush(path))
+                        {
+                            brush.CenterColor = Color.FromArgb((int)(150 * glowK), 150, 70, 240);
+                            brush.SurroundColors = new[] { Color.FromArgb(0, 0, 0, 0) };
+                            g.FillPath(brush, path);
+                        }
+                    }
+                }
+                DrawPickerLogo(g, cw / 2f, y, size, 255);
+            }
+
+            // The flash: the whole screen goes white at the strike and fades.
+            if (e >= StrikeMs && e < StrikeMs + FlashMs)
+            {
+                int flash = (int)(230 * (1 - (e - StrikeMs) / FlashMs));
+                using (var white = new SolidBrush(Color.FromArgb(flash, 235, 225, 255)))
+                    g.FillRectangle(white, 0, 0, cw, ch);
+            }
+        }
+
+        // A click, a key or a controller button skips the opening.
+        bool SkipIntro()
+        {
+            if (!pickerIntro) return false;
+            pickerIntro = false;
+            pickerOpened = DateTime.UtcNow;
+            return true;
+        }
+
+        // The top bar: the logo, what the project is, the languages, and the pages as tabs between the
+        // controller's LB and RB. A red line under the open tab glides to the next one.
+        Control BuildTopBar()
+        {
+            var bar = new Canvas { Location = new Point(Rail, 0), Size = new Size(W - Rail, TopBar), BackColor = Color.FromArgb(6, 6, 7) };
+            bar.Paint += delegate(object s, PaintEventArgs e)
             {
                 var g = e.Graphics;
+                g.ScaleTransform(Ui, Ui);
+                int bw = B(bar.Width);
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                 using (var glow = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    new Rectangle(0, 0, Side, 150), Color.FromArgb(90, Glow), Color.FromArgb(0, 6, 6, 7), 90f))
-                    g.FillRectangle(glow, 0, 0, Side, 150);
-                using (var line = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    new Rectangle(Side - 3, 0, 3, H), RedBright, RedDark, 90f))
-                    g.FillRectangle(line, Side - 3, 0, 3, H);
+                    new Rectangle(0, 0, bw, TopBar), Color.FromArgb(80, Glow), Color.FromArgb(0, 6, 6, 7), 0f))
+                    g.FillRectangle(glow, 0, 0, bw, TopBar);
+                using (var line = new SolidBrush(Color.FromArgb(38, 38, 42)))
+                    g.FillRectangle(line, 0, TopBar - 1, bw, 1);
+                using (var accent = new System.Drawing.Drawing2D.LinearGradientBrush(
+                    new Rectangle(0, TopBar - 2, bw, 2), RedBright, Color.FromArgb(0, RedDark), 0f))
+                    g.FillRectangle(accent, 0, TopBar - 2, bw / 2, 2);
 
-                using (var big = new Font(titleFamily, 30f, FontStyle.Regular, GraphicsUnit.Point))
-                using (var small = new Font(titleFamily, 14f, FontStyle.Regular, GraphicsUnit.Point))
+                using (var big = new Font(titleFamily, 21f, FontStyle.Regular, GraphicsUnit.Point))
+                using (var small = new Font(titleFamily, 10f, FontStyle.Regular, GraphicsUnit.Point))
                 using (var shadow = new SolidBrush(Color.FromArgb(160, Shade)))
                 using (var white = new SolidBrush(Color.White))
                 using (var red = new SolidBrush(Red))
                 {
-                    g.DrawString(Title1, big, shadow, 25, 21);
-                    g.DrawString(Title1, big, white, 22, 18);
+                    g.DrawString(Title1, big, shadow, 22, 6);
+                    g.DrawString(Title1, big, white, 20, 4);
                     SizeF size1 = g.MeasureString(Title1, big);
-                    // The title font's space glyph is very narrow, so the words are
-                    // laid out one by one with a fixed gap.
-                    float x = 25f;
-                    float y = 18 + size1.Height * 0.74f;
+                    // The title font's space glyph is very narrow, so the words are laid out one by one.
+                    float x = 22f, y = 4 + size1.Height * 0.72f;
                     foreach (string word in Title2.Split(' '))
                     {
-                        g.DrawString(word, small, shadow, x + 2, y + 2);
+                        g.DrawString(word, small, shadow, x + 1, y + 1);
                         g.DrawString(word, small, red, x, y);
-                        x += g.MeasureString(word, small).Width + 8f;
+                        x += g.MeasureString(word, small).Width + 5f;
                     }
                 }
             };
-            side.Controls.Add(new Label
+            bar.Controls.Add(new Label
             {
-                Text = Strings.T(activeGame == GameGh5 ? "subtitle_gh5" : "subtitle"), Location = new Point(24, 112), Size = new Size(Side - 40, 32),
-                ForeColor = Text2, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8f)
+                Text = Strings.T(activeGame == GameGh5 ? "subtitle_gh5" : "subtitle"), Location = new Point(196, 10), Size = new Size(380, 18),
+                ForeColor = Text2, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8f), AutoEllipsis = true
             });
+            bar.Controls.Add(new Label
+            {
+                Text = Strings.T("footer"), Location = new Point(196, 30), Size = new Size(380, 18),
+                ForeColor = Color.FromArgb(95, 95, 95), BackColor = Color.Transparent, Font = new Font("Segoe UI", 7.5f), AutoEllipsis = true
+            });
+            // In fullscreen the window's own buttons (minimize, window, close) sit at the screen's top right.
+            int langRight = bar.Width - 20 - (fullscreenWindow ? (int)(150 / Ui) : 0);
+            for (int i = 0; i < Strings.Languages.Length; i++)
+                bar.Controls.Add(MakeLanguageButton(Strings.Languages[i], langRight - 38 - (Strings.Languages.Length - 1 - i) * 41));
+
+            // LB and RB at the ends, as on a console's menu; a click turns the page too.
+            for (int i = 0; i < 2; i++)
+            {
+                int step = i == 0 ? -1 : 1;
+                string key = i == 0 ? "LB" : "RB";
+                var glyph = new Canvas
+                {
+                    Location = new Point(i == 0 ? 20 : bar.Width - 20 - 42, TabsY + (TabsH - 26) / 2), Size = new Size(42, 26),
+                    BackColor = bar.BackColor, Cursor = Cursors.Hand
+                };
+                glyph.Paint += delegate(object s, PaintEventArgs e)
+                {
+                    e.Graphics.ScaleTransform(Ui, Ui);
+                    DrawPadGlyph(e.Graphics, new RectangleF(2, 3, 38, 20), key);
+                };
+                glyph.Click += delegate { padZone = PadTabs; PadTurn(step); };
+                bar.Controls.Add(glyph);
+            }
 
             string[] names = PageNames();
-            // Ten pages (Guitar Hero 5's) sit a little closer together to fit above the footer.
-            int step = names.Length > 10 ? 35 : names.Length > 9 ? 39 : 44;
+            int left = 20 + 42 + 10, room = bar.Width - 2 * left;
+            Font tabFont = new Font("Segoe UI", 9f, FontStyle.Bold);
+            int[] widths = new int[names.Length];
+            int total = 0;
+            for (int pass = 0; pass < 2; pass++)
+            {
+                total = 0;
+                for (int i = 0; i < names.Length; i++)
+                {
+                    widths[i] = TextRenderer.MeasureText(names[i], tabFont).Width + 16;
+                    total += widths[i];
+                }
+                if (total <= room) break;
+                tabFont = new Font("Segoe UI", 8f, FontStyle.Bold);
+            }
+            int extra = Math.Max(0, (room - total) / names.Length);
+            int tx = left;
             for (int i = 0; i < names.Length; i++)
             {
                 int index = i;
                 var nav = new Button
                 {
-                    Text = "   " + names[i], Location = new Point(16, 156 + i * step), Size = new Size(Side - 35, step - 4),
-                    FlatStyle = FlatStyle.Flat, ForeColor = Text2, BackColor = side.BackColor, Cursor = Cursors.Hand,
-                    Font = new Font("Segoe UI", 10.5f, FontStyle.Bold), TextAlign = ContentAlignment.MiddleLeft, TabStop = false
+                    Text = names[i], Location = new Point(tx, TabsY), Size = new Size(widths[i] + extra, TabsH),
+                    FlatStyle = FlatStyle.Flat, ForeColor = Text2, BackColor = bar.BackColor, Cursor = Cursors.Hand,
+                    Font = tabFont, TextAlign = ContentAlignment.MiddleCenter, TabStop = false
                 };
                 nav.FlatAppearance.BorderSize = 0;
                 nav.FlatAppearance.MouseOverBackColor = NavHover;
-                nav.Paint += delegate(object s, PaintEventArgs e)
-                {
-                    if (index != currentPage) return;
-                    using (var bar = new SolidBrush(Red)) e.Graphics.FillRectangle(bar, 0, 6, 4, nav.Height - 12);
-                };
-                nav.Click += delegate { ShowPage(index); };
+                nav.FlatAppearance.MouseDownBackColor = NavSel;
+                nav.Click += delegate { padZone = PadTabs; ShowPage(index); };
                 navButtons.Add(nav);
-                side.Controls.Add(nav);
+                bar.Controls.Add(nav);
+                tx += nav.Width;
             }
-
-            side.Controls.Add(new Label
-            {
-                Text = Strings.T("footer"), Location = new Point(24, H - 56), Size = new Size(Side - 44, 40),
-                ForeColor = Color.FromArgb(95, 95, 95), BackColor = Color.Transparent, Font = new Font("Segoe UI", 7.5f)
-            });
-            return side;
+            navBar = new Panel { Size = new Size(10, 3), BackColor = RedBright, Location = new Point(-100, TabsY + TabsH - 3) };
+            bar.Controls.Add(navBar);
+            navBar.BringToFront();
+            return bar;
         }
 
-        Button MakeLanguageButton(string text, int x, bool english)
+        // The controller's buttons as small badges: A, B, X and Y in their colors, the bumpers and
+        // Start as keys, the D-pad as a cross. The launcher shows them beside what they do.
+        static void DrawPadGlyph(Graphics g, RectangleF r, string key)
         {
-            bool active = Strings.English == english;
+            var state = g.Save();
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            Color face;
+            switch (key)
+            {
+                case "A": face = Color.FromArgb(60, 200, 90); break;
+                case "B": face = Color.FromArgb(232, 52, 64); break;
+                case "X": face = Color.FromArgb(48, 132, 240); break;
+                case "Y": face = Color.FromArgb(240, 200, 40); break;
+                default: face = Color.Empty; break;
+            }
+            if (face != Color.Empty)
+            {
+                float d = Math.Min(r.Width, r.Height);
+                var circle = new RectangleF(r.X + (r.Width - d) / 2f, r.Y + (r.Height - d) / 2f, d, d);
+                using (var fill = new SolidBrush(face)) g.FillEllipse(fill, circle);
+                using (var font = new Font("Segoe UI", Math.Max(6f, d * 0.6f), FontStyle.Bold, GraphicsUnit.Pixel))
+                using (var ink = new SolidBrush(Color.FromArgb(14, 14, 16)))
+                using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                    g.DrawString(key, font, ink, new RectangleF(circle.X, circle.Y + d * 0.03f, d, d), center);
+            }
+            else if (key == "DPAD")
+            {
+                float d = Math.Min(r.Width, r.Height), arm = d / 3f;
+                float x0 = r.X + (r.Width - d) / 2f, y0 = r.Y + (r.Height - d) / 2f;
+                using (var fill = new SolidBrush(Color.FromArgb(225, 225, 230)))
+                {
+                    g.FillRectangle(fill, x0 + arm, y0, arm, d);
+                    g.FillRectangle(fill, x0, y0 + arm, d, arm);
+                }
+            }
+            else
+            {
+                using (var path = RoundedRect(r, r.Height * 0.38f))
+                {
+                    using (var fill = new SolidBrush(Color.FromArgb(225, 225, 230))) g.FillPath(fill, path);
+                }
+                float size = key.Length > 2 ? r.Height * 0.46f : r.Height * 0.55f;
+                using (var font = new Font("Segoe UI", Math.Max(6f, size), FontStyle.Bold, GraphicsUnit.Pixel))
+                using (var ink = new SolidBrush(Color.FromArgb(14, 14, 16)))
+                using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                    g.DrawString(key, font, ink, r, center);
+            }
+            g.Restore(state);
+        }
+
+        static float GlyphWidth(string key, float height)
+        {
+            return key == "START" ? height * 2.5f : key.Length == 2 ? height * 1.9f : height;
+        }
+
+        // The buttons with a glyph and their left padding in layout pixels (scaled with the rest).
+        readonly Dictionary<Button, float> glyphPads = new Dictionary<Button, float>();
+
+        // A button that also shows the controller button that presses it, at its left.
+        void AddGlyph(Button b, string key)
+        {
+            float h = b.Height >= 60 ? 26f : 20f;
+            float w = GlyphWidth(key, h);
+            b.Padding = new Padding((int)(w + 10), 0, 0, 0);
+            glyphPads[b] = w + 10;
+            b.Paint += delegate(object s, PaintEventArgs e)
+            {
+                e.Graphics.ScaleTransform(Ui, Ui);
+                float x = (B(b.Width) - (w + 10) - TextRenderer.MeasureText(b.Text, b.Font).Width / Ui) / 2f - 4f;
+                x = Math.Max(10f, Math.Min(x, 16f));
+                DrawPadGlyph(e.Graphics, new RectangleF(x, (B(b.Height) - h) / 2f, w, h), key);
+            };
+        }
+
+        // What the controller's buttons do, at the window's foot: A, B, LB/RB and Y.
+        Control BuildHints()
+        {
+            var hints = new Canvas { Location = new Point(ContentX, H - 34), Size = new Size(PageW - 330, 24), BackColor = Bg };
+            hints.Paint += delegate(object s, PaintEventArgs e)
+            {
+                e.Graphics.ScaleTransform(Ui, Ui);
+                DrawHints(e.Graphics, 0, 2, 20f, new[]
+                {
+                    new[] { "A", Strings.T("hint_select") },
+                    new[] { "B", Strings.T("hint_back") },
+                    new[] { "LB", "RB", Strings.T("hint_tabs") },
+                    new[] { "Y", Strings.T("hint_games") },
+                }, Text2, new Font("Segoe UI", 9.5f));
+            };
+            return hints;
+        }
+
+        // A row of glyphs and words; each item is its buttons then the word. Returns the row's width.
+        static float DrawHints(Graphics g, float x, float y, float h, string[][] items, Color color, Font font)
+        {
+            float start = x;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            using (var brush = new SolidBrush(color))
+                foreach (string[] item in items)
+                {
+                    for (int k = 0; k < item.Length - 1; k++)
+                    {
+                        float w = GlyphWidth(item[k], h);
+                        DrawPadGlyph(g, new RectangleF(x, y, w, h), item[k]);
+                        x += w + 4;
+                    }
+                    SizeF size = g.MeasureString(item[item.Length - 1], font);
+                    g.DrawString(item[item.Length - 1], font, brush, x, y + (h - size.Height) / 2f + 1);
+                    x += size.Width + 16;
+                }
+            return x - start;
+        }
+
+        static float HintsWidth(Graphics g, float h, string[][] items, Font font)
+        {
+            float x = 0;
+            foreach (string[] item in items)
+            {
+                for (int k = 0; k < item.Length - 1; k++) x += GlyphWidth(item[k], h) + 4;
+                x += g.MeasureString(item[item.Length - 1], font).Width + 16;
+            }
+            return x - 16;
+        }
+
+        Button MakeLanguageButton(string lang, int x)
+        {
+            bool active = Strings.Lang == lang;
             var b = new Button
             {
-                Text = text, Location = new Point(x, 26), Size = new Size(38, 26), FlatStyle = FlatStyle.Flat,
-                BackColor = active ? Red : Bg, ForeColor = active ? Color.White : Text2,
+                Text = lang.ToUpperInvariant(), Location = new Point(x, 14), Size = new Size(38, 26), FlatStyle = FlatStyle.Flat,
+                BackColor = active ? Red : Color.FromArgb(6, 6, 7), ForeColor = active ? Color.White : Text2,
                 Cursor = Cursors.Hand, Font = new Font("Segoe UI", 8.5f, FontStyle.Bold), TabStop = false
             };
             b.FlatAppearance.BorderColor = Red;
             b.FlatAppearance.BorderSize = 1;
             b.FlatAppearance.MouseOverBackColor = active ? RedBright : RedDark;
-            b.Click += delegate { SwitchLanguage(english); };
+            b.Click += delegate { SwitchLanguage(lang); };
+            string[] names = Strings.T("lang_names").Split('|');
+            int at = Array.IndexOf(Strings.Languages, lang);
+            if (at >= 0 && at < names.Length) windowTips.SetToolTip(b, names[at]);
             return b;
         }
 
@@ -2759,41 +3253,42 @@ namespace ReWor
         // copy, drawn as a red shield badge next to the text.
         Control BuildSeal()
         {
-            var seal = new Panel { Location = new Point(ContentX, 70), Size = new Size(PageW, 60), BackColor = SealBg };
+            var seal = new Panel { Location = new Point(ContentX, TopBar + 10), Size = new Size(PageW, 54), BackColor = SealBg };
             seal.Paint += delegate(object s, PaintEventArgs e)
             {
                 var g = e.Graphics;
+                g.ScaleTransform(Ui, Ui);
                 g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                using (var border = new Pen(Color.FromArgb(110, Red), 1f)) g.DrawRectangle(border, 0, 0, seal.Width - 1, seal.Height - 1);
-                using (var accent = new SolidBrush(Red)) g.FillRectangle(accent, 0, 0, 4, seal.Height);
+                using (var border = new Pen(Color.FromArgb(110, Red), 1f)) g.DrawRectangle(border, 0, 0, B(seal.Width) - 1, B(seal.Height) - 1);
+                using (var accent = new SolidBrush(Red)) g.FillRectangle(accent, 0, 0, 4, B(seal.Height));
 
                 var shield = new System.Drawing.Drawing2D.GraphicsPath();
                 shield.AddLines(new[]
                 {
-                    new PointF(30, 9), new PointF(46, 15), new PointF(46, 30),
-                    new PointF(30, 52), new PointF(14, 30), new PointF(14, 15)
+                    new PointF(30, 6), new PointF(46, 12), new PointF(46, 27),
+                    new PointF(30, 49), new PointF(14, 27), new PointF(14, 12)
                 });
                 shield.CloseFigure();
                 using (var fill = new System.Drawing.Drawing2D.LinearGradientBrush(
-                    new Rectangle(14, 9, 32, 43), RedBright, RedDark, 90f))
+                    new Rectangle(14, 6, 32, 43), RedBright, RedDark, 90f))
                     g.FillPath(fill, shield);
                 using (var check = new Pen(Color.White, 3.2f))
                 {
                     check.StartCap = System.Drawing.Drawing2D.LineCap.Round;
                     check.EndCap = System.Drawing.Drawing2D.LineCap.Round;
                     check.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
-                    g.DrawLines(check, new[] { new PointF(23, 29), new PointF(28, 35), new PointF(38, 23) });
+                    g.DrawLines(check, new[] { new PointF(23, 26), new PointF(28, 32), new PointF(38, 20) });
                 }
                 shield.Dispose();
             };
             seal.Controls.Add(new Label
             {
-                Text = Strings.T("seal_title"), Location = new Point(58, 6), AutoSize = true,
+                Text = Strings.T("seal_title"), Location = new Point(58, 5), AutoSize = true,
                 ForeColor = RedBright, BackColor = Color.Transparent, Font = new Font("Segoe UI", 9f, FontStyle.Bold)
             });
             seal.Controls.Add(new Label
             {
-                Text = Strings.T(activeGame == GameGh5 ? "seal_text_gh5" : "seal_text"), Location = new Point(58, 24), Size = new Size(seal.Width - 68, 34),
+                Text = Strings.T(activeGame == GameGh5 ? "seal_text_gh5" : "seal_text"), Location = new Point(58, 22), Size = new Size(seal.Width - 68, 30),
                 ForeColor = Text1, BackColor = Color.Transparent, Font = new Font("Segoe UI", 8f)
             });
             return seal;
@@ -2822,6 +3317,7 @@ namespace ReWor
                 pages[i].Visible = i == index;
                 navButtons[i].ForeColor = i == index ? Color.White : Text2;
                 navButtons[i].BackColor = i == index ? NavSel : Color.FromArgb(6, 6, 7);
+                navButtons[i].FlatAppearance.MouseOverBackColor = i == index ? NavSel : NavHover;
                 navButtons[i].Invalidate();
             }
             if (pageTitle != null && pageNames != null) pageTitle.Text = WithoutAccents(pageNames[index]);
@@ -2831,6 +3327,421 @@ namespace ReWor
             // The home page has its own big PLAY button.
             if (bottomPlay != null) bottomPlay.Visible = index != HomePage;
             if (bottomSave != null) bottomSave.Visible = index != HomePage;
+            padTarget = null;
+            AnimatePage(index);
+        }
+
+        // Motion, in the spirit of the Erased portfolio: the page rises into place as it fades in, the
+        // title types itself and the bar beside the open page glides to it. All of it can be turned off
+        // (GAME page), and then everything simply appears.
+        const string MotionFile = "launcher_motion.txt";
+        bool motion = true;
+        Panel navBar;
+        Canvas pageCover;
+        Bitmap pageShot;
+        string titleFull = "";
+        DateTime pageShown, titleShown, navMoved;
+        float navFrom, navTo, navFromW, navToW;
+        Timer animTimer;
+        Button homePlay;
+        CheckBox motionBox;
+        const double PageMs = 320, TitleCharMs = 32, NavMs = 220;
+
+        bool LoadMotion()
+        {
+            try { return File.ReadAllText(Path.Combine(gameDir, MotionFile)).Trim() != "off"; }
+            catch (Exception) { return SystemInformation.UIEffectsEnabled; }
+        }
+
+        void SetMotion(bool on)
+        {
+            motion = on;
+            try { File.WriteAllText(Path.Combine(gameDir, MotionFile), on ? "on" : "off"); } catch (Exception) { }
+            if (!on) FinishAnimations();
+        }
+
+        static double Ease(double t)
+        {
+            t = Math.Max(0, Math.Min(1, t));
+            return 1 - Math.Pow(1 - t, 3);
+        }
+
+        void AnimatePage(int index)
+        {
+            if (navBar != null && index < navButtons.Count)
+            {
+                Button nav = navButtons[index];
+                bool jump = navBar.Left < 0 || !motion;
+                navTo = nav.Left + (int)(10 * Ui);
+                navToW = nav.Width - (int)(20 * Ui);
+                navFrom = jump ? navTo : navBar.Left;
+                navFromW = jump ? navToW : navBar.Width;
+                navMoved = DateTime.UtcNow;
+                if (jump) navBar.Bounds = new Rectangle((int)navTo, navBar.Top, (int)navToW, navBar.Height);
+            }
+            if (pageTitle != null) titleFull = pageTitle.Text;
+            if (!motion || !IsHandleCreated || !Visible || index >= pages.Count) { FinishAnimations(); return; }
+
+            Control page = pages[index];
+            if (pageShot != null) pageShot.Dispose();
+            pageShot = new Bitmap(page.Width, page.Height);
+            try { page.DrawToBitmap(pageShot, new Rectangle(0, 0, page.Width, page.Height)); }
+            catch (Exception) { pageShot.Dispose(); pageShot = null; }
+            if (pageCover == null)
+            {
+                pageCover = new Canvas { BackColor = Bg };
+                pageCover.Paint += PaintPageCover;
+                host.Controls.Add(pageCover);
+            }
+            pageCover.Bounds = page.Bounds;
+            pageCover.Visible = pageShot != null;
+            pageCover.BringToFront();
+            pageShown = titleShown = DateTime.UtcNow;
+            if (pageTitle != null) pageTitle.Text = "";
+            StartAnimTimer();
+        }
+
+        void StartAnimTimer()
+        {
+            if (animTimer == null)
+            {
+                animTimer = new Timer { Interval = 15 };
+                animTimer.Tick += delegate { StepAnimations(); };
+            }
+            animTimer.Start();
+        }
+
+        void FinishAnimations()
+        {
+            if (pageCover != null) pageCover.Visible = false;
+            if (pageTitle != null && titleFull.Length > 0) pageTitle.Text = titleFull;
+            if (navBar != null && navButtons.Count > 0) navBar.Bounds = new Rectangle((int)navTo, navBar.Top, (int)navToW, navBar.Height);
+        }
+
+        void StepAnimations()
+        {
+            DateTime now = DateTime.UtcNow;
+            bool busy = false;
+            if (pageCover != null && pageCover.Visible)
+            {
+                if ((now - pageShown).TotalMilliseconds >= PageMs) pageCover.Visible = false;
+                else { pageCover.Invalidate(); busy = true; }
+            }
+            if (pageTitle != null && titleFull.Length > 0 && pageTitle.Text != titleFull)
+            {
+                int n = (int)((now - titleShown).TotalMilliseconds / TitleCharMs);
+                pageTitle.Text = titleFull.Substring(0, Math.Min(titleFull.Length, n));
+                busy = true;
+            }
+            if (navBar != null && (navBar.Left != (int)navTo || navBar.Width != (int)navToW))
+            {
+                double t = Ease((now - navMoved).TotalMilliseconds / NavMs);
+                navBar.Bounds = new Rectangle((int)Math.Round(navFrom + (navTo - navFrom) * t), navBar.Top,
+                    (int)Math.Round(navFromW + (navToW - navFromW) * t), navBar.Height);
+                busy = true;
+            }
+            // While a controller drives the launcher, its frame breathes; PLAY glows on the home page.
+            if (padRing != null && padRing[0].Visible) { PlacePadRing(); busy |= motion; }
+            if (motion && homePlay != null && homePlay.Visible && currentPage == HomePage && !homePlay.ClientRectangle.Contains(homePlay.PointToClient(Cursor.Position)))
+            {
+                double wave = (Math.Sin(now.TimeOfDay.TotalMilliseconds / 420.0) + 1) / 2;
+                homePlay.BackColor = Mix(Red, RedBright, (float)(wave * 0.8));
+                busy = true;
+            }
+            if (!busy) animTimer.Stop();
+        }
+
+        void PaintPageCover(object sender, PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(Bg);
+            if (pageShot == null) return;
+            double t = Ease((DateTime.UtcNow - pageShown).TotalMilliseconds / PageMs);
+            int lift = (int)Math.Round((1 - t) * 26 * Ui);
+            var fade = new System.Drawing.Imaging.ColorMatrix { Matrix33 = (float)t };
+            using (var attributes = new System.Drawing.Imaging.ImageAttributes())
+            {
+                attributes.SetColorMatrix(fade);
+                g.DrawImage(pageShot, new Rectangle(0, lift, pageShot.Width, pageShot.Height), 0, 0, pageShot.Width, pageShot.Height, GraphicsUnit.Pixel, attributes);
+            }
+            // The red line across the page's top runs out from the left, as a HUD would draw it.
+            using (var line = new SolidBrush(RedBright))
+                g.FillRectangle(line, 0, 0, (int)(pageCover.Width * t), Math.Max(2, (int)(2 * Ui)));
+        }
+
+        // Controller navigation. Any XInput controller (a gamepad, a 360 guitar or drum kit) moves through
+        // the launcher: the D-pad or left stick moves, A confirms, B goes back up to the tabs, LB and RB
+        // turn the pages, left and right change a list's value, X saves, Start plays and Y opens the
+        // game picker.
+        const int PadTabs = 0, PadPage = 1;
+        int padZone = PadTabs;
+        Control padTarget;
+        Panel[] padRing;
+        Timer padTimer;
+        ushort padHeld;
+        int padRepeatDir;
+        DateTime padRepeatAt;
+        DateTime padUsed = DateTime.MinValue;
+
+        void StartPad()
+        {
+            padTimer = new Timer { Interval = 16 };
+            padTimer.Tick += delegate { PollPad(); };
+            padTimer.Start();
+            Application.AddMessageFilter(new MouseWatch(this));
+        }
+
+        // A real mouse move or click hides the controller's frame.
+        sealed class MouseWatch : IMessageFilter
+        {
+            readonly LauncherForm form;
+            Point last = Point.Empty;
+            public MouseWatch(LauncherForm form) { this.form = form; }
+            public bool PreFilterMessage(ref Message m)
+            {
+                const int MouseMove = 0x200, LeftDown = 0x201, RightDown = 0x204;
+                if (m.Msg == LeftDown || m.Msg == RightDown) form.HidePadRing();
+                else if (m.Msg == MouseMove && Cursor.Position != last)
+                {
+                    if ((DateTime.UtcNow - form.padUsed).TotalMilliseconds > 400 && last != Point.Empty) form.HidePadRing();
+                    last = Cursor.Position;
+                }
+                return false;
+            }
+        }
+
+        void PollPad()
+        {
+            if (!Visible || ActiveForm != this) { padHeld = 0; return; }
+            ushort held = 0;
+            for (uint user = 0; user < 4; user++)
+            {
+                InputScan.PadState state;
+                if (!InputScan.ReadPad(user, out state)) continue;
+                held |= state.Buttons;
+                // The left stick works as the D-pad.
+                if (state.LY > 16000) held |= 0x1;
+                if (state.LY < -16000) held |= 0x2;
+                if (state.LX < -16000) held |= 0x4;
+                if (state.LX > 16000) held |= 0x8;
+            }
+            ushort pressed = (ushort)(held & ~padHeld);
+            padHeld = held;
+            // The first time a controller is used, the line at the bottom says what each button does.
+
+            // A held direction repeats, as menus do.
+            int dir = (held & 0x1) != 0 ? 1 : (held & 0x2) != 0 ? 2 : (held & 0x4) != 0 ? 3 : (held & 0x8) != 0 ? 4 : 0;
+            DateTime now = DateTime.UtcNow;
+            if (dir == 0) padRepeatDir = 0;
+            else if ((pressed & 0xF) != 0 || dir != padRepeatDir) { padRepeatDir = dir; padRepeatAt = now.AddMilliseconds(380); }
+            else if (now >= padRepeatAt) { padRepeatAt = now.AddMilliseconds(110); PadMove(dir); }
+            if ((pressed & 0xF) != 0) PadMove(dir);
+
+            if ((pressed & 0x1000) != 0) PadConfirm();
+            if ((pressed & 0x2000) != 0) PadBack();
+            if (picker != null) return;
+            if ((pressed & 0x0100) != 0) PadTurn(-1);
+            if ((pressed & 0x0200) != 0) PadTurn(1);
+            if ((pressed & 0x8000) != 0) { HidePadRing(); ShowGamePicker(); }
+            if ((pressed & 0x4000) != 0 && bottomSave != null && bottomSave.Visible) { padUsed = now; bottomSave.PerformClick(); }
+            if ((pressed & 0x0010) != 0) { padUsed = now; if (Apply()) Launch(); }
+        }
+
+        void PadMove(int dir)
+        {
+            padUsed = DateTime.UtcNow;
+            if (picker != null)
+            {
+                if (dir == 3 || dir == 4) { pickerFocus = dir == 3 ? 0 : 1; pickerHover = -1; }
+                return;
+            }
+            ComboBox combo = padTarget as ComboBox;
+            if (combo != null && combo.DroppedDown && (dir == 1 || dir == 2))
+            {
+                int i = combo.SelectedIndex + (dir == 1 ? -1 : 1);
+                if (i >= 0 && i < combo.Items.Count) combo.SelectedIndex = i;
+                return;
+            }
+            if (padZone == PadTabs)
+            {
+                if (dir == 3 || dir == 4)
+                {
+                    int next = currentPage + (dir == 3 ? -1 : 1);
+                    if (next >= 0 && next < pages.Count) ShowPage(next);
+                    ShowPadRing(navButtons[currentPage]);
+                }
+                else if (dir == 2) EnterPage();
+                else ShowPadRing(navButtons[currentPage]);
+                return;
+            }
+            if (padTarget == null || !padTarget.Visible) { EnterPage(); return; }
+            if (dir == 3 || dir == 4)
+            {
+                int step = dir == 3 ? -1 : 1;
+                if (combo != null)
+                {
+                    int i = combo.SelectedIndex + step;
+                    if (i >= 0 && i < combo.Items.Count) combo.SelectedIndex = i;
+                    return;
+                }
+                var track = padTarget as TrackBar;
+                if (track != null)
+                {
+                    track.Value = Math.Max(track.Minimum, Math.Min(track.Maximum, track.Value + step * Math.Max(1, track.LargeChange)));
+                    return;
+                }
+            }
+            Control next2 = Nearest(padTarget, dir);
+            if (next2 != null) { padTarget = next2; ShowPadRing(next2); }
+            else if (dir == 1) { padZone = PadTabs; padTarget = null; ShowPadRing(navButtons[currentPage]); }
+        }
+
+        void PadConfirm()
+        {
+            padUsed = DateTime.UtcNow;
+            if (picker != null) { if (!SkipIntro()) PickGame(pickerFocus); return; }
+            if (padZone == PadTabs) { EnterPage(); return; }
+            if (padTarget == null) return;
+            var combo = padTarget as ComboBox;
+            if (combo != null) { combo.Focus(); combo.DroppedDown = !combo.DroppedDown; return; }
+            var check = padTarget as CheckBox;
+            if (check != null) { check.Checked = !check.Checked; return; }
+            var button = padTarget as Button;
+            if (button != null) { button.PerformClick(); return; }
+            if (padTarget is TextBox) { padTarget.Focus(); return; }
+            // Picture boxes and cards act on a click.
+            var click = typeof(Control).GetMethod("OnClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (click != null) click.Invoke(padTarget, new object[] { EventArgs.Empty });
+        }
+
+        void PadBack()
+        {
+            padUsed = DateTime.UtcNow;
+            if (picker != null) { if (IsGameFolder(gameFolder)) ClosePicker(); return; }
+            var combo = padTarget as ComboBox;
+            if (combo != null && combo.DroppedDown) { combo.DroppedDown = false; return; }
+            padZone = PadTabs;
+            padTarget = null;
+            ActiveControl = null;
+            if (currentPage >= 0) ShowPadRing(navButtons[currentPage]);
+        }
+
+        void PadTurn(int step)
+        {
+            padUsed = DateTime.UtcNow;
+            int next = currentPage + step;
+            if (next < 0 || next >= pages.Count) return;
+            ShowPage(next);
+            if (padZone == PadPage) EnterPage(); else ShowPadRing(navButtons[currentPage]);
+        }
+
+        void EnterPage()
+        {
+            List<Control> all = PadTargets();
+            if (all.Count == 0) return;
+            padZone = PadPage;
+            padTarget = all[0];
+            ShowPadRing(padTarget);
+        }
+
+        // What a controller can stop on: the open page's buttons, lists, boxes and sliders, then SAVE and PLAY.
+        List<Control> PadTargets()
+        {
+            var list = new List<Control>();
+            if (currentPage >= 0 && currentPage < pages.Count) Collect(pages[currentPage], list);
+            foreach (Button b in new[] { bottomSave, bottomPlay })
+                if (b != null && b.Visible) list.Add(b);
+            list.Sort((a, b) =>
+            {
+                Rectangle ra = HostBounds(a), rb = HostBounds(b);
+                return ra.Top / 12 != rb.Top / 12 ? ra.Top.CompareTo(rb.Top) : ra.Left.CompareTo(rb.Left);
+            });
+            return list;
+        }
+
+        static void Collect(Control parent, List<Control> list)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                if (!c.Visible || !c.Enabled) continue;
+                if (c is Button || c is CheckBox || c is ComboBox || c is TextBox || c is TrackBar || c is PictureBox) list.Add(c);
+                else if (c.HasChildren) Collect(c, list);
+            }
+        }
+
+        Rectangle HostBounds(Control c)
+        {
+            return new Rectangle(host.PointToClient(c.PointToScreen(Point.Empty)), c.Size);
+        }
+
+        // The closest target in a direction, weighing the sideways distance more than the forward one.
+        Control Nearest(Control from, int dir)
+        {
+            Rectangle r = HostBounds(from);
+            Point c0 = new Point(r.Left + r.Width / 2, r.Top + r.Height / 2);
+            Control best = null;
+            double bestScore = double.MaxValue;
+            foreach (Control c in PadTargets())
+            {
+                if (c == from) continue;
+                Rectangle o = HostBounds(c);
+                Point c1 = new Point(o.Left + o.Width / 2, o.Top + o.Height / 2);
+                int forward, side;
+                if (dir == 1) { forward = r.Top - o.Bottom + 4; side = Math.Abs(c1.X - c0.X); if (c1.Y >= c0.Y) continue; }
+                else if (dir == 2) { forward = o.Top - r.Bottom + 4; side = Math.Abs(c1.X - c0.X); if (c1.Y <= c0.Y) continue; }
+                else if (dir == 3) { forward = r.Left - o.Right + 4; side = Math.Abs(c1.Y - c0.Y); if (c1.X >= c0.X || side > r.Height + o.Height) continue; }
+                else { forward = o.Left - r.Right + 4; side = Math.Abs(c1.Y - c0.Y); if (c1.X <= c0.X || side > r.Height + o.Height) continue; }
+                double score = Math.Max(0, forward) + side * 2.5;
+                if (score < bestScore) { bestScore = score; best = c; }
+            }
+            return best;
+        }
+
+        void ShowPadRing(Control target)
+        {
+            if (target == null) return;
+            if (padRing == null)
+            {
+                padRing = new Panel[4];
+                for (int i = 0; i < 4; i++)
+                {
+                    padRing[i] = new Panel { BackColor = RedBright, Visible = false, Enabled = false };
+                    host.Controls.Add(padRing[i]);
+                }
+            }
+            padTarget = padZone == PadPage ? target : null;
+            ringTarget = target;
+            // Inside a scrolling panel, bring the target into view first.
+            var scroll = target.Parent as ScrollableControl;
+            if (scroll != null && scroll.AutoScroll) scroll.ScrollControlIntoView(target);
+            PlacePadRing();
+            foreach (Panel p in padRing) { p.Visible = true; p.BringToFront(); }
+            if (padZone == PadPage && !(target is TextBox)) ActiveControl = null;
+            StartAnimTimer();
+        }
+
+        Control ringTarget;
+
+        void PlacePadRing()
+        {
+            if (padRing == null || ringTarget == null || ringTarget.IsDisposed) return;
+            Rectangle r = HostBounds(ringTarget);
+            r.Inflate((int)(4 * Ui), (int)(4 * Ui));
+            double wave = motion ? (Math.Sin(DateTime.UtcNow.TimeOfDay.TotalMilliseconds / 260.0) + 1) / 2 : 1;
+            Color color = Mix(RedDark, RedBright, (float)(0.45 + 0.55 * wave));
+            int w = Math.Max(2, (int)Math.Round(2 * Ui));
+            padRing[0].Bounds = new Rectangle(r.Left, r.Top, r.Width, w);
+            padRing[1].Bounds = new Rectangle(r.Left, r.Bottom - w, r.Width, w);
+            padRing[2].Bounds = new Rectangle(r.Left, r.Top, w, r.Height);
+            padRing[3].Bounds = new Rectangle(r.Right - w, r.Top, w, r.Height);
+            foreach (Panel p in padRing) p.BackColor = color;
+        }
+
+        void HidePadRing()
+        {
+            if (padRing == null) return;
+            foreach (Panel p in padRing) p.Visible = false;
+            ringTarget = null;
         }
 
         // The title font has no accented letters (VÍDEO came out as "V DEO").
@@ -2885,6 +3796,12 @@ namespace ReWor
             audioBuffer.Width = half;
             debugMenu = AddCheck(page, Strings.T("debug_menu"), 204);
             skipIntro = AddCheck(page, Strings.T("skip_intro"), 230);
+            // The launcher's own choice, saved next to it rather than in the game's settings.
+            motionBox = AddCheck(page, Strings.T("motion"), 230);
+            motionBox.AutoSize = false;
+            motionBox.Bounds = new Rectangle(right, 228, half, 24);
+            motionBox.Checked = motion;
+            motionBox.CheckedChanged += delegate { SetMotion(motionBox.Checked); };
             AddNote(page, Strings.T(activeGame == GameGh5 ? "gh5_game_note" : "game_note"), 262);
             AddNote(page, Strings.T(activeGame == GameGh5 ? "gh5_dlc_note" : "dlc_note"), 312);
             ShowGameFolder();
@@ -3031,42 +3948,67 @@ namespace ReWor
             var page = NewPage();
             int y = 16;
 
-            AddLabel(page, Strings.T("res_label"), y);
-            resolution = AddCombo(page, y + 20,
+            // Two columns: what the window shows on the left, what the game draws on the right.
+            int half = (PageW - 36 - 16) / 2;
+            int right = 18 + half + 16;
+            AddLabelAt(page, Strings.T("res_label"), 18, y, half);
+            resolution = AddComboAt(page, 18, y + 36, half,
                 new Choice(Strings.T("res_720"), "1280x720"),
                 new Choice(Strings.T("res_480w"), "848x480"),
                 new Choice(Strings.T("res_480"), "640x480"),
                 new Choice(Strings.T("res_1080"), "1920x1080"),
+                new Choice(Strings.T("res_1440"), "2560x1440"),
+                new Choice(Strings.T("res_2160"), "3840x2160"),
                 new Choice(Strings.T("res_uw1080"), "2560x1080"),
                 new Choice(Strings.T("res_uw1440"), "3440x1440"));
-            y += 60;
-
-            AddLabel(page, Strings.T("scale_label"), y);
-            drawScale = AddCombo(page, y + 20,
-                new Choice(Strings.T("scale_100"), "100"),
-                new Choice(Strings.T("scale_75"), "75"),
-                new Choice(Strings.T("scale_50"), "50"),
-                new Choice(Strings.T("scale_33"), "33"));
-            y += 60;
-
-            AddLabel(page, Strings.T("present_label"), y);
-            presentEffect = AddCombo(page, y + 20,
-                new Choice(Strings.T("present_bilinear"), "bilinear"),
-                new Choice(Strings.T("present_cas"), "cas"),
-                new Choice(Strings.T("present_fsr"), "fsr"));
-            y += 60;
-
             // The emulated vertical blank's rate: the game presents one frame per
             // vertical blank, and src/framerate.cpp keeps what it counts in frames
             // at the console's 60 a second.
-            AddLabel(page, Strings.T("fps_label"), y);
-            frameRate = AddCombo(page, y + 20,
+            AddLabelAt(page, Strings.T("fps_label"), right, y, half);
+            frameRate = AddComboAt(page, right, y + 36, half,
                 new Choice(Strings.T("fps_60"), "60"),
                 new Choice("120 FPS", "120"),
                 new Choice("144 FPS", "144"),
                 new Choice("165 FPS", "165"),
                 new Choice("240 FPS", "240"));
-            y += 60;
+            y += 76;
+
+            AddLabelAt(page, Strings.T("scale_label"), 18, y, half);
+            drawScale = AddComboAt(page, 18, y + 36, half,
+                new Choice(Strings.T("scale_100"), "100"),
+                new Choice(Strings.T("scale_75"), "75"),
+                new Choice(Strings.T("scale_50"), "50"),
+                new Choice(Strings.T("scale_33"), "33"));
+            AddLabelAt(page, Strings.T("upscale_label"), right, y, half);
+            renderScale = AddComboAt(page, right, y + 36, half,
+                new Choice(Strings.T("upscale_1"), "1"),
+                new Choice(Strings.T("upscale_2"), "2"),
+                new Choice(Strings.T("upscale_3"), "3"));
+            // Below 100% and above 1x don't mix: the SDK takes the percent only at 1x.
+            // Below 100% is off in the SDK while DLSS or FSR 3/4 is on, and on Vulkan: picking one gives up the other.
+            drawScale.SelectedIndexChanged += delegate
+            {
+                if (Value(drawScale) == "100") return;
+                if (renderScale.SelectedIndex > 0) renderScale.SelectedIndex = 0;
+                if (sceneUpscaler != null && sceneUpscaler.SelectedIndex > 0) sceneUpscaler.SelectedIndex = 0;
+            };
+            renderScale.SelectedIndexChanged += delegate { if (Value(renderScale) != "1" && drawScale.SelectedIndex > 0) drawScale.SelectedIndex = 0; };
+            y += 76;
+
+            AddLabelAt(page, Strings.T("present_label"), 18, y, half);
+            presentEffect = AddComboAt(page, 18, y + 36, half,
+                new Choice(Strings.T("present_bilinear"), "bilinear"),
+                new Choice(Strings.T("present_cas"), "cas"),
+                new Choice(Strings.T("present_fsr"), "fsr"));
+            AddLabelAt(page, Strings.T("aa_label"), right, y, half);
+            sceneUpscaler = AddComboAt(page, right, y + 36, half,
+                new Choice(Strings.T("aa_off"), "off"),
+                new Choice(Strings.T("aa_dlaa"), "dlss:dlaa"),
+                new Choice(Strings.T("aa_dlss"), "dlss:quality"),
+                new Choice(Strings.T("aa_fsr_native"), "fsr:native_aa"),
+                new Choice(Strings.T("aa_fsr"), "fsr:quality"));
+            sceneUpscaler.SelectedIndexChanged += delegate { if (sceneUpscaler.SelectedIndex > 0 && drawScale.SelectedIndex > 0) drawScale.SelectedIndex = 0; };
+            y += 76;
 
             fullscreen = AddCheck(page, Strings.T("fullscreen"), y); y += 28;
             vsync = AddCheck(page, Strings.T("vsync"), y); y += 28;
@@ -3128,7 +4070,11 @@ namespace ReWor
                 int player = i;
                 int y = i == 0 ? 92 : 130 + (i - 1) * 56;
                 var badge = new Canvas { Location = new Point(RightX, y), Size = new Size(40, 28), BackColor = Panel };
-                badge.Paint += delegate(object s, PaintEventArgs e) { PaintBadge(e.Graphics, player, badge.ClientSize); };
+                badge.Paint += delegate(object s, PaintEventArgs e)
+                {
+                    e.Graphics.ScaleTransform(Ui, Ui);
+                    PaintBadge(e.Graphics, player, new Size(B(badge.ClientSize.Width), B(badge.ClientSize.Height)));
+                };
                 page.Controls.Add(badge);
                 playerBadges[i] = badge;
                 var combo = new ComboBox
@@ -3191,7 +4137,7 @@ namespace ReWor
 
         void PollDevices()
         {
-            if (currentPage != PlayersPage || deviceCards == null || deviceCards.IsDisposed) return;
+            if (!Visible || currentPage != PlayersPage || deviceCards == null || deviceCards.IsDisposed) return;
             if (--scanCountdown <= 0)
             {
                 scanCountdown = 40;
@@ -3323,11 +4269,13 @@ namespace ReWor
         void PaintDeviceCards(object sender, PaintEventArgs e)
         {
             var g = e.Graphics;
+            g.ScaleTransform(Ui, Ui);
+            int ch = B(deviceCards.ClientSize.Height);
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-            int w = deviceCards.ClientSize.Width;
+            int w = B(deviceCards.ClientSize.Width);
             const int gap = 6;
-            int h = Math.Max(34, Math.Min(52, (deviceCards.ClientSize.Height + gap) / Math.Max(1, devices.Count) - gap));
+            int h = Math.Max(34, Math.Min(52, (ch + gap) / Math.Max(1, devices.Count) - gap));
             using (var titleFont = new Font("Segoe UI", 9.5f, FontStyle.Bold))
             using (var detailFont = new Font("Segoe UI", 7.75f))
             using (var tagFont = new Font("Segoe UI", 7.5f, FontStyle.Bold))
@@ -3336,7 +4284,7 @@ namespace ReWor
                 {
                     var d = devices[i];
                     int y = i * (h + gap);
-                    if (y + h > deviceCards.ClientSize.Height) break;
+                    if (y + h > ch) break;
                     float glow = d.Glow;
                     int player = PlayerOf(d.Spec);
                     var card = new Rectangle(0, y, w - 1, h - 1);
@@ -3387,53 +4335,100 @@ namespace ReWor
                 g.DrawString("P" + (player + 1), font, white, new RectangleF(0, 0, size.Width, size.Height), format);
         }
 
-        // Simple line drawings of each kind of device.
+        // A filled silhouette of each kind of device, with its details cut out in a dark tone.
         static void DrawDeviceIcon(Graphics g, string kind, Rectangle r, Color color)
         {
-            using (var pen = new Pen(color, 2f))
-            using (var thick = new Pen(color, 3f))
-            using (var brush = new SolidBrush(color))
+            var saved = g.Save();
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TranslateTransform(r.X + r.Width / 2f, r.Y + r.Height / 2f);
+            float u = r.Height / 28f;
+            g.ScaleTransform(u, u);
+            using (var fill = new SolidBrush(color))
+            using (var cut = new SolidBrush(Color.FromArgb(200, 18, 18, 20)))
+            using (var cutPen = new Pen(Color.FromArgb(200, 18, 18, 20), 1.1f))
             {
-                pen.LineJoin = System.Drawing.Drawing2D.LineJoin.Round;
-                pen.StartCap = pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
-                if (kind == "guitar")
-                {
-                    g.DrawLine(thick, r.X + 15, r.Bottom - 12, r.Right - 4, r.Y + 3);
-                    g.FillRectangle(brush, r.Right - 7, r.Y, 6, 5);
-                    g.DrawEllipse(pen, r.X + 3, r.Bottom - 17, 13, 13);
-                    g.DrawEllipse(pen, r.X + 9, r.Bottom - 22, 10, 10);
-                    g.FillEllipse(brush, r.X + 8, r.Bottom - 12, 4, 4);
-                }
-                else if (kind == "drums")
-                {
-                    g.DrawEllipse(pen, r.X + 3, r.Y + 4, r.Width - 6, 9);
-                    g.DrawLine(pen, r.X + 3, r.Y + 8, r.X + 3, r.Bottom - 6);
-                    g.DrawLine(pen, r.Right - 3, r.Y + 8, r.Right - 3, r.Bottom - 6);
-                    g.DrawArc(pen, r.X + 3, r.Bottom - 11, r.Width - 6, 9, 0, 180);
-                }
-                else if (kind == "keyboard")
-                {
-                    g.DrawRectangle(pen, r.X + 1, r.Y + 6, r.Width - 2, r.Height - 12);
-                    for (int row = 0; row < 2; row++)
-                        for (int col = 0; col < 5; col++)
-                            g.FillRectangle(brush, r.X + 5 + col * 5, r.Y + 10 + row * 5, 3, 3);
-                    g.FillRectangle(brush, r.X + 9, r.Y + 20, 14, 2);
-                }
-                else
-                {
-                    using (var body = new System.Drawing.Drawing2D.GraphicsPath())
-                    {
-                        body.AddArc(r.X + 1, r.Y + 6, 14, 18, 90, 180);
-                        body.AddArc(r.Right - 15, r.Y + 6, 14, 18, 270, 180);
-                        body.CloseFigure();
-                        g.DrawPath(pen, body);
-                    }
-                    g.DrawLine(pen, r.X + 7, r.Y + 15, r.X + 13, r.Y + 15);
-                    g.DrawLine(pen, r.X + 10, r.Y + 12, r.X + 10, r.Y + 18);
-                    g.FillEllipse(brush, r.Right - 12, r.Y + 11, 4, 4);
-                    g.FillEllipse(brush, r.Right - 8, r.Y + 15, 4, 4);
-                }
+                if (kind == "guitar") DrawGuitarIcon(g, fill, cut, cutPen);
+                else if (kind == "drums") DrawDrumIcon(g, fill, cut, cutPen);
+                else if (kind == "keyboard") DrawKeyboardIcon(g, fill, cut);
+                else DrawPadIcon(g, fill, cut);
             }
+            g.Restore(saved);
+        }
+
+        static System.Drawing.Drawing2D.GraphicsPath RoundedRect(RectangleF r, float radius)
+        {
+            var path = new System.Drawing.Drawing2D.GraphicsPath();
+            float d = radius * 2;
+            path.AddArc(r.X, r.Y, d, d, 180, 90);
+            path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        // An electric guitar lying across the icon: body, neck and headstock, with pickups and frets.
+        static void DrawGuitarIcon(Graphics g, Brush fill, Brush cut, Pen cutPen)
+        {
+            g.RotateTransform(-32f);
+            using (var body = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                body.AddEllipse(-20f, -7.5f, 14f, 15f);
+                body.AddEllipse(-12.5f, -5.6f, 10f, 11.2f);
+                body.FillMode = System.Drawing.Drawing2D.FillMode.Winding;
+                g.FillPath(fill, body);
+            }
+            g.FillRectangle(fill, -4f, -1.7f, 17f, 3.4f);
+            g.FillPolygon(fill, new[] { new PointF(12.5f, -2.3f), new PointF(19.5f, -3.4f), new PointF(19.5f, 3.4f), new PointF(12.5f, 2.3f) });
+            g.FillRectangle(cut, -15.5f, -3.4f, 2.2f, 6.8f);
+            g.FillRectangle(cut, -10.8f, -3.4f, 2.2f, 6.8f);
+            g.FillRectangle(cut, -18.2f, -2.4f, 1.1f, 4.8f);
+            for (int i = 0; i < 4; i++) g.DrawLine(cutPen, -1f + i * 3.4f, -1.7f, -1f + i * 3.4f, 1.7f);
+            for (int i = 0; i < 3; i++) g.FillEllipse(cut, 14.6f + i * 1.6f, -0.6f - (i % 2) * 1.2f + 0.6f, 1.1f, 1.1f);
+        }
+
+        // A snare drum seen a little from above, with two sticks crossed over it.
+        static void DrawDrumIcon(Graphics g, Brush fill, Brush cut, Pen cutPen)
+        {
+            g.FillRectangle(fill, -12f, -3f, 24f, 11f);
+            g.FillEllipse(fill, -12f, 4f, 24f, 8f);
+            g.FillEllipse(cut, -11f, -6.5f, 22f, 7f);
+            using (var head = new SolidBrush(Color.FromArgb(235, 235, 235)))
+                g.FillEllipse(head, -10f, -6f, 20f, 6f);
+            for (int i = 0; i < 5; i++) g.DrawLine(cutPen, -9f + i * 4.5f, 0.5f, -9f + i * 4.5f + 2f, 8f);
+            using (var stick = new Pen(((SolidBrush)fill).Color, 2.2f) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round })
+            {
+                g.DrawLine(stick, -13f, -13f, 4f, -4.5f);
+                g.DrawLine(stick, 13f, -13f, -4f, -4.5f);
+            }
+        }
+
+        static void DrawKeyboardIcon(Graphics g, Brush fill, Brush cut)
+        {
+            using (var body = RoundedRect(new RectangleF(-16f, -8f, 32f, 16f), 2.5f)) g.FillPath(fill, body);
+            for (int row = 0; row < 2; row++)
+                for (int col = 0; col < 6; col++)
+                    g.FillRectangle(cut, -13.5f + col * 4.6f + row * 1.4f, -5.5f + row * 4.2f, 3f, 2.8f);
+            g.FillRectangle(cut, -8f, 3f, 16f, 2.6f);
+        }
+
+        // A gamepad: rounded body with grips, a D-pad and four face buttons.
+        static void DrawPadIcon(Graphics g, Brush fill, Brush cut)
+        {
+            using (var body = new System.Drawing.Drawing2D.GraphicsPath())
+            {
+                body.AddEllipse(-16f, -6f, 13f, 15f);
+                body.AddEllipse(3f, -6f, 13f, 15f);
+                body.AddRectangle(new RectangleF(-10f, -7f, 20f, 10f));
+                body.FillMode = System.Drawing.Drawing2D.FillMode.Winding;
+                g.FillPath(fill, body);
+            }
+            g.FillRectangle(cut, -12.5f, -2.2f, 7f, 2.4f);
+            g.FillRectangle(cut, -10.2f, -4.5f, 2.4f, 7f);
+            g.FillEllipse(cut, 6.6f, -5f, 2.6f, 2.6f);
+            g.FillEllipse(cut, 6.6f, 0f, 2.6f, 2.6f);
+            g.FillEllipse(cut, 4.1f, -2.5f, 2.6f, 2.6f);
+            g.FillEllipse(cut, 9.1f, -2.5f, 2.6f, 2.6f);
         }
 
         // The MICROPHONE page: who sings, which microphone, and a live meter of
@@ -3584,6 +4579,100 @@ namespace ReWor
 
         // The UPDATE page: the version installed, the latest release on GitHub,
         // its notes, and a button that downloads and installs it.
+        const string LivePixUrl = "https://livepix.gg/erasedsin";
+        const string KofiUrl = "https://ko-fi.com/erasedsin";
+
+        static void OpenSite(string url)
+        {
+            try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); } catch (Exception) { }
+        }
+
+        // Support page: a big header and one large card per way to help (LivePix for Pix in
+        // Brazil, Ko-fi for everyone else), each with a button in the site's own color.
+        Control BuildSupportTab()
+        {
+            var page = NewPage();
+            var header = new Canvas { Location = new Point(0, 2), Size = new Size(PageW, 128), BackColor = Color.FromArgb(8, 8, 9) };
+            header.Paint += delegate(object s, PaintEventArgs e)
+            {
+                var g = e.Graphics;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                g.ScaleTransform(Ui, Ui);
+                float w = header.Width / Ui, h = header.Height / Ui;
+                using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+                {
+                    path.AddEllipse(-w * 0.2f, -h * 0.9f, w * 0.9f, h * 2.6f);
+                    using (var glow = new System.Drawing.Drawing2D.PathGradientBrush(path))
+                    {
+                        glow.CenterColor = Color.FromArgb(150, Glow);
+                        glow.SurroundColors = new[] { Color.FromArgb(0, Glow) };
+                        g.FillPath(glow, path);
+                    }
+                }
+                using (var bar = new SolidBrush(Red)) g.FillRectangle(bar, 0, h - 3, w, 3);
+                using (var heart = new System.Drawing.Drawing2D.GraphicsPath())
+                {
+                    float x = 26, y = 26, size = 44;
+                    heart.AddArc(x, y, size / 2, size / 2, 135, 225);
+                    heart.AddArc(x + size / 2, y, size / 2, size / 2, 180, 225);
+                    heart.AddLine(x + size * 0.93f, y + size * 0.42f, x + size / 2, y + size * 0.92f);
+                    heart.CloseFigure();
+                    using (var fill = new SolidBrush(RedBright)) g.FillPath(fill, heart);
+                }
+                using (var font = new Font(titleFamily, 26f, FontStyle.Regular, GraphicsUnit.Pixel))
+                using (var white = new SolidBrush(Color.White))
+                    g.DrawString(Strings.T("support_title"), font, white, 86, 22);
+                using (var font = new Font("Segoe UI", 9.5f))
+                using (var gray = new SolidBrush(Text1))
+                    g.DrawString(Strings.T("support_text"), font, gray, new RectangleF(88, 62, w - 110, h - 66));
+            };
+            page.Controls.Add(header);
+
+            int cardW = (PageW - 36 - 16) / 2;
+            AddSupportCard(page, new Point(18, 146), cardW, Color.FromArgb(50, 188, 173), "support_livepix_title", "support_livepix_text", "support_livepix_button", LivePixUrl);
+            AddSupportCard(page, new Point(18 + cardW + 16, 146), cardW, Color.FromArgb(255, 94, 91), "support_kofi_title", "support_kofi_text", "support_kofi_button", KofiUrl);
+            return page;
+        }
+
+        void AddSupportCard(Control page, Point at, int width, Color brand, string title, string text, string button, string url)
+        {
+            var card = new Canvas { Location = at, Size = new Size(width, 226), BackColor = Field };
+            card.Paint += delegate(object s, PaintEventArgs e)
+            {
+                using (var bar = new SolidBrush(brand)) e.Graphics.FillRectangle(bar, 0, 0, card.Width, Math.Max(4, (int)(4 * Ui)));
+            };
+            card.Controls.Add(new Label
+            {
+                Text = Strings.T(title), Location = new Point(18, 18), Size = new Size(width - 36, 32),
+                ForeColor = brand, Font = new Font("Segoe UI", 17f, FontStyle.Bold), BackColor = Color.Transparent
+            });
+            card.Controls.Add(new Label
+            {
+                Text = Strings.T(text), Location = new Point(18, 56), Size = new Size(width - 36, 56),
+                ForeColor = Text1, Font = new Font("Segoe UI", 10f), BackColor = Color.Transparent
+            });
+            var go = new Button
+            {
+                Text = Strings.T(button), Location = new Point(18, 120), Size = new Size(width - 36, 60), FlatStyle = FlatStyle.Flat,
+                BackColor = brand, ForeColor = Color.White, Cursor = Cursors.Hand, Font = new Font("Segoe UI", 14f, FontStyle.Bold)
+            };
+            go.FlatAppearance.BorderSize = 0;
+            go.FlatAppearance.MouseOverBackColor = ControlPaint.Light(brand, 0.25f);
+            go.FlatAppearance.MouseDownBackColor = ControlPaint.Dark(brand, 0.1f);
+            go.Click += delegate { OpenSite(url); };
+            card.Controls.Add(go);
+            var link = new Label
+            {
+                Text = url.Replace("https://", ""), Location = new Point(18, 188), Size = new Size(width - 36, 22),
+                ForeColor = Text2, Font = new Font("Segoe UI", 9f), TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Color.Transparent, Cursor = Cursors.Hand
+            };
+            link.Click += delegate { OpenSite(url); };
+            card.Controls.Add(link);
+            page.Controls.Add(card);
+        }
+
         Control BuildUpdateTab()
         {
             var page = NewPage();
@@ -3922,7 +5011,7 @@ namespace ReWor
             var hero = new Canvas { Location = new Point(0, 2), Size = new Size(PageW, 128), BackColor = Color.Black };
             hero.Paint += delegate(object s, PaintEventArgs e)
             {
-                DrawLogo(e.Graphics, hero.ClientRectangle, 40f, 255);
+                DrawLogo(e.Graphics, hero.ClientRectangle, 40f * Ui, 255);
                 // Thin diagonal stripes on the sides and a red edge under the cover.
                 using (var stripe = new Pen(Color.FromArgb(40, Red), 2f))
                     for (int x = -hero.Height; x < hero.Width; x += 14)
@@ -3962,8 +5051,10 @@ namespace ReWor
             page.Controls.Add(homeFolder);
 
             var play = MakeButton(Strings.T("play"), new Point(PageW - 24 - 250, 150), true);
+            homePlay = play;
             play.Size = new Size(250, 76);
             play.Font = new Font("Segoe UI", 24f, FontStyle.Bold);
+            AddGlyph(play, "START");
             play.Click += delegate { if (Apply()) Launch(); };
             page.Controls.Add(play);
             page.Controls.Add(new Label
@@ -3971,22 +5062,10 @@ namespace ReWor
                 Text = string.Format(Strings.T("home_version"), AppVersion), Location = new Point(PageW - 24 - 250, 228),
                 Size = new Size(250, 20), ForeColor = Text2, TextAlign = ContentAlignment.MiddleRight, Font = new Font("Segoe UI", 8f)
             });
-            var support = new LinkLabel
-            {
-                Text = Strings.T("home_support") + " Ko-fi · LivePix", Location = new Point(PageW - 24 - 250, 228),
-                Size = new Size(150, 20), TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Segoe UI", 8f),
-                ForeColor = Text2, LinkColor = RedBright, ActiveLinkColor = Color.White, VisitedLinkColor = RedBright,
-                LinkBehavior = LinkBehavior.HoverUnderline, BackColor = Color.Transparent
-            };
-            support.Links.Clear();
-            int prefix = Strings.T("home_support").Length + 1;
-            support.Links.Add(prefix, 5, "https://ko-fi.com/erasedsin");
-            support.Links.Add(prefix + 8, 7, "https://livepix.gg/erasedsin");
-            support.LinkClicked += delegate(object s, LinkLabelLinkClickedEventArgs e)
-            {
-                try { Process.Start(new ProcessStartInfo((string)e.Link.LinkData) { UseShellExecute = true }); }
-                catch (Exception) { }
-            };
+            var support = MakeButton(Strings.T("support_banner"), new Point(24, 342), true);
+            support.Size = new Size(PageW - 48, 34);
+            support.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
+            support.Click += delegate { ShowPage(Array.IndexOf(pageNames, Strings.T("tab_support"))); };
             page.Controls.Add(support);
             support.BringToFront();
 
@@ -4066,6 +5145,14 @@ namespace ReWor
         {
             if (introShown) return;
             introShown = true;
+            if (!motion) return;
+            if (picker != null)
+            {
+                pickerIntro = true;
+                introAt = DateTime.MinValue;
+                Shown += delegate { if (pickerIntro) introAt = DateTime.UtcNow; };
+                return;
+            }
             var intro = new Canvas { Dock = DockStyle.Fill, BackColor = Color.Black };
             var timer = new Timer { Interval = 16 };
             DateTime started = DateTime.MinValue;
@@ -4113,9 +5200,14 @@ namespace ReWor
         Control BuildKeyboardTab()
         {
             var page = NewPage();
-            kbEnabled = AddCheck(page, Strings.T("kb_enabled"), 10);
-            AddLabel(page, Strings.T("pad_preset"), 38);
-            kbPreset = AddCombo(page, 56,
+            int half = (PageW - 36 - 16) / 2;
+            AddLabelAt(page, Strings.T("kb_mode_label"), 18, 10);
+            kbMode = AddComboAt(page, 18, 30, half,
+                new Choice(Strings.T("kb_mode_guitar"), "guitar"),
+                new Choice(Strings.T("kb_mode_mic"), "mic"),
+                new Choice(Strings.T("kb_mode_off"), "off"));
+            AddLabelAt(page, Strings.T("pad_preset"), 18 + half + 16, 10);
+            kbPreset = AddComboAt(page, 18 + half + 16, 30, half,
                 new Choice(Strings.T("kb_asjkl"), "asjkl"),
                 new Choice(Strings.T("kb_numbers"), "numbers"),
                 new Choice(Strings.T("preset_custom"), "custom"));
@@ -4127,7 +5219,7 @@ namespace ReWor
                 int column = i < 5 ? 0 : 1;
                 int row = i < 5 ? i : i - 5;
                 int x = 18 + column * 330;
-                int y = 94 + row * 32;
+                int y = 74 + row * 32;
                 page.Controls.Add(new Label { Text = Strings.T(KeyParts[i][1]), Location = new Point(x, y + 3), Size = new Size(96, 20), ForeColor = Text1 });
                 var field = new TextBox
                 {
@@ -4138,7 +5230,7 @@ namespace ReWor
                 page.Controls.Add(field);
                 kbFields[KeyParts[i][0]] = field;
             }
-            AddNote(page, Strings.T("kb_note"), 260);
+            AddNote(page, Strings.T("kb_note"), 240);
             return page;
         }
 
@@ -4191,6 +5283,7 @@ namespace ReWor
                 new Choice(Strings.T("gpu_any"), "any"),
                 new Choice("DirectX 12", "d3d12"),
                 new Choice("Vulkan", "vulkan"));
+            gpuApi.SelectedIndexChanged += delegate { UpdateVulkanLimits(); };
             y += 60;
 
             gamma16 = AddCheck(page, Strings.T("gamma16"), y); y += 36;
@@ -4301,6 +5394,21 @@ namespace ReWor
         static void AddNote(Control parent, string text, int y)
         {
             parent.Controls.Add(new Label { Text = text, Location = new Point(18, y), Size = new Size(PageW - 36, 56), ForeColor = Text2 });
+        }
+
+        static void AddLabelAt(Control parent, string text, int x, int y, int width = 0)
+        {
+            var label = new Label { Text = text, Location = new Point(x, y), ForeColor = Text1 };
+            if (width > 0) label.Size = new Size(width, 34); else label.AutoSize = true;
+            parent.Controls.Add(label);
+        }
+
+        static ComboBox AddComboAt(Control parent, int x, int y, int width, params Choice[] items)
+        {
+            var c = AddCombo(parent, y, items);
+            c.Location = new Point(x, y);
+            c.Width = width;
+            return c;
         }
 
         static ComboBox AddCombo(Control parent, int y, params Choice[] items)
@@ -4590,7 +5698,7 @@ namespace ReWor
             // Unlocked first, the newest on top; then the rest in the game's order.
             achItems.Sort((x, y) => x.Unlocked != 0 && y.Unlocked != 0 ? y.Unlocked.CompareTo(x.Unlocked) : (y.Unlocked != 0).CompareTo(x.Unlocked != 0));
             achSummary.Text = string.Format(Strings.T("ach_summary"), got, total, gotScore, totalScore);
-            achList.Height = Math.Max(achScroll.Height - 4, achItems.Count * 58 + 4);
+            achList.Height = Math.Max(achScroll.Height - 4, (int)((achItems.Count * 58 + 4) * Ui));
             achScroll.AutoScrollPosition = new Point(0, 0);
             achList.Invalidate();
         }
@@ -4704,12 +5812,15 @@ namespace ReWor
         void PaintAchievements(object sender, PaintEventArgs e)
         {
             var g = e.Graphics;
+            g.ScaleTransform(Ui, Ui);
+            int listW = B(achList.Width);
+            int clipTop = B(e.ClipRectangle.Top), clipBottom = B(e.ClipRectangle.Bottom);
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
             g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
             if (achItems.Count == 0)
             {
                 using (var brush = new SolidBrush(Text2))
-                    g.DrawString(Strings.T("ach_missing"), Font, brush, new RectangleF(8, 16, achList.Width - 16, 60));
+                    g.DrawString(Strings.T("ach_missing"), new Font("Segoe UI", 9.5f), brush, new RectangleF(8, 16, listW - 16, 60));
                 return;
             }
             using (var titleFont = new Font("Segoe UI", 10f, FontStyle.Bold))
@@ -4726,9 +5837,9 @@ namespace ReWor
                 {
                     var a = achItems[i];
                     int y = 2 + i * 58;
-                    if (y + 58 < e.ClipRectangle.Top || y > e.ClipRectangle.Bottom) continue;
+                    if (y + 58 < clipTop || y > clipBottom) continue;
                     bool got = a.Unlocked != 0;
-                    g.FillRectangle(row, 0, y, achList.Width - 4, 54);
+                    g.FillRectangle(row, 0, y, listW - 4, 54);
                     if (got) g.FillRectangle(accent, 0, y, 3, 54);
                     var icon = AchievementIcon(a.Icon);
                     if (icon != null)
@@ -4736,7 +5847,7 @@ namespace ReWor
                         g.DrawImage(icon, new Rectangle(10, y + 5, 44, 44));
                         if (!got) g.FillRectangle(veil, 10, y + 5, 44, 44);
                     }
-                    int textW = achList.Width - 64 - 90;
+                    int textW = listW - 64 - 90;
                     g.DrawString(a.Title, titleFont, got ? white : gray, new RectangleF(64, y + 6, textW, 20));
                     string line = a.Text;
                     if (got && a.Unlocked > 1)
@@ -4745,7 +5856,7 @@ namespace ReWor
                         catch (Exception) { }
                     }
                     g.DrawString(line, textFont, got ? gray : dim, new RectangleF(64, y + 26, textW, 28));
-                    g.DrawString(a.Score + " G", titleFont, got ? accent : dim, new RectangleF(achList.Width - 100, y + 16, 88, 22), right);
+                    g.DrawString(a.Score + " G", titleFont, got ? accent : dim, new RectangleF(listW - 100, y + 16, 88, 22), right);
                 }
             }
         }
@@ -4776,6 +5887,12 @@ namespace ReWor
             SelectChoice(resolution, settings.GetInt("video_mode_width", 1280) + "x" + settings.GetInt("video_mode_height", 720));
             SelectChoice(drawScale, settings.GetInt("draw_resolution_percent", 100).ToString());
             SelectChoice(presentEffect, settings.Get("present_effect", "bilinear"));
+            SelectChoice(renderScale, Math.Max(1, Math.Min(3, settings.GetInt("resolution_scale", 1))).ToString());
+            {
+                string dlss = settings.Get("dlss_mode", "off"), fsr = settings.Get("fsr_mode", "off");
+                SelectChoice(sceneUpscaler, dlss != "off" ? "dlss:" + dlss : fsr != "off" ? "fsr:" + fsr : "off");
+                if (sceneUpscaler.SelectedItem == null) sceneUpscaler.SelectedIndex = 0;
+            }
             SelectChoice(anisotropy, settings.GetInt("anisotropic_override", 3).ToString());
             SelectChoice(language, settings.GetInt("user_language", 1).ToString());
             fullscreen.Checked = settings.GetBool("fullscreen", true);
@@ -4792,6 +5909,7 @@ namespace ReWor
             gamma16.Checked = settings.GetBool("gamma_render_target_as_unorm16", activeGame == GameWor);
             SelectChoice(gpuApi, settings.Get("gpu", "any"));
             if (gpuApi.SelectedItem == null) gpuApi.SelectedIndex = 0;
+            UpdateVulkanLimits();
             motionBlur.Checked = settings.GetBool(FxKey(0), true);
             screenNoise.Checked = settings.GetBool(FxKey(1), true);
             depthOfField.Checked = settings.GetBool(FxKey(2), true);
@@ -4827,7 +5945,7 @@ namespace ReWor
             }
             micVolume.Value = Math.Max(0, Math.Min(400, settings.GetInt(CvarPrefix + "mic_volume", 100)));
             micGate.Value = Math.Max(0, Math.Min(50, settings.GetInt(CvarPrefix + "mic_gate", 0)));
-            kbEnabled.Checked = settings.GetBool("mnk_mode", true);
+            SelectChoice(kbMode, !settings.GetBool("mnk_mode", true) ? "off" : settings.GetBool("keyboard_as_guitar", true) ? "guitar" : "mic");
             applyingKbPreset = true;
             foreach (var part in KeyParts) kbFields[part[0]].Text = settings.Get(part[0], part[2]);
             applyingKbPreset = false;
@@ -4841,6 +5959,20 @@ namespace ReWor
             guitarMaps = settings.Get("guitar_hid_maps", "");
             ShowUsbStatus();
             ShowGameFolder();
+        }
+
+        // Vulkan has neither the resolution below 100% nor DLSS / FSR 3/4 (the SDK has them on DirectX 12 only).
+        void UpdateVulkanLimits()
+        {
+            if (gpuApi == null || drawScale == null || sceneUpscaler == null) return;
+            bool vulkan = Value(gpuApi) == "vulkan";
+            if (vulkan)
+            {
+                drawScale.SelectedIndex = 0;
+                sceneUpscaler.SelectedIndex = 0;
+            }
+            drawScale.Enabled = !vulkan;
+            sceneUpscaler.Enabled = !vulkan;
         }
 
         // The four screen effects of the GRAPHICS page: Warriors of Rock's motion blur, screen noise, depth of field
@@ -4872,6 +6004,13 @@ namespace ReWor
             if (Value(drawScale) == "100") settings.Remove("draw_resolution_percent");
             else settings.Set("draw_resolution_percent", int.Parse(Value(drawScale)));
             settings.Set("present_effect", Value(presentEffect));
+            if (Value(renderScale) == "1") settings.Remove("resolution_scale");
+            else settings.Set("resolution_scale", int.Parse(Value(renderScale)));
+            {
+                string up = Value(sceneUpscaler);
+                settings.Set("dlss_mode", up.StartsWith("dlss:") ? up.Substring(5) : "off");
+                settings.Set("fsr_mode", up.StartsWith("fsr:") ? up.Substring(4) : "off");
+            }
             settings.Set("anisotropic_override", int.Parse(Value(anisotropy)));
             settings.Set("user_language", int.Parse(Value(language)));
             settings.Set("fullscreen", fullscreen.Checked);
@@ -4954,7 +6093,9 @@ namespace ReWor
             else settings.Set(CvarPrefix + "mic_device", Value(micDevice));
             settings.Set(CvarPrefix + "mic_volume", micVolume.Value);
             settings.Set(CvarPrefix + "mic_gate", micGate.Value);
-            settings.Set("mnk_mode", kbEnabled.Checked);
+            settings.Set("mnk_mode", Value(kbMode) != "off");
+            // As a guitar the keyboard is a guitarist; as a regular controller the game gives it the vocals.
+            settings.Set("keyboard_as_guitar", Value(kbMode) != "mic");
             foreach (var part in KeyParts) settings.Set(part[0], KeyNames(kbFields[part[0]].Text));
             foreach (var clear in KeyClears) settings.Set(clear[0], clear[1]);
             // Esc goes back in the game's menus (keybind_menu_back); a guitar that sends it (Start on a
@@ -5079,24 +6220,42 @@ namespace ReWor
             File.WriteAllBytes(target, Chnk.IsChunked(raw) ? Chnk.Compress(scripts) : scripts);
         }
 
+        // Written by the game when the player picks "back to the launcher" in its quit question or its F5
+        // menu: the launcher, hidden while the game runs, then comes back instead of closing.
+        const string ReturnFile = "return_to_launcher.txt";
+
         void Launch()
         {
-            Process game = StartGame();
+            string flag = Path.Combine(PlayDir, ReturnFile);
+            try { File.Delete(flag); } catch (Exception) { }
+            Process game = StartGame(true);
             if (game == null) return;
-            if (!waitForGame) { Close(); return; }
+            HidePadRing();
+            if (meter != null) { meter.Dispose(); meter = null; }
             Hide();
+            InputScan.StopJoyHelper();
             game.EnableRaisingEvents = true;
             int closing = 0;
             EventHandler done = delegate
             {
                 if (System.Threading.Interlocked.Exchange(ref closing, 1) == 1) return;
-                BeginInvoke((Action)delegate { GameExitCode = game.ExitCode; Close(); });
+                BeginInvoke((Action)delegate
+                {
+                    GameExitCode = game.ExitCode;
+                    bool back = false;
+                    try { back = File.Exists(flag); File.Delete(flag); } catch (Exception) { }
+                    if (!back) { Close(); return; }
+                    padZone = PadTabs;
+                    ShowPage(HomePage);
+                    Show();
+                    Activate();
+                });
             };
             game.Exited += done;
             if (game.HasExited) done(game, EventArgs.Empty);
         }
 
-        Process StartGame()
+        Process StartGame(bool fromWindow = false)
         {
             string exe = Path.Combine(PlayDir, GameExe);
             if (!File.Exists(exe))
@@ -5111,6 +6270,8 @@ namespace ReWor
                 WorkingDirectory = PlayDir,
                 UseShellExecute = false
             };
+            // Tells the game it can offer "back to the launcher" (it writes ReturnFile and closes).
+            if (fromWindow) start.EnvironmentVariables["ERASED_LAUNCHER"] = "1";
             // Read by the game at startup. A file keeps any character in the path
             // intact, which a command line argument would not.
             File.WriteAllText(Path.Combine(PlayDir, "game_folder.txt"), gameFolder, new UTF8Encoding(false));

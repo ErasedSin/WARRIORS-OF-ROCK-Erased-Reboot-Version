@@ -557,6 +557,8 @@ class ReWorApp : public rex::ReXApp {
 #endif
   }
 
+  void OnConfigureFonts(ImFontAtlas* atlas) override { AddOptionsMenuFonts(atlas); }
+
   void OnCreateDialogs(rex::ui::ImGuiDrawer* drawer) override {
     if (REXCVAR_GET(rewor_show_fps)) {
       fps_counter_ = std::make_unique<FpsCounterDialog>(drawer);

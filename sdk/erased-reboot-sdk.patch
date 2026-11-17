@@ -1402,6 +1402,49 @@ index cbf7916..6011009 100644
  
  target_include_directories(rexgpu-xenos PRIVATE
      ${REXGLUE_ROOT}/thirdparty/renderdoc
+diff --git a/src/graphics/vulkan/pipeline_cache.cpp b/src/graphics/vulkan/pipeline_cache.cpp
+index 91ac08f..535b5d2 100644
+--- a/src/graphics/vulkan/pipeline_cache.cpp
++++ b/src/graphics/vulkan/pipeline_cache.cpp
+@@ -55,6 +55,8 @@ REXCVAR_DEFINE_INT32(
+     .range(-1, 32)
+     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+ 
++REXCVAR_DECLARE(bool, gpu_shader_storage_seed);
++
+ REXCVAR_DEFINE_BOOL(vulkan_tessellation_wireframe, false, "GPU/Vulkan",
+                     "Render tessellation as wireframe")
+     .lifecycle(rex::cvar::Lifecycle::kHotReload);
+@@ -411,6 +413,29 @@ void VulkanPipelineCache::InitializeShaderStorage(const std::filesystem::path& c
+   bool edram_fragment_shader_interlock =
+       render_target_cache_.GetPath() == RenderTargetCache::Path::kPixelShaderInterlock;
+ 
++  // The seed (gpu_shader_storage_seed, shader_seed next to the executable): the
++  // known shaders and pipelines, so the warm-up below creates them before the
++  // game runs instead of at first use. Only into a cache that has none yet; the
++  // Direct3D 12 cache merges its own (pipeline_cache.cpp of d3d12), and the
++  // shaders file is shared by both.
++  if (REXCVAR_GET(gpu_shader_storage_seed) && !edram_fragment_shader_interlock) {
++    const std::filesystem::path seed_root = rex::filesystem::GetExecutableFolder() / "shader_seed";
++    size_t seeded = 0;
++    for (const std::string name :
++         {fmt::format("{:08X}.xsh", title_id), fmt::format("{:08X}.fbo.vk.xpso", title_id)}) {
++      std::error_code ec;
++      const auto seed = seed_root / name;
++      const auto user = shader_storage_shareable_root / name;
++      if (std::filesystem::exists(seed, ec) && !std::filesystem::exists(user, ec) &&
++          std::filesystem::copy_file(seed, user, ec)) {
++        ++seeded;
++      }
++    }
++    if (seeded) {
++      REXGPU_INFO("Shader storage seed: copied {} files into the Vulkan cache", seeded);
++    }
++  }
++
+   // Initialize the pipeline storage stream - read pipeline descriptions and
+   // collect used shader modifications to translate.
+   std::vector<PipelineStoredDescription> pipeline_stored_descriptions;
 diff --git a/src/input/CMakeLists.txt b/src/input/CMakeLists.txt
 index 3ea3535..746203d 100644
 --- a/src/input/CMakeLists.txt
@@ -1415,10 +1458,10 @@ index 3ea3535..746203d 100644
      nop/nop_input_driver.cpp
  )
 diff --git a/src/input/device_assignment.cpp b/src/input/device_assignment.cpp
-index dd252db..d987487 100644
+index dd252db..2f2e60c 100644
 --- a/src/input/device_assignment.cpp
 +++ b/src/input/device_assignment.cpp
-@@ -11,23 +11,241 @@
+@@ -11,23 +11,257 @@
  
  #include <rex/input/device_assignment.h>
  
@@ -1452,6 +1495,7 @@ index dd252db..d987487 100644
 +    .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
 +
 +REXCVAR_DECLARE(std::string, input_backend);
++REXCVAR_DECLARE(bool, gamepad_as_guitar);
 +
  namespace rex::input {
  
@@ -1507,12 +1551,22 @@ index dd252db..d987487 100644
 +
 +bool DefaultIsXInput() { return REXCVAR_GET(input_backend) == "xinput"; }
 +
++// A regular controller playing as a guitar (gamepad_as_guitar) is only turned
++// into one, with its guitar_pad_* buttons, when SDL reads it. A player who
++// named its XInput slot ("xinput1") read it raw, and the game saw a regular
++// controller, the singer's. Such a player gets the SDL reading of the slot.
++bool XInputSlotReadBySdl(const PlayerDevice& want) {
++  return want.sdl || REXCVAR_GET(gamepad_as_guitar);
++}
++
 +// With both drivers on, an XInput controller shows up twice. The players who
 +// did not name the reading (auto, guitar1...) get it through the default one
 +// (input_backend); the other copy is left out.
 +bool OtherReading(const DeviceInfo& device) {
 +  if (device.synthetic) return false;
-+  if (DefaultIsXInput()) return !device.raw_xinput && device.xinput_slot >= 0;
++  // A regular controller as a guitar is SDL's whatever the default reading.
++  const bool sdl = !DefaultIsXInput() || (REXCVAR_GET(gamepad_as_guitar) && device.native_subtype == 0x01);
++  if (!sdl) return !device.raw_xinput && device.xinput_slot >= 0;
 +  return device.raw_xinput;
 +}
 +
@@ -1521,8 +1575,13 @@ index dd252db..d987487 100644
 +bool Matches(const DeviceInfo& device, const PlayerDevice& want) {
 +  switch (want.kind) {
 +    case Kind::kXInput:
-+      return device.xinput_slot >= 0 && uint32_t(device.xinput_slot) + 1 == want.number &&
-+             device.raw_xinput != want.sdl;
++    {
++      if (device.xinput_slot < 0 || uint32_t(device.xinput_slot) + 1 != want.number) return false;
++      // Both readings of a regular controller report it as one (0x01); guitars and
++      // drums keep the raw reading, where their kind and tilt come from.
++      const bool sdl = want.sdl || (XInputSlotReadBySdl(want) && device.native_subtype == 0x01);
++      return device.raw_xinput != sdl;
++    }
 +    case Kind::kHid:
 +      return !device.synthetic && !device.raw_xinput && device.vendor == want.vendor &&
 +             device.product == want.product;
@@ -1568,7 +1627,7 @@ index dd252db..d987487 100644
 +      case Kind::kKeyboard:
 +        break;
 +      case Kind::kXInput:
-+        if (player.sdl) return true;
++        if (XInputSlotReadBySdl(player)) return true;
 +        break;
 +      default:
 +        return true;

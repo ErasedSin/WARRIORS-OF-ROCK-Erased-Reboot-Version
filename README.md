@@ -20,6 +20,22 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 
 ## What's new
 
+**In 2.5:** the FSR and CAS image filters work (the previous builds left AMD FidelityFX out, so only bilinear
+was used). New on the VIDEO page: a 2x or 3x render resolution for strong PCs, and NVIDIA DLSS / DLAA or AMD FSR 3/4 on
+the scene (experimental). A regular controller set to play as a guitar is now a guitar even when it was picked by its
+XInput slot on the PLAYERS page (it was the singer before). The keyboard plays as a guitar or as the singer's
+controller. Shaders seen before are built while the game loads, on DirectX 12 and on Vulkan. The in-game options
+menu (F5) was redone, with a short note under each option. Below 100% resolution, DLSS and FSR 3/4 only work on
+DirectX 12, and below 100% doesn't mix with DLSS/FSR 3/4: the launcher now keeps those choices from clashing.
+
+The launcher opens with a lightning strike, keeps lightning in the sky behind the game picker, and shows its pages
+as tabs along the top. It can be driven with a controller or a guitar (D-pad or left stick to move, A to pick, B to go
+back, LB/RB to change pages, X to save, Y for the games, Start to play), with each button's icon next to what it does.
+Page transitions can be turned off on the GAME page. New device icons, 2560x1440 and 3840x2160 (4K) screen
+resolutions, and six languages: Portuguese, English, Spanish, French, German and Italian. When a game was started from
+the launcher, its quit question in the main menu and the F5 menu can take you back to the launcher instead of closing
+everything. Guitar Hero 5 gets the same F5 options menu and the way back to the launcher.
+
 **In 2.4:** RecompLauncher opens the Erased Reboot Version launcher on the game you picked, with your game folder
 already filled in, so every setting is there before you play. It also gets a Graphics API option (Vulkan or DirectX 12).
 
@@ -140,7 +156,7 @@ Windows, with Visual Studio 2022 Build Tools (C++), LLVM/Clang, CMake and Ninja.
    ```
 3. **The launcher** (C#, built with the compiler that comes with Windows):
    ```bat
-   %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /codepage:65001 /win32icon:launcher\launcher.ico /r:System.Windows.Forms.dll /r:System.Drawing.dll /out:"Erased Reboot Version.exe" launcher\ReWorLauncher.cs
+   %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /codepage:65001 /win32icon:launcher\launcher.ico /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /out:"Erased Reboot Version.exe" launcher\*.cs
    ```
    The title font is not in this repository; without it, the launcher uses Impact.
 
@@ -196,6 +212,21 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
+
+**Novidades da 2.5:** os filtros de imagem FSR e CAS funcionam (as builds anteriores saíram sem o AMD FidelityFX,
+então só o bilinear valia). Na aba VÍDEO: resolução de desenho 2x ou 3x para PC forte, e NVIDIA DLSS / DLAA ou AMD
+FSR 3/4 na cena (experimental). Um controle comum no modo guitarra agora vira guitarra mesmo escolhido pela porta
+XInput na aba JOGADORES (antes ele virava o vocalista). O teclado joga como guitarra ou como o controle do vocalista.
+Os shaders já vistos são preparados enquanto o jogo carrega, no DirectX 12 e no Vulkan. O menu de opções dentro do
+jogo (F5) foi refeito, com uma explicação curta embaixo de cada opção. Resolução abaixo de 100%, DLSS e FSR 3/4 só
+funcionam no DirectX 12, e abaixo de 100% não combina com DLSS/FSR 3/4: o launcher agora impede essas combinações.
+
+O launcher abre com um raio, tem raios no céu atrás da escolha de jogo e mostra as abas no topo. Ele pode ser usado
+com controle ou guitarra (direcional ou analógico esquerdo para andar, A escolhe, B volta, LB/RB trocam de aba, X salva,
+Y mostra os jogos, Start joga), com o ícone de cada botão ao lado do que ele faz. As transições podem ser desligadas na
+aba JOGO. Ícones novos dos dispositivos, resoluções 2560x1440 e 3840x2160 (4K) e seis idiomas: português, inglês,
+espanhol, francês, alemão e italiano. Quando o jogo foi aberto pelo launcher, a pergunta de sair no menu principal e o
+menu F5 podem voltar ao launcher em vez de fechar tudo. O Guitar Hero 5 ganhou o mesmo menu F5 e a volta ao launcher.
 
 **Novidades da 2.4:** o RecompLauncher abre o launcher do Erased Reboot Version no jogo escolhido, já com a pasta do
 jogo, para você configurar tudo antes de jogar. Ele também ganhou a opção de API gráfica (Vulkan ou DirectX 12).

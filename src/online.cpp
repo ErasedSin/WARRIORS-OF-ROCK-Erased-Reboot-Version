@@ -53,6 +53,8 @@ REXCVAR_DEFINE_STRING(rewor_online_ip, "", "re-wor",
 REXCVAR_DEFINE_STRING(rewor_online_host, "", "re-wor",
                       "The host's address, to join the host's match; empty = this PC hosts")
     .lifecycle(rex::cvar::Lifecycle::kRequiresRestart);
+REXCVAR_DEFINE_BOOL(rewor_online_log, false, "re-wor",
+                    "Log the network and session calls (dozens a second, to find out why two PCs do not meet)");
 
 namespace {
 
@@ -182,11 +184,14 @@ void ReWorStartOnline() {
 
   g_xuid = MakeXuid(ip);
   g_online = true;
-  // The SDK logs every network and session call at warning level; the launcher
-  // sets log_level to "error", which would hide them. Only these two
-  // categories are raised, so the rest of the log stays quiet.
-  rex::SetCategoryLevel(rex::log::krnl(), spdlog::level::warn);
-  rex::SetCategoryLevel(rex::log::core(), spdlog::level::warn);
+  // The SDK logs every network and session call at warning level (dozens a
+  // second while the game looks for players), which costs CPU; the launcher
+  // sets log_level to "error", which hides them. rewor_online_log shows them,
+  // to find out why two PCs do not meet.
+  if (REXCVAR_GET(rewor_online_log)) {
+    rex::SetCategoryLevel(rex::log::krnl(), spdlog::level::warn);
+    rex::SetCategoryLevel(rex::log::core(), spdlog::level::warn);
+  }
   REXLOG_WARN("[online] on: this PC {} ({}), xuid {:016X}", Ipv4Text(ip),
               host ? "joins " + Ipv4Text(host) : std::string("hosts"), g_xuid);
 }

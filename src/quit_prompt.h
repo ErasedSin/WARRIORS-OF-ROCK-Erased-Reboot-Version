@@ -15,3 +15,9 @@ class Window;
 std::unique_ptr<rex::ui::ImGuiDialog> CreateQuitPrompt(rex::ui::ImGuiDrawer* drawer,
                                                        std::function<rex::system::IInputSystem*()> input,
                                                        rex::ui::Window* window);
+
+// True when the Erased Reboot Version launcher started the game and waits, hidden, for it to close.
+bool LauncherWaiting();
+
+// Closes the game; with to_launcher the waiting launcher comes back instead of closing too.
+void QuitGame(bool to_launcher);
