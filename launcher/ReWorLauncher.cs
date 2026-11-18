@@ -279,6 +279,7 @@ namespace ReWor
             { "fps_60", new[] { "60 FPS (como no console)", "60 FPS (as on the console)" } },
             { "gpu_label", new[] { "API gráfica (no Vulkan não há resolução abaixo de 100%, DLSS nem FSR 3/4)", "Graphics API (Vulkan has no resolution below 100%, DLSS or FSR 3/4)" } },
             { "gpu_any", new[] { "Automática (DirectX 12)", "Automatic (DirectX 12)" } },
+            { "gpu_native", new[] { "Nativo (Vulkan, experimental, mais rápido)", "Native (Vulkan, experimental, faster)" } },
             { "win_minimize", new[] { "Minimizar", "Minimize" } },
             { "win_mode_window", new[] { "Abrir em janela (F11)", "Window mode (F11)" } },
             { "win_mode_full", new[] { "Tela cheia (F11)", "Fullscreen (F11)" } },
@@ -5277,12 +5278,18 @@ namespace ReWor
             y += 60;
 
             // The SDK's gpu: Direct3D 12 (the mature one) or Vulkan. A backend
-            // that does not start falls back to the other one.
+            // that does not start falls back to the other one. NativeXRenderer
+            // ("native") draws the game in Vulkan itself instead of emulating the
+            // console's GPU; where it cannot start (no Vulkan, or an old AMD
+            // driver that crashes on the game's shaders), the emulation draws on
+            // DirectX 12.
             AddLabel(page, Strings.T("gpu_label"), y);
-            gpuApi = AddCombo(page, y + 20,
+            var apis = new List<Choice> {
                 new Choice(Strings.T("gpu_any"), "any"),
                 new Choice("DirectX 12", "d3d12"),
-                new Choice("Vulkan", "vulkan"));
+                new Choice("Vulkan", "vulkan") };
+            apis.Add(new Choice(Strings.T("gpu_native"), "native"));
+            gpuApi = AddCombo(page, y + 20, apis.ToArray());
             gpuApi.SelectedIndexChanged += delegate { UpdateVulkanLimits(); };
             y += 60;
 
@@ -5907,7 +5914,8 @@ namespace ReWor
                 if (frameRate.SelectedItem == null) frameRate.SelectedIndex = 0;
             }
             gamma16.Checked = settings.GetBool("gamma_render_target_as_unorm16", activeGame == GameWor);
-            SelectChoice(gpuApi, settings.Get("gpu", "any"));
+            SelectChoice(gpuApi, settings.GetBool("native_x_renderer", false)
+                ? "native" : settings.Get("gpu", "any"));
             if (gpuApi.SelectedItem == null) gpuApi.SelectedIndex = 0;
             UpdateVulkanLimits();
             motionBlur.Checked = settings.GetBool(FxKey(0), true);
@@ -5961,11 +5969,12 @@ namespace ReWor
             ShowGameFolder();
         }
 
-        // Vulkan has neither the resolution below 100% nor DLSS / FSR 3/4 (the SDK has them on DirectX 12 only).
+        // Vulkan has neither the resolution below 100% nor DLSS / FSR 3/4 (the SDK has them on DirectX 12 only), and
+        // NativeXRenderer draws at the window's size with its own antialiasing.
         void UpdateVulkanLimits()
         {
             if (gpuApi == null || drawScale == null || sceneUpscaler == null) return;
-            bool vulkan = Value(gpuApi) == "vulkan";
+            bool vulkan = Value(gpuApi) == "vulkan" || Value(gpuApi) == "native";
             if (vulkan)
             {
                 drawScale.SelectedIndex = 0;
@@ -6025,7 +6034,11 @@ namespace ReWor
             // Guitar Hero 5 keeps the game in time above 60 FPS from its own setting (src/framerate.cpp).
             if (activeGame == GameGh5) settings.Set("gh5_frame_rate", int.Parse(Value(frameRate)));
             settings.Set("gamma_render_target_as_unorm16", gamma16.Checked);
-            settings.Set("gpu", Value(gpuApi));
+            bool native = Value(gpuApi) == "native";
+            settings.Set("gpu", native ? "any" : Value(gpuApi));
+            settings.Set("native_x_renderer", native);
+            // NativeXRenderer presents itself: FIFO with V-Sync, else MAILBOX (no tearing, no wait).
+            settings.Set("native_x_renderer_present_mode", vsync.Checked ? "vsync" : "");
             settings.Set(FxKey(0), motionBlur.Checked);
             settings.Set(FxKey(1), screenNoise.Checked);
             settings.Set(FxKey(2), depthOfField.Checked);

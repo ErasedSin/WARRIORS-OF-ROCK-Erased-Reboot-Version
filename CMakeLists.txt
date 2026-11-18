@@ -60,6 +60,25 @@ endif()
 
 rexglue_setup_target(rewor GPU_PLUGINS xenos)
 
+# NativeXRenderer (https://github.com/ElGuslml/NativeXRenderer, MIT): draws the
+# game natively in Vulkan instead of emulating the Xbox 360 GPU. It compiles
+# the SDK's graphics sources, so it needs the SDK built from its source tree
+# (REXSDK_DIR) with its recomp changes. The hooks and the device layouts are in
+# src/native_x_renderer_wor.cpp; the native_x_renderer cvar turns it on.
+option(REWOR_NATIVE_X_RENDERER "Build NativeXRenderer (needs REXSDK_DIR)" ON)
+set(REWOR_NATIVE_X_RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/native_x_renderer" CACHE PATH
+    "NativeXRenderer source tree, with thirdparty/diligent-core")
+if(REWOR_NATIVE_X_RENDERER AND REXSDK_DIR AND EXISTS "${REWOR_NATIVE_X_RENDERER_DIR}/CMakeLists.txt")
+    add_subdirectory("${REWOR_NATIVE_X_RENDERER_DIR}" native_x_renderer)
+    target_sources(rewor PRIVATE src/native_x_renderer_wor.cpp)
+    target_link_libraries(rewor PRIVATE native_x_renderer)
+    target_compile_definitions(rewor PRIVATE REWOR_HAS_NATIVE_X_RENDERER=1)
+    native_x_renderer_copy_runtime(rewor)
+    message(STATUS "NativeXRenderer: ${REWOR_NATIVE_X_RENDERER_DIR}")
+elseif(REWOR_NATIVE_X_RENDERER)
+    message(STATUS "NativeXRenderer left out: it needs REXSDK_DIR and ${REWOR_NATIVE_X_RENDERER_DIR}")
+endif()
+
 if(REWOR_ENABLE_DISCORD_RPC)
     target_link_libraries(rewor PRIVATE discord-rpc)
     target_compile_definitions(rewor PRIVATE REWOR_HAS_DISCORD_RPC=1)

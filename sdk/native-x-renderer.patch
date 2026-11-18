@@ -1,0 +1,133 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 5d11237..8252265 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -96,13 +96,16 @@ add_library(native_x_renderer_sdk STATIC
+     src/sdk_draw.cpp
+     src/sdk_primitive_processor.cpp
+     src/sdk_texture_cache.cpp
++    src/sdk_texture_replacement.cpp
+     # glslang's default resource limits, for NativeXRenderer's utility shaders (src/glsl.cpp, decision D16).
+     ${REXSDK_DIR}/thirdparty/glslang/StandAlone/ResourceLimits.cpp
+ )
+ target_compile_definitions(native_x_renderer_sdk PRIVATE
+     NATIVE_X_RENDERER_SDK_DRAW_CPP="${_nxr_sdk_graphics}/util/draw.cpp"
+     NATIVE_X_RENDERER_SDK_PRIMITIVE_PROCESSOR_CPP="${_nxr_sdk_graphics}/primitive_processor.cpp"
+-    NATIVE_X_RENDERER_SDK_TEXTURE_CACHE_CPP="${_nxr_sdk_graphics}/pipeline/texture/cache.cpp")
++    NATIVE_X_RENDERER_SDK_TEXTURE_CACHE_CPP="${_nxr_sdk_graphics}/pipeline/texture/cache.cpp"
++    NATIVE_X_RENDERER_SDK_TEXTURE_REPLACEMENT_CPP="${_nxr_sdk_graphics}/pipeline/texture/replacement.cpp")
++target_include_directories(native_x_renderer_sdk PRIVATE "${REXSDK_DIR}/thirdparty/stb")
+ target_compile_features(native_x_renderer_sdk PUBLIC cxx_std_23)
+ target_compile_options(native_x_renderer_sdk PRIVATE -Wno-unused-variable)
+ # The same third-party pieces the plugin compiles these files with.
+diff --git a/src/device.cpp b/src/device.cpp
+index 45130c2..8bc63ae 100644
+--- a/src/device.cpp
++++ b/src/device.cpp
+@@ -42,6 +42,11 @@ REXCVAR_DEFINE_STRING(native_x_renderer_present_mode, "", "NativeXRenderer",
+                       "\"mailbox\" = MAILBOX, else FIFO; \"immediate\" = IMMEDIATE (tearing, or a variable refresh "
+                       "rate display following the game), else MAILBOX. FIFO where the driver offers none of them");
+ 
++REXCVAR_DEFINE_BOOL(native_x_renderer_allow_old_amd_driver, false, "NativeXRenderer",
++                    "Draw on an AMD GPU whose Vulkan driver is older than Vulkan 1.3 (the legacy drivers of GCN 1 and 2, "
++                    "such as the Radeon R7 M260's 2022 driver), whose shader compiler crashed on the game's shaders "
++                    "(amdvlk64.dll, re-wor 2026-11-18); off, the Xenos path draws there");
++
+ REXCVAR_DEFINE_BOOL(native_x_renderer_dynamic_rendering, true, "NativeXRenderer",
+                     "Draw with Vulkan's dynamic rendering (VK_KHR_dynamic_rendering, core in 1.3) where the device has "
+                     "it, without render pass objects (D130): a pipeline names its targets' formats only, the first "
+@@ -276,6 +281,14 @@ bool Device::Create(void* native_window, bool half_precision, uint32_t compile_t
+           max_viewport_[i] = properties.limits.maxViewportDimensions[i];
+         }
+       }
++      if (properties.vendorID == 0x1002 && properties.apiVersion < VK_API_VERSION_1_3 &&
++          !REXCVAR_GET(native_x_renderer_allow_old_amd_driver)) {
++        REXLOG_ERROR("[native_x_renderer] {} has an old AMD Vulkan driver (API {}.{}.{}), whose shader compiler crashes "
++                     "on the game's shaders (native_x_renderer_allow_old_amd_driver tries it anyway)",
++                     properties.deviceName, VK_API_VERSION_MAJOR(properties.apiVersion),
++                     VK_API_VERSION_MINOR(properties.apiVersion), VK_API_VERSION_PATCH(properties.apiVersion));
++        return false;
++      }
+     }
+ #endif
+     REXLOG_INFO("[native_x_renderer] viewports up to {}x{} host pixels (D134)", max_viewport_[0], max_viewport_[1]);
+diff --git a/src/sdk_cvars.cpp b/src/sdk_cvars.cpp
+index b78cd4f..2f9f7a1 100644
+--- a/src/sdk_cvars.cpp
++++ b/src/sdk_cvars.cpp
+@@ -27,3 +27,13 @@ bool& FLAGS_gpu_allow_invalid_fetch_constants_storage_() {
+   thread_local native_x_renderer::sdk::Forwarded<bool> forwarded;
+   return forwarded.Get("gpu_allow_invalid_fetch_constants", false);
+ }
++int32_t& FLAGS_gpu_debug_log_draws_storage_() {
++  thread_local native_x_renderer::sdk::Forwarded<int32_t> forwarded;
++  return forwarded.Get("gpu_debug_log_draws", 0);
++}
++
++// The SDK's own native GPU path (re-wor's SDK): it runs inside the GPU plugin, never with NativeXRenderer's copies of
++// the graphics code, which see it off.
++namespace rex::graphics {
++bool IsNativeRendererActive() { return false; }
++}  // namespace rex::graphics
+diff --git a/src/sdk_cvars.h b/src/sdk_cvars.h
+index 4a50d5c..8735945 100644
+--- a/src/sdk_cvars.h
++++ b/src/sdk_cvars.h
+@@ -7,6 +7,7 @@
+ 
+ #include <atomic>
+ #include <cstdint>
++#include <initializer_list>
+ #include <string>
+ #include <type_traits>
+ 
+@@ -50,6 +51,12 @@ struct IgnoredRegistration {
+   constexpr IgnoredRegistration lifecycle(Args&&...) const {
+     return *this;
+   }
++  template <typename... Args>
++  constexpr IgnoredRegistration allowed(Args&&...) const {
++    return *this;
++  }
++  constexpr IgnoredRegistration allowed(std::initializer_list<const char*>) const { return *this; }
++  constexpr IgnoredRegistration debug_only() const { return *this; }
+ };
+ 
+ }  // namespace native_x_renderer::sdk
+@@ -70,3 +77,24 @@ struct IgnoredRegistration {
+     return forwarded.Get(#name, default_val);                                                    \
+   }                                                                                              \
+   [[maybe_unused]] static constexpr auto native_x_renderer_cvar_##name = ::native_x_renderer::sdk::IgnoredRegistration {}
++#undef REXCVAR_DEFINE_UINT32
++#define REXCVAR_DEFINE_UINT32(name, default_val, category, desc)                                  \
++  uint32_t& FLAGS_##name##_storage_() {                                                           \
++    thread_local ::native_x_renderer::sdk::Forwarded<uint32_t> forwarded;                         \
++    return forwarded.Get(#name, uint32_t(default_val));                                           \
++  }                                                                                               \
++  [[maybe_unused]] static constexpr auto native_x_renderer_cvar_##name = ::native_x_renderer::sdk::IgnoredRegistration {}
++#undef REXCVAR_DEFINE_DOUBLE
++#define REXCVAR_DEFINE_DOUBLE(name, default_val, category, desc)                                  \
++  double& FLAGS_##name##_storage_() {                                                             \
++    thread_local ::native_x_renderer::sdk::Forwarded<double> forwarded;                           \
++    return forwarded.Get(#name, double(default_val));                                             \
++  }                                                                                               \
++  [[maybe_unused]] static constexpr auto native_x_renderer_cvar_##name = ::native_x_renderer::sdk::IgnoredRegistration {}
++#undef REXCVAR_DEFINE_STRING
++#define REXCVAR_DEFINE_STRING(name, default_val, category, desc)                                  \
++  std::string& FLAGS_##name##_storage_() {                                                        \
++    thread_local ::native_x_renderer::sdk::Forwarded<std::string> forwarded;                      \
++    return forwarded.Get(#name, std::string(default_val));                                        \
++  }                                                                                               \
++  [[maybe_unused]] static constexpr auto native_x_renderer_cvar_##name = ::native_x_renderer::sdk::IgnoredRegistration {}
+diff --git a/src/sdk_texture_replacement.cpp b/src/sdk_texture_replacement.cpp
+new file mode 100644
+index 0000000..75db579
+--- /dev/null
++++ b/src/sdk_texture_replacement.cpp
+@@ -0,0 +1,6 @@
++// NativeXRenderer - the SDK's texture replacement (texture packs), which the texture cache (sdk_texture_cache.cpp) uses
++// in SDKs that have it, such as re-wor's. Compiled the same way as the cache: its cvars stay the plugin's.
++
++#include "sdk_cvars.h"
++
++#include NATIVE_X_RENDERER_SDK_TEXTURE_REPLACEMENT_CPP

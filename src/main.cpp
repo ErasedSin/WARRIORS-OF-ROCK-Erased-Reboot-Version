@@ -4,6 +4,10 @@
 #include "options_menu.h"
 #include "quit_prompt.h"
 
+#ifdef REWOR_HAS_NATIVE_X_RENDERER
+#include "native_x_renderer_wor.h"
+#endif
+
 #include <rex/cvar.h>
 #include <rex/filesystem.h>
 #include <rex/filesystem/device.h>
@@ -72,6 +76,7 @@ void ReWorInstallDlc();
 void ReWorStartOnline();
 void ReWorDumpEarly();
 void ReWorApplyDebugMenu();
+void ReWorApplyFramePacing();
 
 // src/sampler.cpp: where each thread spends its time, when rewor_sample_file is set.
 void rewor_start_sampler();
@@ -541,10 +546,33 @@ class ReWorApp : public rex::ReXApp {
     ReWorStartOnline();
   }
 
+#ifdef REWOR_HAS_NATIVE_X_RENDERER
+  // NativeXRenderer's tool modes instead of the game: preparing its pipelines
+  // (--native_x_renderer_prepare_pipelines) and the developers' pipeline list.
+  bool OnToolMode() override {
+    if (!native_x_renderer::ToolModeRequested()) {
+      return false;
+    }
+    native_x_renderer::RunToolMode(rewor::NativeXRendererProfile(), game_data_root(), cache_root());
+    return true;
+  }
+#endif
+
   void OnPostSetup() override {
     TRACE("[OnPostSetup] entered - XEX loaded, runtime ready");
     fill_dispatch_table(runtime()->virtual_membase());
     mount_mod_overlay(runtime()->file_system(), game_data_root());
+
+#ifdef REWOR_HAS_NATIVE_X_RENDERER
+    // Before the guest starts: until then its hooks only run the original D3D
+    // calls. With native_x_renderer off, or when it cannot start (no Vulkan
+    // device), the SDK's Xenos emulation keeps drawing, on D3D12 or Vulkan.
+    REXLOG_INFO("re-wor: {}", native_x_renderer::Describe());
+    native_x_renderer::Initialize(rewor::NativeXRendererProfile(), runtime()->graphics_system(), window(),
+                                  runtime()->cache_root());
+#endif
+
+    ReWorApplyFramePacing();
 
     discord_init();
     discord_update();

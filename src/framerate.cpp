@@ -18,6 +18,7 @@
 // The addresses are for the retail default.xex (CRC32 62201F03).
 
 #include <rex/cvar.h>
+#include <rex/graphics/frame_pacing.h>
 #include <rex/logging.h>
 #include <rex/ppc/context.h>
 #include <rex/system/kernel_state.h>
@@ -91,6 +92,10 @@ void WriteU32(uint8_t* base, uint32_t address, uint32_t value) {
 
 }  // namespace
 
+namespace {
+void AdaptPacing(double mean_seconds);
+}  // namespace
+
 // [[midasm_hook]] 0x8242C57C, the end of the main thread's frame (sub_8242C450).
 // A gap outside 0.25 to 50 ms (a load) is clamped, not taken as a frame.
 void ReWorFrameEndHook() {
@@ -101,6 +106,7 @@ void ReWorFrameEndHook() {
     g_last_frame.store(seconds, std::memory_order_relaxed);
     const double mean = g_mean_frame.load(std::memory_order_relaxed);
     g_mean_frame.store(mean > 0.0 ? mean + (seconds - mean) * 0.1 : seconds, std::memory_order_relaxed);
+    AdaptPacing(g_mean_frame.load(std::memory_order_relaxed));
   }
   previous = now;
 }
@@ -452,4 +458,59 @@ void ReWorStringFrequencyHook(PPCRegister& f1) {
   if (Above60()) {
     f1.f64 -= 60.0 * std::round(f1.f64 / 60.0);
   }
+}
+
+// The SDK's vblank thread paces the game by the rate a game gives it: with one,
+// it waits on a high resolution timer and, with V-Sync (present_vsync), on the
+// display's own vblanks; without one it sleeps 1 ms at a time, so the frames
+// come unevenly (119, 121, 118... at 120). But with the vblank exactly on time,
+// a PC that can't keep up drops to a whole fraction of the rate (60 -> 30 or 20,
+// 120 -> 60): the game waits for the next vblank. The 1 ms sleeps let late
+// vblanks come in a burst, so the game ran at what it could (37 FPS against
+// 16-19 on a slow PC at 60, 2026-11-17). So the precise pacing is used only
+// while the game keeps the rate: off when the frames average 15% longer than
+// one vblank for a second, back on after three seconds within 5% of it.
+namespace {
+std::atomic<double> g_pacing_rate{0.0};  // the rate to pace at, 0 = never
+
+void AdaptPacing(double mean_seconds) {
+  static Clock::time_point window;  // main thread only
+  static bool precise = false;
+  static int good_seconds = 0;
+  const double rate = g_pacing_rate.load(std::memory_order_relaxed);
+  if (rate <= 0.0) {
+    return;
+  }
+  const Clock::time_point now = Clock::now();
+  if (window != Clock::time_point{} && now - window < std::chrono::seconds(1)) {
+    return;
+  }
+  window = now;
+  const double interval = 1.0 / rate;
+  if (precise && mean_seconds > interval * 1.15) {
+    precise = false;
+    good_seconds = 0;
+    rex::graphics::SetGuestVblankRate(0.0);
+    REXLOG_INFO("[frame rate] {:.1f} FPS, under {:.0f}: vblank back on the plain timer", 1.0 / mean_seconds, rate);
+  } else if (!precise) {
+    good_seconds = mean_seconds < interval * 1.05 ? good_seconds + 1 : 0;
+    if (good_seconds >= 3) {
+      precise = true;
+      rex::graphics::SetGuestVblankRate(rate);
+      REXLOG_INFO("[frame rate] keeping {:.0f} FPS: vblank paced precisely", rate);
+    }
+  }
+}
+}  // namespace
+
+REXCVAR_DEFINE_BOOL(rewor_frame_pacing, true, "re-wor",
+                    "Pace the vblank with a precise timer (and the display with present_vsync) while the game keeps "
+                    "the frame rate; off, it always sleeps 1 ms at a time as before");
+
+void ReWorApplyFramePacing() {
+  rex::graphics::SetGuestVblankRate(0.0);
+  const double rate = rex::cvar::Query<bool>("vsync")
+                          ? std::clamp(rex::cvar::Query<double>("video_mode_refresh_rate"), 24.0, 240.0)
+                          : 0.0;
+  g_pacing_rate.store(REXCVAR_GET(rewor_frame_pacing) ? rate : 0.0, std::memory_order_relaxed);
 }

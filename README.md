@@ -154,6 +154,11 @@ Windows, with Visual Studio 2022 Build Tools (C++), LLVM/Clang, CMake and Ninja.
    cmake --preset win-amd64-release -DCMAKE_PREFIX_PATH=<sdk>\out\install\win-amd64
    cmake --build out/build/win-amd64-release
    ```
+   The native renderer ([NativeXRenderer](https://github.com/ElGuslml/NativeXRenderer) by ElGuslml, MIT, the
+   `native_x_renderer` submodule) needs the SDK built from source: run `git submodule update --init --recursive`,
+   apply `sdk
+ative-x-renderer.patch` inside `native_x_renderer`, and add
+   `-DREXSDK_DIR=<sdk> -DREWOR_NATIVE_X_RENDERER=ON` to the configure line. Without it, the game draws with Xenos only.
 3. **The launcher** (C#, built with the compiler that comes with Windows):
    ```bat
    %WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe /target:winexe /codepage:65001 /win32icon:launcher\launcher.ico /r:System.Windows.Forms.dll /r:System.Drawing.dll /r:System.IO.Compression.dll /r:System.IO.Compression.FileSystem.dll /out:"Erased Reboot Version.exe" launcher\*.cs
@@ -182,6 +187,8 @@ Made by **Gaio Moreira (Erased)**, on top of the work of:
 - [iExplosiveRage's SDK fork](https://github.com/iExplosiveRage/rexglue-sdk) (DBZ Burst Limit Recompiled): the
   internal resolution below 720p and the graphics card selection.
 - [GHVanHRecomp](https://github.com/ElGuslml/GHVanHRecomp) by ElGuslml (MIT): the thread waits and the auto-strum gate.
+- [NativeXRenderer](https://github.com/ElGuslml/NativeXRenderer) and [GHWoRRecomp](https://github.com/ElGuslml/GHWoRRecomp)
+  by ElGuslml (MIT): the native Vulkan renderer and its Warriors of Rock hooks.
 - [Piscacho's Warriors of Rock port](https://github.com/Piscacho/Guitar-Hero-Warriors-of-Rock-PC) (MIT): the layout of
   the controller-as-guitar buttons.
 - The WoR+ project (kernaltrap8), for what is known about the game's scripts.
