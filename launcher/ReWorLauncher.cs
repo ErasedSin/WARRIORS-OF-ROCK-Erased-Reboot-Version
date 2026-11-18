@@ -1736,7 +1736,7 @@ namespace ReWor
         const int VideoPage = 2;
         const int MicPage = 6;
         const int OnlinePage = 7;
-        const string AppVersion = "2.5";
+        const string AppVersion = "3.0";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
         const bool OnlineTab = true;

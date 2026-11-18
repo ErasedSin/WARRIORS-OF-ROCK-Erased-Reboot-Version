@@ -20,6 +20,14 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 
 ## What's new
 
+**In 3.0:** a native renderer, experimental, for Warriors of Rock and Guitar Hero 5. Pick "Native (Vulkan,
+experimental)" as the graphics API on the VIDEO page: the game is drawn directly with Vulkan instead of going through
+an emulated Xbox 360 graphics chip, which should be much lighter on the graphics card. It is
+[NativeXRenderer](https://github.com/ElGuslml/NativeXRenderer) by ElGuslml (MIT). When the native renderer can't start
+(no Vulkan, or an old AMD driver whose shader compiler crashes on the game), the game draws the usual way. The frame
+pacing is steadier at 120 Hz and above: the precise frame clock is used only while the PC keeps up with the refresh
+rate, so a slower PC no longer drops to half the frame rate.
+
 **In 2.5:** the FSR and CAS image filters work (the previous builds left AMD FidelityFX out, so only bilinear
 was used). New on the VIDEO page: a 2x or 3x render resolution for strong PCs, and NVIDIA DLSS / DLAA or AMD FSR 3/4 on
 the scene (experimental). A regular controller set to play as a guitar is now a guitar even when it was picked by its
@@ -219,6 +227,14 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
+
+**Novidades da 3.0:** renderizador nativo, experimental, no Warriors of Rock e no Guitar Hero 5. Escolha "Nativo
+(Vulkan, experimental)" na API gráfica da aba VÍDEO: o jogo é desenhado direto em Vulkan, sem passar pelo chip gráfico
+do Xbox 360 emulado, o que deve pesar bem menos na placa de vídeo. É o
+[NativeXRenderer](https://github.com/ElGuslml/NativeXRenderer) do ElGuslml (MIT). Quando o nativo não consegue abrir
+(sem Vulkan, ou driver antigo da AMD cujo compilador de shaders crasha no jogo), o jogo desenha do jeito de sempre. O
+ritmo dos quadros ficou mais estável a 120 Hz ou mais: o relógio preciso só é usado enquanto o PC acompanha a taxa do
+monitor, então um PC mais fraco não cai mais para metade do FPS.
 
 **Novidades da 2.5:** os filtros de imagem FSR e CAS funcionam (as builds anteriores saíram sem o AMD FidelityFX,
 então só o bilinear valia). Na aba VÍDEO: resolução de desenho 2x ou 3x para PC forte, e NVIDIA DLSS / DLAA ou AMD
