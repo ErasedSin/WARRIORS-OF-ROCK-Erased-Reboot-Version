@@ -6,6 +6,7 @@
 
 #ifdef REWOR_HAS_NATIVE_X_RENDERER
 #include "native_x_renderer_wor.h"
+#include <native_x_renderer/native_x_renderer.h>
 #endif
 
 #include <rex/cvar.h>
@@ -418,7 +419,13 @@ class FpsCounterDialog : public rex::ui::ImGuiDialog {
                                    ImGuiWindowFlags_NoSavedSettings |
                                    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
     if (ImGui::Begin("##rewor_fps", nullptr, flags)) {
+#ifdef REWOR_HAS_NATIVE_X_RENDERER
+      // Which renderer draws: the native one (NativeXRenderer) or the emulated Xbox 360 GPU (Xenos).
+      ImGui::TextColored(color, "%.0f FPS  %s", shown_fps_,
+                         native_x_renderer::Renders() ? "Native" : "Xenos");
+#else
       ImGui::TextColored(color, "%.0f FPS", shown_fps_);
+#endif
     }
     ImGui::End();
   }

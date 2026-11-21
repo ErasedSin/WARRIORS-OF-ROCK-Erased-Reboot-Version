@@ -20,6 +20,10 @@ A continuation of <a href="https://github.com/ronniecloud/re-wor">re-wor</a>, ma
 
 ## What's new
 
+**In 3.1:** the FPS counter (F2) now says which renderer draws the game: "Native" or "Xenos". Guitar Hero 5 really
+turns the native renderer on now (the launcher saved the choice and then erased it). The native renderer needs a recent
+Vulkan driver: on old AMD cards (driver from before Vulkan 1.3) it doesn't start and the game draws the usual way.
+
 **In 3.0:** a native renderer, experimental, for Warriors of Rock and Guitar Hero 5. Pick "Native (Vulkan,
 experimental)" as the graphics API on the VIDEO page: the game is drawn directly with Vulkan instead of going through
 an emulated Xbox 360 graphics chip, which should be much lighter on the graphics card. It is
@@ -227,6 +231,10 @@ Warriors of Rock, its code and its assets belong to their respective owners.
 
 **Você precisa da sua própria cópia do jogo.** Este projeto não inclui nenhum arquivo do jogo. Use os arquivos
 extraídos do seu disco de Xbox 360 (o `default.xex` e a pasta `data`). Diga não à pirataria.
+
+**Novidades da 3.1:** o contador de FPS (F2) agora diz quem desenha o jogo: "Native" (nativo) ou "Xenos". O Guitar
+Hero 5 agora liga o nativo de verdade (o launcher gravava a escolha e apagava em seguida). O nativo precisa de um driver
+Vulkan recente: em placas AMD antigas (driver anterior ao Vulkan 1.3) ele não abre e o jogo desenha do jeito de sempre.
 
 **Novidades da 3.0:** renderizador nativo, experimental, no Warriors of Rock e no Guitar Hero 5. Escolha "Nativo
 (Vulkan, experimental)" na API gráfica da aba VÍDEO: o jogo é desenhado direto em Vulkan, sem passar pelo chip gráfico

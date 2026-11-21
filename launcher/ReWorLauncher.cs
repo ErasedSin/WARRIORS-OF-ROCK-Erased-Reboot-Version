@@ -1736,7 +1736,7 @@ namespace ReWor
         const int VideoPage = 2;
         const int MicPage = 6;
         const int OnlinePage = 7;
-        const string AppVersion = "3.0";
+        const string AppVersion = "3.1";
         // The ONLINE page is built but not shown until online play is tested
         // between two PCs; until then the game always starts offline.
         const bool OnlineTab = true;
@@ -6062,9 +6062,8 @@ namespace ReWor
             if (activeGame == GameGh5)
             {
                 // Settings of an older Guitar Hero 5 build's SDK, which this one does not have.
-                foreach (string old in new[] { "native_x_renderer", "native_x_renderer_present_mode", "vblank_follows_display",
-                    "native_x_renderer_antialiasing", "native_x_renderer_resolution_scale", "native_x_renderer_scaling",
-                    "native_x_renderer_shadow_scale", "audio_wasapi_exclusive", "gamepad_tap_target", "gamepad_remap",
+                foreach (string old in new[] { "vblank_follows_display",
+                    "audio_wasapi_exclusive", "gamepad_tap_target", "gamepad_remap",
                     "mnk_tap_target", "usb_microphone_1", "usb_microphone_1_gain", "gamepad_device_subtypes", "game_data_root" })
                     settings.Remove(old);
             }
